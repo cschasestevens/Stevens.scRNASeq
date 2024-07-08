@@ -52,7 +52,7 @@ sc.process.file <- function(
     )
   ## Adjusted rho
   df.p[["adj.rho"]] <- df.p[["rho"]] +
-    adj.rho*
+    rho.adj*
     df.p[["rho"]]
   ## Cluster and cell numbers
   df.p[["Clusters"]] <- length(
