@@ -1,0 +1,1330 @@
+setwd("/home/ncsteven/analyze/Stevens.scRNASeq.test")
+getwd()
+library(devtools)
+load_all()
+
+#---- Data import ----
+# Dataset input parameters
+list.p <- MSI.InputParams("data/","neg",300,900,5)
+# Load all .imzML
+list.d <- MSI.LoadAll(list.p)
+
+#---- Peak detection ----
+# Detect peaks for combined data list
+d.peaks <- MSI.detectpeaks(
+  # Data file list
+  list.d[["Data.files"]],
+  # Input parameters
+  list.p,
+  # Process in parallel (TRUE/FALSE)
+  TRUE,
+  # Percent of total cores to use (as decimal)
+  0.75
+  )
+saveRDS(
+  d.peaks[["Processed.Peaks"]],
+  "2.2.process.peaks.test.rds"
+  )
+
+
+#---- Peak binning ----
+## If not running steps sequentially, load RDS containing combined peak list
+if(
+  !exists(
+    "d.peaks"
+    ) &
+  file.exists("2.2.process.peaks.test.rds")
+  ) {
+  d.peaks <- readRDS(
+    "2.2.process.peaks.test.rds"
+    )
+  }
+
+MSI.binpeaks(
+  # Sample information
+  list.d[["Sample.Info"]],
+  # Data file list
+  list.d[["Data.files"]],
+  # Processed peak list
+  d.peaks,
+  # Process in parallel (TRUE/FALSE)
+  TRUE
+  )
+
+
+#---- Peak annotation ----
+
+# Requires:
+# - d.peaks object from peak detection step
+# - annotation text file for assigning LC-MS/MS validated annotations to detected peaks
+
+# Load annotation file (see example list for formatting help)
+list.anno <- read.table(
+  "ozma.annotations.neg.txt",
+  sep = "\t",
+  header = T
+  )
+
+## Annotate peaks
+list.annotated <- MSI.annotate.peaks(
+  # Processed peak list
+  d.peaks,
+  # LC-MS/MS annotation list
+  list.anno
+  )
+
+## Return batch list for combining
+list.batch <- list.files()[grepl("processed.b",list.files())]
+list.d.anno <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(list.batch),
+      1),
+    function(x)
+      MSI.data.filter(
+        list.batch[[x]],
+        list.annotated[["Annotated"]]
+        )
+    ),
+  c(list.batch)
+  )
+
+## Combine and save processed data
+### Combine
+if(length(list.batch) > 1) {
+  d.processed <- do.call(
+    Cardinal::cbind,
+    list.d.anno
+    )
+  }
+if(length(list.batch) == 1) {
+  d.processed <- list.d.anno[[1]]
+  }
+
+### Verify that all samples have been correctly combined
+Cardinal::imageData(d.processed)
+Cardinal::features(d.processed)
+Cardinal::pixelData(d.processed)
+Cardinal::run(d.processed)
+Cardinal::spectra(
+  d.processed,
+  "intensity"
+  )[,1:25]
+
+### Save data
+saveRDS(
+  d.processed,
+  "data.processed.rds"
+  )
+gc(reset = T)
+
+
+
+
+
+
+
+#---- Image normalization ----
+
+# If not running steps sequentially, load RDS containing processed samples
+if(
+  !exists(
+    "d.peaks"
+    ) &
+  file.exists("2.2.process.peaks.test.rds")
+  ) {
+  d.peaks <- readRDS(
+    "2.2.process.peaks.test.rds"
+    )
+  }
+
+# Load processed data, annotation list, and sample metadata table
+## Sample metadata is created outside of R (see example for details)
+## Processed data
+if(
+  !exists("d") &
+  file.exists("data.processed.rds")
+  )
+  {
+  d <- readRDS(
+    "data.processed.rds"
+    )
+  }
+Cardinal::imageData(d)
+
+## Annotation list
+d.anno <- read.table(
+  "data.annotated.neg.curated.txt",
+  header = T,
+  sep = "\t"
+)
+
+## pixel metadata
+d.group <- read.table(
+  "sample.metadata.neg.txt",
+  sep = "\t",
+  header = T
+)
+
+## Format data (also saves formatted outputs)
+msi.norm.form <- MSI.norm.format(
+  # Image data
+  d,
+  # Curated annotation list
+  d.anno,
+  # Pixel metadata
+  d.group
+  )
+
+#### Normalization ####
+# Load objects if not analyzing sequentially
+if(!exists("msi.norm.form") &
+   file.exists("metadata.feature.txt") &
+   file.exists("metadata.pixel.txt") &
+   file.exists("msi.data.matrix.rds")) {
+  msi.norm.form <- list(
+    "Data" = readRDS(
+      "msi.data.matrix.rds"
+      ),
+    "Feature" = read.table(
+      "metadata.feature.txt",
+      sep = "\t",
+      header = T
+      ),
+    "Pixel" = read.table(
+      "metadata.pixel.txt",
+      sep = "\t",
+      header = T
+      )
+    )
+  }
+
+# Normalizations
+l.norm <- list(
+  "norm.none" = MSI.norm.none(
+    msi.norm.form[["Data"]],
+    msi.norm.form[["Feature"]],
+    msi.norm.form[["Pixel"]]
+    ),
+  "norm.TIC" = MSI.norm.TIC(
+    msi.norm.form[["Data"]],
+    msi.norm.form[["Feature"]],
+    msi.norm.form[["Pixel"]]
+    ),
+  "norm.sLOESS" = MSI.norm.sLOESS(
+    # Data matrix
+    msi.norm.form[["Data"]],
+    # Feature metadata
+    msi.norm.form[["Feature"]],
+    # Pixel metadata
+    msi.norm.form[["Pixel"]],
+    # Process in parallel (TRUE/FALSE)
+    TRUE,
+    # Percent of total cores to use (as decimal)
+    0.9
+    )
+  )
+
+# Save normalized data
+saveRDS(
+  l.norm,
+  file = "data.sloess.rds"
+  )
+
+#### Normalization Performance ####
+if(
+  !exists(
+    "l.norm"
+    ) &
+  file.exists("data.sloess.rds")
+  ) {
+  l.norm <- readRDS(
+    "data.sloess.rds"
+    )
+  }
+
+## Append Raw/TIC/sLOESS counts to sample metadata
+msi.norm.form[["Pixel"]] <- data.frame(
+  msi.norm.form[["Pixel"]],
+  "mTIC.pixel.raw" = apply(
+    l.norm[["norm.none"]][
+      ,
+      4:ncol(l.norm[["norm.none"]])
+      ],
+      1,
+    function(x)
+      sum(x)
+    ),
+  "mTIC.pixel.TIC" = l.norm[["norm.TIC"]][["mTIC.norm"]],
+  "mTIC.pixel.sLOESS" = apply(
+    l.norm[["norm.sLOESS"]][
+      ,
+      4:ncol(l.norm[["norm.sLOESS"]])
+    ],
+    1,
+    function(x)
+      sum(x)
+    )
+  )
+
+## Save plot
+ggplot2::ggsave(
+  "plot.norm.TIC.png",
+  ggpubr::ggarrange(
+    ## Raw
+    MSI.plot.TIC(
+      ## sample metadata
+      msi.norm.form[["Pixel"]],
+      ## pixel column
+      "pixel",
+      ## TIC for selected norm
+      "mTIC.pixel.raw",
+      ## Sample ID column
+      "ID"
+      ),
+    MSI.plot.TIC(
+      msi.norm.form[["Pixel"]],
+      "pixel",
+      "mTIC.pixel.TIC",
+      "ID"
+      ),
+    MSI.plot.TIC(
+      msi.norm.form[["Pixel"]],
+      "pixel",
+      "mTIC.pixel.sLOESS",
+      "ID"
+      ),
+    ncol = 3,
+    common.legend = T,
+    labels = c("Raw","TIC","sLOESS")
+    ),
+  width = 18,
+  height = 6,
+  dpi = 600
+  )
+
+## median group RSDs
+g.rsd <- list(
+  "Raw" = MSI.calc.RSD(
+    # input df
+    l.norm[["norm.none"]],
+    # metadata col. number
+    3,
+    "Group",
+    # feature metadata df
+    msi.norm.form[["Feature"]],
+    # annotation col. name
+    "Name"
+    ),
+  "TIC" = MSI.calc.RSD(
+    l.norm[["norm.TIC"]],
+    5,
+    "Group",
+    msi.norm.form[["Feature"]],
+    "Name"
+    ),
+  "sLOESS" = MSI.calc.RSD(
+    l.norm[["norm.sLOESS"]],
+    3,
+    "Group",
+    msi.norm.form[["Feature"]],
+    "Name"
+    )
+  )
+
+## Save plot
+ggplot2::ggsave(
+  "plot.norm.RSD.png",
+  ggpubr::ggarrange(
+    ## Raw
+    MSI.plot.RSD(
+      ## rsd df
+      g.rsd[["Raw"]][["all.group.rsd"]],
+      ## X-variable
+      "ID",
+      ## rsd value
+      "value",
+      ## rsd group variable
+      "Group.RSD"
+      ),
+    MSI.plot.RSD(
+      ## rsd df
+      g.rsd[["TIC"]][["all.group.rsd"]],
+      ## X-variable
+      "ID",
+      ## rsd value
+      "value",
+      ## rsd group variable
+      "Group.RSD"
+      ),
+    MSI.plot.RSD(
+      ## rsd df
+      g.rsd[["sLOESS"]][["all.group.rsd"]],
+      ## X-variable
+      "ID",
+      ## rsd value
+      "value",
+      ## rsd group variable
+      "Group.RSD"
+      ),
+    ncol = 3,
+    common.legend = T,
+    labels = c(
+      "Raw","TIC","sLOESS"
+      )
+    ),
+  width = 18,
+  height = 6,
+  dpi = 600
+  )
+
+## Plot TIC of each normalization for each sample
+ggplot2::ggsave(
+  "plot.norm.image.sLOESS.png",
+  MSI.plot.AllImage(
+    # Input df
+    msi.norm.form[["Pixel"]],
+    # Intensity to plot
+    "mTIC.pixel.sLOESS",
+    # Sample ID variable
+    "ID",
+    # Percentile for scaling contrast of images
+    0.9
+    ),
+  width = 6,
+  height = 10,
+  dpi = 300
+  )
+
+## Plot for representative sample
+ggplot2::ggsave(
+  "plot.norm.image.compare.png",
+  ggpubr::ggarrange(
+    MSI.plot.OneImage(
+      # Input df
+      msi.norm.form[["Pixel"]],
+      # Intensity to plot
+      "mTIC.pixel.raw",
+      # Sample ID variable
+      "ID",
+      # Sample number
+      1,
+      # Percentile for scaling contrast of images
+      0.99
+      ),
+    MSI.plot.OneImage(
+      # Input df
+      msi.norm.form[["Pixel"]],
+      # Intensity to plot
+      "mTIC.pixel.TIC",
+      # Sample ID variable
+      "ID",
+      # Sample number
+      1,
+      # Percentile for scaling contrast of images
+      0.99
+      ),
+    MSI.plot.OneImage(
+      # Input df
+      msi.norm.form[["Pixel"]],
+      # Intensity to plot
+      "mTIC.pixel.sLOESS",
+      # Sample ID variable
+      "ID",
+      # Sample number
+      1,
+      # Percentile for scaling contrast of images
+      0.99
+      ),
+    labels = c(
+      "Raw",
+      "mTIC",
+      "sLOESS"
+      ),
+    nrow = 1,
+    common.legend = T,
+    legend = "bottom"
+    ),
+  width = 24,
+  height = 12,
+  dpi = 600
+  )
+
+
+#### Check Ion Images ####
+# Generate ion images for all annotated compounds
+parallel::mclapply(
+  mc.cores = ceiling(
+    parallel::detectCores()*
+      0.9
+    ),
+  seq.int(
+    6,
+    (ncol(l.norm[["norm.sLOESS"]]) + 2),
+    1
+  ),
+  function(x)
+    ggplot2::ggsave(
+      paste(
+        "plot.check.",
+        names(l.norm[["norm.sLOESS"]][x - 2]),
+        ".png",
+        sep = ""),
+      MSI.image.check(
+        # Input data
+        l.norm[["norm.sLOESS"]],
+        # Input metadata
+        msi.norm.form[["Pixel"]],
+        # Intensity to plot
+        x,
+        # Sample ID variable
+        "ID",
+        # Percentile for scaling contrast of images
+        0.99
+      ),
+      width = 15,
+      height = 6,
+      dpi = 1200
+    )
+  )
+
+#---- Image segmentation ----
+#### Unsupervised Image Segmentation ####
+# Automatically segments regions of interest based on UMAP (Based on single-cell R package Seurat)
+if(
+  !exists("d") &
+  !exists("msi.pmd") &
+  file.exists("metadata.pixel.txt")
+  ) {
+  d <- readRDS(
+    "data.sloess.rds"
+    )[[3]]
+  msi.pmd <- read.table(
+    "metadata.pixel.txt",
+    sep = "\t",
+    header = T
+    )
+  }
+
+# Find clusters for each sample
+d.seg <- setNames(
+  parallel::mclapply(
+    mc.cores = ceiling(
+      parallel::detectCores()*
+        0.5
+      ),
+    seq.int(
+      1,
+      length(
+        unique(
+          d[,c("ID")]
+        )
+      ),
+      1
+    ),
+    function(x)
+      MSI.Segment(
+        # sample number
+        x,
+        # metadata column number
+        8,
+        # loess span parameter (proportion of pixels to fit model to; use lower proportion for tissues with small regions)
+        0.1,
+        # resolution to use for clustering (see Seurat FindClusters() documentation for details; larger number, more clusters)
+        0.9
+      )
+  ),
+  c(
+    unique(
+      d[
+        ,
+        c("ID")
+      ]
+    )
+  )
+)
+
+
+#### Find markers for each cluster in each sample and plot top-5 ####
+
+d.seg.mark <- setNames(
+  parallel::mclapply(
+    mc.cores = ceiling(
+      parallel::detectCores()*
+        0.5
+    ),
+    seq.int(1,length(d.seg),1),
+    function(x){
+      # Find marker compounds for each calculated cluster
+      d.mark <- Seurat::FindAllMarkers(
+        d.seg[[x]],
+        test.use = "wilcox",
+        densify = T,
+        verbose = T
+      )
+      names(d.mark) <- c(
+        names(
+          d.mark[
+            ,
+            c(1:6)]
+        ),
+        "name"
+      )
+      d.mark[["ID"]] <- names(d.seg[x])
+
+      # Create top-5 heatmap
+      h.out <- MSI.markers.top5(
+        # Seurat object
+        d.seg[[x]],
+        # Marker gene list
+        d.mark,
+        # Cluster column
+        "Cluster",
+        # Heatmap width
+        24,
+        # Heatmap height
+        12,
+        # Column fontsize
+        6,
+        # Row fontsize
+        8,
+        # Sample number
+        x
+      )
+
+      return(
+        list(
+          "Markers" = d.mark,
+          "Plot" = h.out
+        )
+      )
+    }
+  ),
+  c(names(d.seg))
+)
+
+# Combine marker lists for all samples
+d.seg.mark.list <- dplyr::bind_rows(
+  lapply(
+    d.seg.mark,
+    "[[",
+    1
+    )
+  )
+
+write.table(
+  d.seg.mark.list,
+  paste(
+    "data.cluster.markers.txt",
+    sep = ""
+  ),
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+  )
+
+
+# Save all plots
+lapply(
+  seq.int(
+    1,
+    length(d.seg.mark),
+    1
+    ),
+  function(x) {
+    png(
+      paste(
+        "plot.heat.marker.sample",
+        x,".png",sep = ""
+      ),
+      width = 32,
+      height = 14,
+      units = "cm",
+      res = 1000
+    )
+    print(d.seg.mark[[x]][[2]])
+    dev.off()
+    }
+  )
+
+
+# Add Seurat clustering column to image data frame and overwrite
+d <- dplyr::left_join(
+  dplyr::bind_rows(
+    lapply(
+      seq.int(1,length(d.seg),1),
+      function(x)
+        data.frame(
+          "pixel" = d[
+            d[["ID"]] == as.numeric(names(d.seg[x])),
+            "pixel"
+          ],
+          "Cluster" = as.factor(as.numeric(
+            d.seg[[x]]@meta.data[["seurat_clusters"]]
+          )
+          ))
+    )
+  ),
+  d,
+  by = "pixel"
+)
+
+d <- dplyr::left_join(
+  msi.pmd[
+    ,
+    c("pixel","X","Y")
+    ],
+  d,
+  by = "pixel"
+  )
+
+# Plot cluster images for each sample
+
+d.seg.img <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(
+        unique(
+          d[,c("ID")]
+        )
+      ),
+      1
+    ),
+    function(x){
+      MSI.plot.AllClusters(
+        # input data
+        x,
+        # cluster column
+        "Cluster"
+      )
+    }
+  ),
+  c(
+    unique(
+      d[
+        ,
+        c("ID")
+      ]
+    )
+  )
+)
+
+# Save images
+## All
+ggplot2::ggsave(
+  "plot.segmentation.summary.png",
+  ggpubr::ggarrange(
+    plotlist = d.seg.img,
+    ncol = 6,
+    nrow = 2,
+    common.legend = F
+    ),
+  width = 36,
+  height = 16,
+  dpi = 400
+  )
+## Individual
+ggplot2::ggsave(
+  "plot.segmentation.sample4.png",
+  d.seg.img[[1]],
+  width = 20,
+  height = 20,
+  dpi = 1000
+  )
+
+# Save objects
+saveRDS(
+  d,
+  "data.analyze.segmented.rds"
+  )
+saveRDS(
+  d.seg,
+  "data.analyze.segmented.seurat.rds"
+  )
+
+write.table(
+  unique(
+    d[
+      ,
+      c("ID","Cluster")
+      ]
+    ),
+  "sample.clustering.neg.txt",
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+  )
+
+remove(d)
+
+#---- Image region assessment ----
+
+if(!exists("d")) {
+  d <- readRDS(
+    "data.analyze.segmented.rds"
+    )
+  }
+
+# Assign regions based on H&E images/marker compounds and add region column to data
+
+# Split composite cluster images into individual clusters for validation
+d.seg.img.split <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(unique(d[,c("ID")])),
+      1
+    ),
+    function(x) {
+      setNames(
+        lapply(
+          seq.int(
+            1,
+            length(
+              unique(
+                d[
+                  d[["ID"]] == x,
+                ]
+                [["Cluster"]]
+              )
+            ),
+            1
+          ),
+          function(y)
+            MSI.plot.IndClusters(
+              # Input data
+              d,
+              # Sample number
+              x,
+              # Cluster number
+              y
+            )
+        ),
+        c(
+          sort(
+            unique(
+              d[
+                d[["ID"]] == x,
+              ]
+              [["Cluster"]]
+            )
+          )
+        )
+      )
+    }
+  ),
+  c(unique(
+    d[
+      ,
+      c("ID")
+    ]
+  )
+  )
+)
+
+# Save cluster images for each sample
+lapply(
+  seq.int(
+    1,
+    length(d.seg.img.split),
+    1
+  ),
+  function(x)
+    ggplot2::ggsave(
+      paste(
+        "plot.seg.split.sample",
+        x,
+        ".png",
+        sep = ""
+      ),
+      ggpubr::ggarrange(
+        plotlist = d.seg.img.split[[x]],
+        ncol = 6,
+        nrow = ifelse(
+          length(d.seg.img.split[[x]]) <= 6,1,
+          ifelse(
+            length(d.seg.img.split[[x]]) <= 12,2,
+            ifelse(
+              length(d.seg.img.split[[x]]) <= 18,3,
+              4
+            )
+          )
+        ),
+        common.legend = F
+      ),
+      width = 36,
+      height = 16,
+      dpi = 400
+      )
+  )
+
+
+#---- Image colocalization ----
+
+# Create plots and save (requires input data frame with segmented clusters from previous step)
+p.mark <- MSI.plot.coloc(
+  # input data
+  d,
+  # number of metadata columns using for input
+  6,
+  # sample (ID) number
+  1,
+  # list of input data columns to include (by number)
+  c(
+    2:5,49:50,53,55
+  ),
+  # user-defined region name
+  "Alveolar Epithelium",
+  # cluster number of selected region (for selected sample)
+  3,
+  # number of colors from palette to use
+  5
+)
+
+ggplot2::ggsave(
+  "plot.markers.regionname.sample1.png",
+  ggpubr::ggarrange(
+    plotlist = p.mark,
+    ncol = 6,
+    nrow = 4,
+    common.legend = F,
+    labels = c(names(p.mark))
+    ),
+  width = 24,
+  height = 18,
+  dpi = 800
+  )
+
+
+#---- Statistical analysis ----
+
+# Count pixel number per cluster for each sample
+d.pix <- MSI.stat.pixel(
+  # input data
+  d,
+  # metadata column number
+  8,
+  # sample number column
+  "ID",
+  # cluster number column
+  "Cluster"
+  )
+
+
+# Calculate group-wise fold changes
+l.fold <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(
+        unique(
+          d[["ID"]]
+        )
+      ),
+      1
+    ),
+    function(f)
+      MSI.stat.FC(
+        # input data
+        d[d[["ID"]] == f,],
+        # metadata column number
+        8,
+        # cluster number column
+        "Cluster"
+      )
+  ),
+  c(
+    unique(
+      d[["ID"]]
+    )
+  )
+)
+
+# Calculate one-way ANOVA
+l.p <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(
+        unique(
+          d[["ID"]]
+        )
+      ),
+      1
+    ),
+    function(f)
+      MSI.stat.owANOVA(
+        # input data
+        d[d[["ID"]] == f,],
+        # metadata column number
+        8,
+        # cluster number column
+        "Cluster"
+      )
+  ),
+  c(
+    unique(
+      d[["ID"]]
+    )
+  )
+)
+
+# Combine results and select region comparisons for visualization
+l.comb <- setNames(
+  lapply(
+    seq.int(
+      1,
+      length(
+        unique(
+          d[["ID"]]
+        )
+      ),
+      1
+    ),
+    function(f)
+      MSI.stat.output(
+        # Statistics results df
+        l.p[[f]][["FDR P"]][-1],
+        # Fold change df
+        l.fold[[f]],
+        # Grouping variable
+        "Comparison"
+        )
+    ),
+    c(
+      unique(
+        d[["ID"]]
+      )
+    )
+  )
+
+# Save RDS
+saveRDS(
+  l.comb,
+  "data.stats.intrasample.regions.rds"
+  )
+
+remove(d.pix,l.fold.l.p)
+
+#---- Conduct stats between treatments ----
+
+# Between treatments in airway epithelium
+## Subset data
+d2 <- d[
+  d[["Cluster"]] == 1 & d[["ID"]] == 1|
+    d[["Cluster"]] == 1 & d[["ID"]] == 2,
+  ]
+
+## calculate group fold changes
+d.fold <- MSI.stat.FC(
+  d2,
+  8,
+  "Group"
+  )
+
+## calculate sample means and conduct hypothesis test
+d.p2 <- dplyr::left_join(
+  data.frame(
+    unique(
+      d2[,c("ID","Group")]
+    )
+  ),
+  setNames(
+    purrr::reduce(
+      lapply(
+        seq.int(
+          (8 + 1),
+          ncol(d2),
+          1
+        ),
+        function(x)
+          aggregate(
+            d2[,
+               names(d2[x])
+            ],
+            list(
+              d2[["ID"]]
+            ),
+            function(y)
+              (mean(y)))),
+      dplyr::left_join,
+      by = "Group.1"
+    ),
+    c(
+      "ID",
+      names(d2[,(8 + 1):ncol(d2)])
+    )
+  ),
+  by = "ID"
+)
+
+d.p2 <- data.frame(
+  d.p2[,1:2],
+  as.data.frame(
+    lapply(
+      d.p2[,3:ncol(d.p2)],
+      function(x)
+        log2(x)
+    )
+  )
+)
+
+d.p2.result <- cbind(
+  data.frame(
+    "Comparison" = c("M.HO3-M.SFA","F.HO3-F.SFA")
+  ),
+  rbind(
+    setNames(
+      as.data.frame(
+        lapply(
+          names(
+            d.p2[,3:ncol(d.p2)]
+          ),
+          function(x)
+            MSI.stat.t(d.p2,2,"Group","M.HO3","M.SFA",x))),
+      c(names(d[,9:ncol(d)]))),
+    setNames(
+      as.data.frame(
+        lapply(
+          names(
+            d.p2[,3:ncol(d.p2)]
+          ),
+          function(x)
+            MSI.stat.t(d.p2,2,"Group","F.HO3","F.SFA",x))),
+      c(names(d[,9:ncol(d)])))
+  )
+)
+
+
+## Volcano plot
+ggsave(
+  "plot.stats.vol.FemaleHDMO3vsCtrl.png",
+  fun.vol.s(
+    data.frame(
+      "Name" = names(d.p2.result[,2:ncol(d.p2.result)]),
+      "FC" = t(d.fold[1,2:ncol(d.fold)])[,1],
+      "P" = t(d.p2.result[2,2:ncol(d.p2.result)])[,1]
+    ),
+    "FC","P","Name",4,
+    "Female HDM + O3 vs. Control"
+  ),
+  width = 8,
+  height = 6,
+  dpi = 800
+)
+
+
+
+#---- Conduct stats between regions ----
+
+## Load region list
+d.region <- read.table(
+  "sample.clustering.neg.txt",
+  header = T,
+  sep = "\t"
+  )
+d.region[["Cluster"]] <- as.factor(d.region[["Cluster"]])
+
+## Add region column to data and subset
+d.region[["ID"]] <- as.factor(d.region[["ID"]])
+d[["ID"]] <- as.factor(d[["ID"]])
+d2 <- dplyr::left_join(
+  d[,c("Cluster","ID","Group")],
+  d.region,
+  by = c("Cluster","ID")
+  )
+d2 <- data.frame(
+  d2,
+  d[,9:ncol(d)]
+  )
+d2 <- d2[
+  d2[["predicted.ID"]] == "airway.epi" |
+    d2[["predicted.ID"]] == "alveolar.epi",
+  ]
+d2 <- data.frame(
+  "Group2" = paste(
+    d2[["Group"]],
+    d2[["predicted.ID"]],
+    sep = "."
+    ),
+  d2
+  )
+names(d2) <- c(
+  names(d2[,1:6]),
+  names(d[,9:ncol(d)]
+    )
+  )
+
+## calculate group fold changes
+d.fold <- MSI.stat.FC(
+  d2,
+  6,
+  "Group2"
+)
+
+## calculate sample means and conduct hypothesis test
+d.p2 <- dplyr::left_join(
+  data.frame(
+    unique(
+      d2[,c("ID","Group2")]
+    )
+  ),
+  setNames(
+    purrr::reduce(
+      lapply(
+        seq.int(
+          (6 + 1),
+          ncol(d2),
+          1
+        ),
+        function(x)
+          aggregate(
+            d2[,
+               names(d2[x])
+            ],
+            list(
+              d2[["ID"]],
+              d2[["Group2"]]
+            ),
+            function(y)
+              (mean(y)))),
+      dplyr::left_join,
+      by = c("Group.1","Group.2")
+    ),
+    c(
+      "ID",
+      "Group2",
+      names(d2[,(6 + 1):ncol(d2)])
+    )
+  ),
+  by = c("ID","Group2")
+)
+
+d.p2 <- as.data.frame(
+  lapply(
+    d.p2,
+    function(x)
+      ifelse(
+        x == 0,
+        0.0001,
+        x
+      )
+  )
+)
+
+d.p2 <- data.frame(
+  d.p2[,1:2],
+  as.data.frame(
+    lapply(
+      d.p2[,3:ncol(d.p2)],
+      function(x)
+        log2(x)
+    )
+  )
+)
+
+
+## Conduct t test for chosen comparisons
+d.p2.result <- cbind(
+  data.frame(
+    "Comparison" = c(
+      "M.HO3.airway.epi-M.SFA.airway.epi",
+      "F.HO3.airway.epi-F.SFA.airway.epi",
+      "M.HO3.alveolar.epi-M.SFA.alveolar.epi",
+      "F.HO3.alveolar.epi-F.SFA.alveolar.epi"
+      )
+    ),
+  rbind(
+    MSI.stat.t(
+      # input data
+      d.p2,
+      # metadata columns
+      2,
+      # grouping variable
+      "Group2",
+      # group 1
+      "M.HO3.airway.epi",
+      # group 2
+      "M.SFA.airway.epi",
+      # list of compound names for annotating result
+      names(
+        d[,9:ncol(d)]
+      )
+    ),
+    fun.stat.t(d.p2,2,"Group2","F.HO3.airway.epi","F.SFA.airway.epi",names(d[,9:ncol(d)])),
+    fun.stat.t(d.p2,2,"Group2","M.HO3.alveolar.epi","M.SFA.alveolar.epi",names(d[,9:ncol(d)])),
+    fun.stat.t(d.p2,2,"Group2","F.HO3.alveolar.epi","F.SFA.alveolar.epi",names(d[,9:ncol(d)]))
+    )
+  )
+
+## Save table for ChemRICH
+cr.in <- MSI.ChemRICH.input(
+  # p-value input df
+  d.p2.result,
+  # fold change input df
+  d.fold,
+  # feature metadata
+  md.feat,
+  # grouping column for calculating ChemRICH
+  "label.saturation"
+)
+
+write.table(
+  cr.in,
+  "data.ChemRICH.input.txt",
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+  )
+
+# load datasets for positive and negative (must have matching column names)
+chemrich.input <- rbind(
+  read.table(
+    "data.pos.ChemRICH.input.ho3vssfa.txt",
+    sep = "\t",
+    header = T
+    ),
+  read.table(
+    "data.neg.ChemRICH.input.ho3vssfa.txt",
+    sep = "\t",
+    header = T
+    )
+  )
+
+# Create plots for specified comparisons
+### 4/35,5/21,6/30,7/8,5/9,4/31,6/34,7/16
+chemrich.plot <- MSI.run.ChemRICH(
+  chemrich.input,
+  7,
+  16,
+  3,
+  "Class"
+  )
+MSI.plot.ChemRICH(
+  chemrich.plot,
+  "Lipid Class",
+  "plot.ChemRICH.alvepi.male.ho3vssfa"
+  )
+
+## Volcano plot
+ggsave(
+  "plot.stats.vol.awepi.male.HDMO3vsCtrl.png",
+  MSI.plot.vol(
+    data.frame(
+      "Name" = chemrich.input[["Name"]],
+      "FC" = chemrich.input[[31]],
+      "P" = chemrich.input[[4]]
+      ),
+    "FC","P","Name",4,
+    "Male Airway Epithelium - HDM + O3 vs. Control"
+    ),
+  width = 8,
+  height = 6,
+  dpi = 800
+  )
+
+
+
+

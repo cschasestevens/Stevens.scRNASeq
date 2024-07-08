@@ -1,0 +1,118 @@
+#' Combined Peak Processing for MSI Datasets
+#'
+#' Performs peak picking and alignment based on all data files included in MSI.LoadAll() using Cardinal.
+#'
+#' @param msi.list A list of Cardinal MSImagingExperiment objects created from MSI.LoadAll().
+#' @param p.list A list containing input parameters and file names created from MSI.InputParams()
+#' @param parl Should processing be run in parallel? Note: only supported by WSL2 or Linux; will default to sequential processing if toggled 'TRUE' on Windows OS.
+#' @param core.perc Percentage of cores to be used during processing.
+#' @return A list containing a data frame of processed peaks and processing details.
+#' @examples
+#' MSI.processpeaks(list.d[["Data.files"]],list.p,TRUE,0.75)
+#'
+#' @export
+MSI.processpeaks <- function(
+    msi.list,
+    p.list,
+    parl,
+    core.perc){
+  list.d <- msi.list
+  list.p <- p.list
+
+  # Parallelization parameters
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == TRUE) {
+    Cardinal::setCardinalBPPARAM(
+      BiocParallel::MulticoreParam(
+        workers = floor(
+          parallel::detectCores()*core.perc
+          ),
+        progressbar = T
+      )
+    )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" &
+     parl == TRUE) {
+    Cardinal::setCardinalBPPARAM(
+      BiocParallel::SerialParam()
+    )
+    print("Detected OS is Windows; Defaulting to serial processing...")
+  }
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == FALSE) {
+    Cardinal::setCardinalBPPARAM(
+      BiocParallel::SerialParam()
+      )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" &
+     parl == FALSE) {
+    Cardinal::setCardinalBPPARAM(
+      BiocParallel::SerialParam()
+    )
+  }
+
+  ### Combine MSI data and perform peak processing
+  msi.d <- lapply(
+    seq.int(
+      1,
+      length(list.d),
+      1
+      ),
+    function(x)
+      list.d[[x]]
+    )
+
+  d <- do.call(
+    BiocGenerics::cbind,
+    msi.d
+    )
+
+  if(unlist(packageVersion("Cardinal"))[2] < 6) {
+    d3 <- Cardinal::process(
+      Cardinal::peakFilter(
+        Cardinal::process(
+          Cardinal::peakAlign(
+            d,
+            tolerance = list.p[["resolution"]],
+            units = "ppm"
+          )
+        ),
+        freq.min = n.freq
+      )
+    )
+  }
+
+  if(unlist(packageVersion("Cardinal"))[2] >= 6) {
+
+    d2 <- Cardinal::process(
+      Cardinal::peakPick(
+        d,
+        method="filter",
+        SNR=3
+      )
+    )
+
+    d3 <- Cardinal::peakAlign(
+      d2,
+      tolerance = list.p[["resolution"]],
+      units = "ppm"
+    )
+
+    saveRDS(
+      d3,
+      "data.aligned.rds"
+      )
+  }
+
+  return(
+    list(
+      "Processed.Peaks" = d3,
+      "num.features" = nrow(Cardinal::spectra(d3))
+      )
+    )
+
+  }
+
+
+
+

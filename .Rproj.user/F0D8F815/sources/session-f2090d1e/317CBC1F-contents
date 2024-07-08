@@ -1,0 +1,714 @@
+---
+title: "scRNA-Seq Quality Control and Sample Integration"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: TRUE
+    toc_depth: 2
+    theme: cerulean
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = F, 
+                      warning = F,
+                      message = F,
+                      dpi = 700,
+                      fig.width = 12,
+                      cache = T,
+                      dev = "png")
+
+```
+
+## **Load Libraries and Plot Themes**
+
+```{r, echo=F, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Loads all libraries, color schemes, and plot themes
+
+source("Scripts/1.1.processing.libs.themes.R",
+       local = knitr::knit_global())
+
+
+```
+
+
+## **Input Parameters**
+
+```{r, echo=F, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#### Parameter Table ####
+
+list.params <- data.frame(
+                          # Universal columns
+                          data.frame(
+                            # Sample Number
+                            Sample.No = seq(1:length(
+                              basename(
+                                list.files("Data/")
+                                )
+                              )
+                              )
+                            ,
+                            
+                            # Individual file names (uses CellRanger folder name by default)
+                            File.ID = basename(list.files("Data/")),
+                            
+                            # Data file paths (Location of CellRanger files: 'Data/' by default)
+                            Path = paste("Data/",
+                                         list.files("Data/"),
+                                         sep = ""),
+                            
+                            # Path to feature files
+                            Path.feat = paste("Data/",
+                                              list.files("Data/"),
+                                              "/filtered_feature_bc_matrix/features.tsv.gz",
+                                              sep = "")
+                            
+                            ),
+                          
+                          # Dataset-specific columns
+                          data.frame(
+                            
+                            # ID column name (splits by underscore, should be listed first in folder name as in 'D24S_LAE_KO_D28')
+                            Code = unlist(
+                              lapply(
+                                strsplit(
+                                  basename(
+                                    list.files("Data/")
+                                    ),
+                                  "_",
+                                  fixed = T
+                                  ),
+                                "[",
+                                1
+                                )
+                              ),
+                            
+                            # 1st metadata column (include in CellRanger folder name)
+                            NKX2.1 = as.factor(
+                              ifelse(
+                                grepl("NG",
+                                      basename(
+                                        list.files("Data/")
+                                        )
+                                      ),
+                                "NG",
+                                "KO")
+                              ),
+                            
+                            # 2nd metadata column
+                            Airway = as.factor(
+                              ifelse(
+                                grepl("LAE",
+                                      basename(
+                                        list.files("Data/")
+                                        )
+                                      ),
+                                "LAE",
+                                "SAE")
+                              ),
+                            
+                            # 3rd metadata column (add/remove columns as needed)
+                            Time = as.factor(
+                              ifelse(
+                                grepl("D28",
+                                      basename(
+                                        list.files("Data/")
+                                        )
+                                      ),
+                                "D28",
+                                "D7")
+                              )
+                            )
+                          )
+
+
+
+
+
+#### Batch Processing (Local Instances Only) ####
+
+## Determine number of cores to use for processing data files
+
+ifelse(
+  nrow(
+    list.params
+    ) < 
+    detectCores()/
+    2,
+  num.core <- nrow(list.params),
+  num.core <- detectCores()/
+    2
+  )
+
+## Make cluster
+
+source("Scripts/1.2.processing.cluster.setup.R",
+       local = knitr::knit_global())
+
+
+
+
+
+```
+
+
+
+
+
+## **Processing of CellRanger Files**
+### Includes: Contamination/Doublet removal, filtering of mitochondrial reads, and normalization
+### Output: A list of Seurat objects containing processed data to be integrated
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Single file test
+
+test.params <- list.params[1,]
+
+## Estimate contamination fraction and add to parameter list
+
+test <- autoEstCont(load10X(list.params[1,"Path"]))
+
+test.params[["rho"]] <- as.vector(
+  unlist(
+    unique(
+      test[["metaData"]][["rho"]])
+    )
+  )
+
+test.params[["adj.rho"]] <- test.params[["rho"]] +
+  0.1*test.params[["rho"]]
+
+## Add cluster and cell numbers to parameter list
+
+test.params[["Clusters"]] <- length(unique((test)$metaData$clusters))
+
+test.params[["Cell.No"]] <- nrow(test$metaData)
+
+## Adjust contamination fraction by 10%
+
+test <- adjustCounts(setContaminationFraction(test,
+                                 test.params[["adj.rho"]]))
+
+## Doublet removal/Create single cell experiment
+
+test <- scDblFinder(SingleCellExperiment(list(counts = as.matrix(test))))
+
+test <- assay(test[,test$scDblFinder.class == "singlet"],
+              "counts")
+
+
+
+#### START HERE 2.9.24: wrap into trycatch-style function with remaining processing steps and test with multiple samples
+
+
+
+
+
+
+## save metadata for use in creating Seurat object
+
+write.xlsx(data.list,
+           "3_Analysis/1_QC/1_file_metadata.xlsx",
+           overwrite = T)
+
+
+
+## Source script to create each object and concatenate into list
+
+source("1_Scripts/sc_14QC_seurcreate.R",
+       local = knitr::knit_global())
+
+
+# Subset Seurat objects
+
+source("1_Scripts/sc_15QC_seursubset.R",
+       local = knitr::knit_global())
+
+## Second argument specifies filepath for saving .rds files for pre- and post-normalized QC plots
+
+data.list.ser <- lapply(data.list.ser,
+                        function(x) d.qc.fun(x,
+                                             "3_Analysis/1_QC/"))
+
+
+# Perform log normalization
+      
+source("1_Scripts/sc_16QC_normal.R",
+       local = knitr::knit_global())
+
+data.list.norm <- lapply(data.list.ser,
+                         function (x) d.norm.fun(x,
+                                                 "3_Analysis/1_QC/"))
+
+
+# Save pre- and post-normalized lists as .rds (uncomment to run code and save; takes ~5-10 minutes per file to complete)
+
+## Pre
+
+# saveRDS(data.list.ser,
+#         file = "3_Analysis/1_QC/1_prenorm_data.rds")
+
+## Post
+
+# saveRDS(data.list.norm,
+#         file = "3_Analysis/1_QC/1_posnorm_data.rds")
+
+# Save each sample as individual rds file for cell prediction
+
+data.list.norm <- readRDS("3_Analysis/1_QC/1_posnorm_data.rds")
+
+data.files.azi <- lapply(data.list.norm,
+                         function(x) x[[1]])
+
+for (i in 1:length(data.files.azi)) {
+  
+  saveRDS(data.files.azi[[i]],
+          file = paste("3_Analysis/2_Integration/1_Individual_for_Azimuth/1_Individual_sample_",
+                       paste(i),
+                       ".rds",
+                       sep = "")
+          )
+  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## visualize rho to compare average contamination fraction
+
+p.rho.fun <- function(df,
+                      f1,
+                      c1,
+                      dir1) {
+  
+  p.rho <- ggplot(df,
+                  aes(x = `Sample ID`,
+                      fill = df[,c(f1)],
+                      color = df[,c(c1)])) +
+    geom_point(aes(y = rho),
+               shape = 21,
+               size = 3,
+               alpha = 0.25) +
+    geom_point(aes(y = adj.rho),
+               shape = 21,
+               size = 3) +
+    geom_hline(yintercept = mean(df[,c("rho")]),
+               linetype = "dashed") +
+    geom_hline(yintercept = mean(df[,c("adj.rho")]),
+               linetype = "dashed",
+               color = "firebrick2") +
+    thm.mult
+  
+  p.rho <- p.rho +
+    scale_fill_manual(values = col1b) +
+    scale_color_manual(values = col1b)
+  
+  ggsave(dir1,
+         p.rho,
+         width = 10,
+         height = 10,
+         dpi = 600) 
+  
+}
+
+
+
+
+## Visualize cells/clusters per sample to compare with contamination fraction
+
+p.fun1 <- function(df,
+                   var1,
+                   f1,
+                   c1,
+                   t1) {
+  
+  p.cel <- ggplot(df,
+                  aes(x = `Sample ID`,
+                      fill = df[,c(f1)],
+                      color = df[,c(c1)])) +
+    geom_point(aes(y = df[,c(var1)]),
+               shape = 21,
+               size = 3,
+               alpha = 1) +
+    geom_hline(yintercept = mean(df[,c(var1)]),
+               linetype = "dashed") +
+    thm.mult
+  
+  p.cel <- p.cel +
+    scale_fill_manual(values = col1b) +
+    scale_color_manual(values = col1b)
+  
+  ggsave(t1,
+         p.cel,
+         width = 10,
+         height = 10,
+         dpi = 600)
+  
+}
+
+
+
+## Contamination fraction plot (select variables from data.list for point fill and color)
+
+p.rho.fun(data.list,
+          "Airway",
+          "Knockout",
+          "3_Analysis/1_QC/1_est_contamination.png")
+
+## Plot cell and cluster number
+
+p.fun1(data.list,
+       "Cells",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_cell_number.png")
+
+
+p.fun1(data.list,
+       "Clusters",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_clus_number.png")
+
+
+
+
+
+
+
+
+```
+
+
+## **Load raw data and complete contamination removal, filtering, and normalization**
+
+## Recognizes the raw and filtered features within a sample folder
+### Each sample should have its own unique folder "sample_name/" and there should be subfolders for "filtered_features/" and "raw_features/" to run the load10X() function for contaminate removal
+
+## **Quality Control and Normalization**
+
+## Removing low-quality or doublet cells by assessing number of genes per cell, number of molecules detected in each cell (high correlation with unique number of genes), and percentage of reads that map to the mitochondrial genome (high number indicates a dying cell and therefore should be excluded from downstream analysis).
+
+
+# **1.1 Load Datasets**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Load Data Files
+
+source("1_Scripts/sc_11QC_dataimport.R",
+       local = knitr::knit_global())
+
+
+# Estimate contamination fraction (output is adjusted counts after ambient RNA removal per cell)
+
+source("1_Scripts/sc_12QC_contrem.R",
+       local = knitr::knit_global())
+
+## Contamination fraction plot (select variables from data.list for point fill and color)
+
+p.rho.fun(data.list,
+          "Airway",
+          "Knockout",
+          "3_Analysis/1_QC/1_est_contamination.png")
+
+## Plot cell and cluster number
+
+p.fun1(data.list,
+       "Cells",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_cell_number.png")
+
+
+p.fun1(data.list,
+       "Clusters",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_clus_number.png")
+
+
+```
+
+
+
+
+
+# **1.2 Ambient RNA Removal**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Estimate contamination fraction (output is adjusted counts after ambient RNA removal per cell)
+
+source("1_Scripts/sc_12QC_contrem.R",
+       local = knitr::knit_global())
+
+## Contamination fraction plot (select variables from data.list for point fill and color)
+
+p.rho.fun(data.list,
+          "Airway",
+          "Knockout",
+          "3_Analysis/1_QC/1_est_contamination.png")
+
+## Plot cell and cluster number
+
+p.fun1(data.list,
+       "Cells",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_cell_number.png")
+
+
+p.fun1(data.list,
+       "Clusters",
+       "Airway",
+       "Knockout",
+       "3_Analysis/1_QC/1_clus_number.png")
+
+
+```
+
+
+
+
+
+# **1.3 Doublet Cell Removal**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Remove doublet cells
+
+source("1_Scripts/sc_13QC_doubrem.R",
+       local = knitr::knit_global())
+
+## save metadata for use in creating Seurat object
+
+write.xlsx(data.list,
+           "3_Analysis/1_QC/1_file_metadata.xlsx",
+           overwrite = T)
+
+
+```
+
+
+
+
+
+# **1.4 Create Seurat Objects for Each Sample**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+## Source script to create each object and concatenate into list
+
+source("1_Scripts/sc_14QC_seurcreate.R",
+       local = knitr::knit_global())
+
+
+```
+
+
+
+
+
+# **1.5 Subset Seurat Objects Based on Counts and Percent of Reads Mapped to Mitochondrial Genome**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Subset Seurat objects
+
+source("1_Scripts/sc_15QC_seursubset.R",
+       local = knitr::knit_global())
+
+## Second argument specifies filepath for saving .rds files for pre- and post-normalized QC plots
+
+data.list.ser <- lapply(data.list.ser,
+                        function(x) d.qc.fun(x,
+                                             "3_Analysis/1_QC/"))
+
+
+```
+
+
+
+
+
+
+# **1.6 Log Normalize Each Seurat Object Prior to Integration**
+
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Perform log normalization
+      
+source("1_Scripts/sc_16QC_normal.R",
+       local = knitr::knit_global())
+
+data.list.norm <- lapply(data.list.ser,
+                         function (x) d.norm.fun(x,
+                                                 "3_Analysis/1_QC/"))
+
+
+# Save pre- and post-normalized lists as .rds (uncomment to run code and save; takes ~5-10 minutes per file to complete)
+
+## Pre
+
+# saveRDS(data.list.ser,
+#         file = "3_Analysis/1_QC/1_prenorm_data.rds")
+
+## Post
+
+# saveRDS(data.list.norm,
+#         file = "3_Analysis/1_QC/1_posnorm_data.rds")
+
+# Save each sample as individual rds file for cell prediction
+
+data.list.norm <- readRDS("3_Analysis/1_QC/1_posnorm_data.rds")
+
+data.files.azi <- lapply(data.list.norm,
+                         function(x) x[[1]])
+
+for (i in 1:length(data.files.azi)) {
+  
+  saveRDS(data.files.azi[[i]],
+          file = paste("3_Analysis/2_Integration/1_Individual_for_Azimuth/1_Individual_sample_",
+                       paste(i),
+                       ".rds",
+                       sep = "")
+          )
+  
+}
+
+
+
+
+
+```
+
+
+
+
+
+# **1.7 Integrate Samples**
+## **Memory Intensive Step: Takes several hours [based on Windows PC with 128Gb RAM]**
+## **Iteratively integrate samples to reduce memory usage [recommend < 6 samples per batch]**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Remove pre-normalized Seurat objects
+
+remove(data.list.ser)
+
+# Find integration anchors (in parallel)
+
+## Split into multiple sets and integrate separately to conserve computational resources
+
+data.list.norm <- readRDS("3_Analysis/1_QC/1_posnorm_data.rds")
+
+data.files.integrated <- lapply(data.list.norm,
+                                function(x) x[[1]])
+
+remove(data.list.norm)
+
+## Subset
+
+data.files.integrated.list <- vector("list",
+                                     length = num.batch)
+
+for (i in 1:length(data.files.integrated.list)) {
+  
+  data.files.integrated.list[[i]] <- data.files.integrated[q.subs[[i]]]
+  
+}
+
+
+## remove compiled list
+
+remove(data.files.integrated)
+
+
+## Run integration function for each sample subset
+
+source("1_Scripts/sc_17QC_integrate.R",
+       local = knitr::knit_global())
+
+### First Iteration
+
+data.files.merged.list1 <- lapply(data.files.integrated.list,
+                                  function(x) d.anchor.int.fun(x,
+                                                               5000))
+
+remove(data.files.integrated.list)
+
+
+### Verify that all samples are present in integrated subsets
+
+unique(levels(c(data.files.merged.list1[[1]]@active.ident,
+                data.files.merged.list1[[2]]@active.ident,
+                data.files.merged.list1[[3]]@active.ident,
+                data.files.merged.list1[[4]]@active.ident)))
+
+
+
+# repeat anchor/integration function for subsets 1-2 then 3-4
+
+data.files.merged.list2 <- list(list(data.files.merged.list1[[1]],
+                data.files.merged.list1[[2]]),
+                list(data.files.merged.list1[[3]],
+                data.files.merged.list1[[4]]))
+
+data.files.merged.list2 <- lapply(data.files.merged.list2,
+                                  function(x) d.anchor.int.fun(x,
+                                                               7500))
+
+remove(data.files.merged.list1)
+
+
+### Verify that all samples are present in integrated subsets
+
+unique(levels(c(data.files.merged.list2[[1]]@active.ident,
+                data.files.merged.list2[[2]]@active.ident)))
+
+
+
+# Last iteration: find integration anchors/integrate pairs 1 & 2
+
+data.files.merged.all <- d.anchor.int.fun(data.files.merged.list2,
+                                          13000)
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+

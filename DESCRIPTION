@@ -1,0 +1,31 @@
+Package: RegioMSI
+Date: 2024-07-02
+Type: Package
+Title: Parallel Processing, Normalization, and Analysis of Mass Spectrometry Imaging Datasets
+Version: 1.1
+Author: Nathanial C. Stevens
+Maintainer: Nathanial C. Stevens <cschasestevens@gmail.com>
+Description: Extends applications of mass spectrometry imaging datasets by enabling region-specific statistical analysis of biological replicates, introducing improved image normalization methods to reduce intra- and intersample technical artifacts, and offering additional spatial segmentation strategies for unsupervised regional classification.    RegioMSI integrates the strengths of the Cardinal v3 package with a comprehensive framework for parallel data processing, normalization, and analysis of mass spectrometry imaging datasets containing multiple biological replicate samples. The package introduces the sparse LOESS normalization method for mass spectrometry imaging data, which addresses intrasample signal intensity drift and batch effects resulting from data acquisition. Spatial segmentation is performed by adapting the KNN algorithm used by the Seurat package to mass spectrometry imaging data.    Methods for statistical analysis are provided for comparing identified image regions both within individual samples and across treatment groups. Enrichment analysis based on compound class similarity is also supported but currently relies upon user-supplied class information. Tools for plotting ion images and statistical results based on ggplot2 enable seamless, detailed visualization of either single imaging runs or entire mass spectrometry imaging experiments.    RegioMSI is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
+License: GNU GPL v.3.0
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports: 
+  ggplot2,
+  dplyr,
+  ggsci,
+  viridis,
+  Cardinal (>= 3.6.2),
+  BiocGenerics,
+  BiocParallel,
+  fuzzyjoin,
+  parallel,
+  purrr,
+  reshape2,
+  ggpubr,
+  Seurat,
+  circlize,
+  ComplexHeatmap,
+  magrittr,
+  ggnewscale,
+  EnhancedVolcano
