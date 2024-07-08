@@ -87,9 +87,27 @@ sc.process.file <- function(
     min.cells = m.cell,
     min.features = m.feat
     )
+  d.md <- df.p[i,5:ncol(df.p)]
+  d.md <- setNames(
+    as.data.frame(
+      lapply(
+        seq.int(
+          1,
+          ncol(d.md),
+          1
+          ),
+        function(x)
+          rep(
+            d.md[1,x],
+            nrow(d@meta.data)
+            )
+        )
+      ),
+    names(d.md)
+    )
   d <- Seurat::AddMetaData(
     object = d,
-    metadata = df.p[i,5:ncol(df.p)]
+    metadata = d.md
     )
   # Add gene names
   d.g <- setNames(
