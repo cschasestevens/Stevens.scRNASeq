@@ -76,7 +76,7 @@ sc.process.file <- function(
         )
       )
     )
-  d <- SingleCellExperiment::assay(
+  d <- SummarizedExperiment::assay(
     d[,d$scDblFinder.class == "singlet"],
     "counts"
     )
@@ -112,7 +112,7 @@ sc.process.file <- function(
     object = d,
     pattern = "^MT-"
     )
-  plot.pre.qc <- VlnPlot(
+  plot.pre.qc <- Seurat::VlnPlot(
     object = d,
     features = c("nFeature_RNA",
                  "nCount_RNA",
@@ -126,7 +126,7 @@ sc.process.file <- function(
       nFeature_RNA < 7000 &
       percent.mt < 20
     )
-  plot.pos.qc <- VlnPlot(
+  plot.pos.qc <- Seurat::VlnPlot(
     object = d.filt,
     features = c("nFeature_RNA",
                  "nCount_RNA",

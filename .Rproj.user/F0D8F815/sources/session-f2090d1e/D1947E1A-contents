@@ -51,7 +51,7 @@ saveRDS(
   "2.2.process.peaks.test.rds"
   )
 
-??SingleCellExperiment::assay
+??SummarizedExperiment::assay
 #---- Peak binning (Cardinal version < 3.6.3) ----
 ## If not running steps sequentially, load RDS containing combined peak list
 # if(
