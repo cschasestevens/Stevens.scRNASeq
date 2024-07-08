@@ -76,7 +76,7 @@ sc.process.file <- function(
         )
       )
     )
-  d <- assay(
+  d <- SingleCellExperiment::assay(
     d[,d$scDblFinder.class == "singlet"],
     "counts"
     )
