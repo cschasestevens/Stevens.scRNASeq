@@ -1,24 +1,24 @@
 {
-    "id": "CB46EC90",
-    "path": "//wsl.localhost/Ubuntu/home/ncsteven/analyze/RegioMSI/R/2.2a.process.peaks.detection.R",
+    "id": "5B175005",
+    "path": "~/Dev/scRNA.Seq.v1/2.Integration.Rmd",
     "project_path": null,
-    "type": "r_source",
-    "hash": "4214121509",
+    "type": "r_markdown",
+    "hash": "4195590912",
     "contents": "",
     "dirty": false,
-    "created": 1720448269032.0,
+    "created": 1720451538847.0,
     "source_on_save": false,
-    "relative_order": 9,
+    "relative_order": 5,
     "properties": {
         "source_window_id": "",
         "Source": "Source"
     },
     "folds": "",
-    "lastKnownWriteTime": 1720206363,
+    "lastKnownWriteTime": 1714052267,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1720206363,
+    "last_content_update": 1714052267,
     "read_only": false,
     "read_only_alternatives": []
 }

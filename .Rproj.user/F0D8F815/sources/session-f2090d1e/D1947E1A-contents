@@ -15,14 +15,24 @@ setwd("/home/ncsteven/analyze/Stevens.scRNASeq.test")
 
 ## If running in WSL2, make sure to increase the memory limit by creating a .wslconfig file in the user directory
 
-#---- test sections ----
-
-
-
-
-#---- Data import ----
+#---- Data processing ----
 # Dataset input parameters
-list.p <- MSI.InputParams("data/","neg",300,900,5)
+list.params <- Create.proc.param(
+  "data/",
+  # Dataset-specific columns
+  data.frame(
+    # ID column name (splits by underscore, should be listed first in folder name as in 'D24S_LAE_KO_D28')
+    "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
+    # 1st metadata column (include in CellRanger folder name)
+    "NKX2.1" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"NG","KO")),
+    # 2nd metadata column
+    "Airway" = as.factor(ifelse(grepl("LAE",basename(list.files("data/"))),"LAE","SAE")),
+    # 3rd metadata column (add/remove columns as needed)
+    "Time" = as.factor(ifelse(grepl("D28",basename(list.files("data/"))),"D28","D7"))
+    )
+  )
+
+
 # Load all .imzML
 list.d <- MSI.LoadAll(list.p)
 

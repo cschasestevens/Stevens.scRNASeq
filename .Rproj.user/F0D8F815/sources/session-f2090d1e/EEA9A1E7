@@ -1,0 +1,26 @@
+{
+    "id": "EEA9A1E7",
+    "path": "//wsl.localhost/Ubuntu/home/ncsteven/analyze/Stevens.scRNASeq/R/1.1.lib.R",
+    "project_path": "R/1.1.lib.R",
+    "type": "r_source",
+    "hash": "1240374147",
+    "contents": "",
+    "dirty": false,
+    "created": 1720453398949.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "10,10",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1720448200,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1720448200,
+    "read_only": false,
+    "read_only_alternatives": []
+}
