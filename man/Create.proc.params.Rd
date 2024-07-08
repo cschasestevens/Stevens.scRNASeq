@@ -2,7 +2,7 @@
 % Please edit documentation in R/1.2.params.R
 \name{Create.proc.params}
 \alias{Create.proc.params}
-\title{Universal Color Palette}
+\title{Define Processing Parameters}
 \usage{
 Create.proc.params(d.path, study.md)
 }
@@ -15,8 +15,7 @@ Create.proc.params(d.path, study.md)
 Data frame containing a list of parameters to use for scRNA-Seq data processing by Seurat.
 }
 \description{
-Combines the npg, aaas, and lancet ggsci palettes for use with datasets
-containing up to 29 groups.
+Creates a data frame of processing parameters used in scRNA-Seq data processing by Seurat
 }
 \examples{
 

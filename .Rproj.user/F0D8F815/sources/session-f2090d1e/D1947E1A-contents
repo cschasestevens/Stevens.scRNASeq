@@ -7,7 +7,7 @@ load_all()
 devtools::document()
 
 # Test package installation from Github
-devtools::install_github("cschasestevens/Stevens.scRNASeq", ref = "main")
+devtools::install_github("cschasestevens/Stevens.scRNASeq", ref = "master")
 library(Stevens.scRNASeq)
 
 ## Change working directory to a separate folder, then test functions

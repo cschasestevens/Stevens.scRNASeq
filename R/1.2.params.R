@@ -1,7 +1,6 @@
-#' Universal Color Palette
+#' Define Processing Parameters
 #'
-#' Combines the npg, aaas, and lancet ggsci palettes for use with datasets
-#' containing up to 29 groups.
+#' Creates a data frame of processing parameters used in scRNA-Seq data processing by Seurat
 #'
 #' @param d.path Character string indicating the path to a set of CellRanger files for data processing.
 #' @param study.md A data frame containing sample metadata variables specific to an individual study.
