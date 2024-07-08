@@ -17,7 +17,7 @@ setwd("/home/ncsteven/analyze/Stevens.scRNASeq.test")
 
 #---- Data processing ----
 # Dataset input parameters
-list.params <- Create.proc.param(
+list.params <- Create.proc.params(
   "data/",
   # Dataset-specific columns
   data.frame(
@@ -32,21 +32,18 @@ list.params <- Create.proc.param(
     )
   )
 
-
-# Load all .imzML
-list.d <- MSI.LoadAll(list.p)
-
-#---- Peak detection ----
-# Detect peaks for combined data list
-d.peaks <- MSI.processpeaks(
-  # Data file list
-  list.d[["Data.files"]],
-  # Input parameters
-  list.p,
-  # Process in parallel (TRUE/FALSE)
-  TRUE,
-  # Percent of total cores to use (as decimal)
-  0.2
+# Process files
+proc.data <- sc.process.file(
+  # parameter list
+  list.params,
+  # sample ID
+  1,
+  # adj.rho proportion
+  0.1,
+  # minimum cells per feature
+  5,
+  # minimum features per cell
+  200
   )
 
 saveRDS(

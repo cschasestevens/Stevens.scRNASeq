@@ -1,0 +1,41 @@
+#### Normalize Each Sample and Save RDS Prior to Integration ####
+
+# Log Normalize
+
+d.norm.fun <- function(x,
+                       dir1) {
+  
+  data.in.filtered <- x
+  
+  data.in.filtered <- NormalizeData(object = data.in.filtered,
+                                    normalization.method = "LogNormalize",
+                                    scale.factor = 10000)
+  
+  data.in.filtered <- FindVariableFeatures(object = data.in.filtered,
+                                           selection.method = "vst",
+                                           nfeatures = 2000)
+  
+  data.in.filtered.top25 <- head(VariableFeatures(data.in.filtered),
+                                 25)
+  
+  plot.var.feat <- VariableFeaturePlot(data.in.filtered,
+                                       assay = "RNA")
+  
+  plot.var.feat.out <- LabelPoints(plot.var.feat,
+                                   points = data.in.filtered.top25,
+                                   repel = T)
+  
+  ggsave(paste(dir1,
+               "1_var_features_",
+               paste(unique(x$orig.ident)),
+               ".png"),
+         plot.var.feat.out,
+         width = 6,
+         height = 6,
+         dpi = 600)
+  
+  return(list(data.in.filtered,
+              data.in.filtered.top25)
+  )
+  
+}
