@@ -112,7 +112,7 @@ sc.process.file <- function(
   # Add gene names
   d.g <- setNames(
       read.table(
-      df.p[count1,
+      df.p[i,
            c("Path.feat")],
       sep = "\t",
       header = F
