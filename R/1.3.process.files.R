@@ -138,7 +138,7 @@ sc.process.file <- function(
     ncol = 3,
     pt.size = 0.2
     )
-  d.filt <- Seurat::subset(
+  d.filt <- SeuratObject::subset(
     d,
     subset = nFeature_RNA > 300 &
       nFeature_RNA < 7000 &
@@ -189,6 +189,7 @@ sc.process.file <- function(
     )
 
   }
+
 
 
 

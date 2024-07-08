@@ -47,35 +47,12 @@ proc.data <- sc.process.file(
   )
 
 saveRDS(
-  d.peaks,
-  "2.2.process.peaks.test.rds"
+  proc.data,
+  "processed/test.sample1.rds"
   )
 
-??Seurat::AddMetaData
-#---- Peak binning (Cardinal version < 3.6.3) ----
-## If not running steps sequentially, load RDS containing combined peak list
-# if(
-#   !exists(
-#     "d.peaks"
-#     ) &
-#   file.exists("2.2.process.peaks.test.rds")
-#   ) {
-#   d.peaks <- readRDS(
-#     "2.2.process.peaks.test.rds"
-#     )
-#   }
-#
-# MSI.binpeaks(
-#   # Sample information
-#   list.d[["Sample.Info"]],
-#   # Data file list
-#   list.d[["Data.files"]],
-#   # Processed peak list
-#   d.peaks[["Processed.Peaks"]],
-#   # Process in parallel (TRUE/FALSE)
-#   TRUE
-#   )
 
+??subset()
 
 #---- Peak annotation ----
 
