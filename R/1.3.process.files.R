@@ -35,7 +35,7 @@ sc.process.file <- function(
     m.feat
     ){
   # Select file from chosen input parameter df
-  df.p <- df.par
+  df.p <- list.params
   d <- df.p[i,]
   # Estimate contamination fraction
   d <- SoupX::autoEstCont(
@@ -138,7 +138,7 @@ sc.process.file <- function(
     ncol = 3,
     pt.size = 0.2
     )
-  d.filt <- SeuratObject::subset(
+  d.filt <- BiocGenerics::subset(
     d,
     subset = nFeature_RNA > 300 &
       nFeature_RNA < 7000 &
