@@ -1,140 +1,181 @@
-#' Process CellRanger Data Files
+#' Batch Integration of scRNA-Seq Datasets
 #'
-#' Processes a single sample into a Seurat object for data integration.
+#' Integrates a list of samples processed as Seurat objects.
 #'
-#' @param df.par Character string indicating the path to a set of CellRanger files for data processing.
-#' @param i A data frame containing sample metadata variables specific to an individual study.
-#' @param rho.adj Numeric value indicating a proportion to scale rho values calculated during the ambient RNA removal step. 10% (0.1)
-#' is generally suitable for most data sets.
-#' @param m.cell Threshold for including features in a Seurat Object. See ?Seurat::CreateSeuratObject() for more details.
-#' @param m.feat Threshold for including cells in a Seurat Object. See ?Seurat::CreateSeuratObject() for more details.
-#' @return Data frame containing a list of parameters to use for scRNA-Seq data processing by Seurat.
+#' @param l.so List of processed Seurat objects to be integrated.
+#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @return A Seurat object containing integrated data for all samples present in a scRNA-Seq experiment.
 #' @examples
 #'
-#' # Dataset input parameters
-#' list.params <- Create.proc.param(
-#'   "data/",
-#'   data.frame(
-#'     # ID column name (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
-#'     "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
-#'     # 1st metadata column (include in CellRanger folder name)
-#'     "Knockout" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"ctrl","KO")),
-#'     # 2nd metadata column
-#'     "Region" = as.factor(ifelse(grepl("LAE",basename(list.files("data/"))),"1","2")),
-#'     # 3rd metadata column (add/remove columns as needed)
-#'     "Time" = as.factor(ifelse(grepl("D28",basename(list.files("data/"))),"a","b"))
-#'   )
-#' )
+#' d.integrated <- sc.integrate.data(
+#'    list.data,
+#'    TRUE,
+#'    0.5
+#'    )
 #'
 #' @export
-# sc.process.file <- function(
-#     df.par,
-#     i,
-#     rho.adj,
-#     m.cell,
-#     m.feat
-#     ){
-#   #### Integration ####
-#
-#   fun.integration <- function(
-#     subset1,
-#     rds.path
-#   ) {
-#
-#     ## Anchor function
-#
-#     f.anchor.fun <- function(
-#     s1
-#     ) {
-#
-#       ## Find integration anchors
-#
-#       data.files.anchor <- FindIntegrationAnchors(
-#         object.list = s1,
-#         anchor.features = 4000,
-#         dims = 1:50)
-#
-#       return(data.files.anchor)
-#
-#     }
-#
-#
-#     ## run for chosen subset
-#
-#     data.files.anchor1 <- f.anchor.fun(
-#       subset1
-#     )
-#
-#
-#     ## Integration function
-#
-#     d.int.fun <- function(
-#     x
-#     ) {
-#
-#       data.files.merged <- IntegrateData(
-#         anchorset = x,
-#         dims = 1:50
-#       )
-#
-#       return(data.files.merged)
-#
-#     }
-#
-#
-#     data.files.merged1 <- d.int.fun(
-#       data.files.anchor1
-#     )
-#
-#     saveRDS(
-#       data.files.merged1,
-#       rds.path
-#     )
-#
-#     return(data.files.merged1)
-#
-#   }
-#
-#
-#   # Load .rds containing Seurat objects to integrate
-#
-#   sc.orig <- readRDS(
-#     "Reference.sets/Ken_HBE10xLSAE5codes1mSAE_cls19noLQ15_seurat.rds"
-#   )
-#
-#   sc.nkx <- readRDS(
-#     "Analysis/RDS/1_NKX21KO_data_annotated.rds"
-#   )
-#
-#   sc.nkx2 <- subset(
-#     sc.nkx,
-#     subset = Time == "D28"
-#   )
-#
-#   remove(sc.nkx)
-#
-#   # Perform Integration
-#
-#   d.merged <- fun.integration(
-#     c(
-#       sc.orig,
-#       sc.nkx2
-#     ),
-#     "Analysis/RDS/1.all.lsae.data.rds"
-#   )
-#
-#   return(
-#     list(
-#       "Seurat.obj" = d.norm,
-#       "Updated.param.df" = df.p,
-#       "QC.pre" = plot.pre.qc,
-#       "QC.post" = plot.pos.qc,
-#       "var.feat.sum" = d.norm.sum,
-#       "var.feat.plot" = plot.var.feat.out
-#       )
-#     )
-#
-#   }
+sc.integrate.data <- function(
+    l.so,
+    parl,
+    core.perc
+    ){
+  list.d <- l.so
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == TRUE) {
+    fun.int <- function(list.d.subset,future.size){
+      ## Find integration anchors
+      future::plan("multisession",workers = ceiling(parallel::detectCores()*core.perc))
+      options(future.globals.maxSize = future.size * 1024^2)
+      d.anchor <- Seurat::FindIntegrationAnchors(
+        object.list = list.d.subset,
+        anchor.features = 4000,
+        dims = 1:50
+        )
+      ## Integrate data
+      future::plan("sequential")
+      options(future.globals.maxSize = 500 * 1024^2)
+      d.merged <- Seurat::IntegrateData(
+        anchorset = d.anchor,
+        dims = 1:50
+      )
+      return(d.merged)
+      }
+
+    if(length(list.d) <= 12 & length(list.d) > 9) {
+      print(paste(length(list.d),"samples present: dividing integration into 4 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:9],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+        )
+      # Batch 4
+      d.merged4 <- fun.int(list.d[10:length(list.d)],5000)
+      saveRDS(
+        d.merged4,
+        "processed/data.integrated.batch.4.rds"
+        )
+      remove(list.d)
+      ## Combine batch 1&2 then 3&4
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+        )
+      d.merged34 <- fun.int(list(d.merged3,d.merged4),10000)
+      saveRDS(
+        d.merged34,
+        "processed/data.integrated.batch.3and4.rds"
+        )
+      remove(d.merged1,d.merged2,d.merged3,d.merged4)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged34),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged12,d.merged34)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.4.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+      file.remove("processed/data.integrated.batch.3and4.rds")
+      }
+
+    if(length(list.d) <= 9 & length(list.d) > 6) {
+      print(paste(length(list.d),"samples present: dividing integration into 3 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:length(list.d)],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+        )
+      remove(list.d)
+      ## Combine batch 1&2 then 3
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+        )
+      remove(d.merged1,d.merged2)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged3),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged12,d.merged3)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+      }
+
+    if(length(list.d) <= 6 & length(list.d) > 3) {
+      print(paste(length(list.d),"samples present: dividing integration into 2 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      remove(list.d)
+      ## Combine batch 1&2
+      d.integrated <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged1,d.merged2)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      }
+
+    if(length(list.d) <= 3) {
+      print(paste(length(list.d),"samples present: integrating all samples as 1 batch...",sep = " "))
+      # Batch 1
+      d.integrated <- fun.int(list.d[1:length(list.d)],5000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(list.d)
+      }
+    }
+  return(d.integrated)
+  }
 
 
 

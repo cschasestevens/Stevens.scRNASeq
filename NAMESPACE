@@ -3,6 +3,7 @@
 export(Create.proc.params)
 export(col.grad)
 export(col.univ)
+export(sc.integrate.data)
 export(sc.process.batch)
 export(sc.process.file)
 export(sc.theme1)
