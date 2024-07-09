@@ -357,42 +357,42 @@ sc.process.batch <- function(
 sc.plot.rho <- function(
     df.par
     ) {
-  p.rho <- ggplot2::ggplot(
-    df.par
-    ) +
+  p.rho <- ggplot2::ggplot() +
     ggplot2::geom_point(
+      data = df.par,
       ggplot2::aes(
         x = .data[["File.ID"]],
         y = .data[["rho"]]),
       shape = 21,
       size = 3,
       alpha = 0.25,
-      fill = col.univ()[1]
+      fill = col.univ()[2]
       ) +
     ggplot2::geom_point(
+      data = df.par,
       ggplot2::aes(
         x = .data[["File.ID"]],
         y = .data[["adj.rho"]]),
       shape = 21,
       size = 3,
       alpha = 1,
-      fill = col.univ()[2]
+      fill = col.univ()[1]
     ) +
     ggplot2::geom_hline(
       yintercept = mean(
-        .data[["rho"]]
+        df.par[["rho"]]
         ),
       linetype = "dashed"
       ) +
     ggplot2::geom_hline(
       yintercept = mean(
-        .data[["adj.rho"]]
+        df.par[["adj.rho"]]
         ),
       linetype = "dashed",
       color = "firebrick2"
       ) +
     sc.theme1()
-  ggsave(
+  ggplot2::ggsave(
     "processed/data.ambientRNA.cont.png",
     p.rho,
     width = 10,
