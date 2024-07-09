@@ -231,35 +231,38 @@ sc.process.batch <- function(
     ){
   if(Sys.info()[["sysname"]] != "Windows" &
      parl == TRUE) {
-  list.data <- parallel::mclapply(
-    mc.cores = ceiling(
-      parallel::detectCores()*
-        core.perc
+  list.data <- setNames(
+    parallel::mclapply(
+      mc.cores = ceiling(
+        parallel::detectCores()*
+          core.perc
+        ),
+      seq.int(
+        1,
+        nrow(df.par),
+        1
+        ),
+      function(x) {
+        sc.process.file(
+          # parameter list
+          list.params,
+          # sample ID
+          x,
+          # adj.rho proportion
+          rho.adj,
+          # minimum cells per feature
+          m.cell,
+          # minimum features per cell
+          m.feat
+          )
+        }
       ),
-    seq.int(
-      1,
-      nrow(df.par),
-      1
-      ),
-    function(x) {
-      sc.process.file(
-        # parameter list
-        list.params,
-        # sample ID
-        x,
-        # adj.rho proportion
-        rho.adj,
-        # minimum cells per feature
-        m.cell,
-        # minimum features per cell
-        m.feat
-        )
-      }
+    df.par[["File.ID"]]
     )
   }
   if(Sys.info()[["sysname"]] != "Windows" &
      parl == FALSE) {
-    list.data <- lapply(
+    list.data <- setNames(lapply(
       seq.int(
         1,
         nrow(df.par),
@@ -279,12 +282,14 @@ sc.process.batch <- function(
           m.feat
         )
       }
+    ),
+    df.par[["File.ID"]]
     )
   }
   if(Sys.info()[["sysname"]] == "Windows" &
      parl == TRUE) {
     print("Windows OS does not support parallel sample processing, defaulting to sequential processing...")
-    list.data <- lapply(
+    list.data <- setNames(lapply(
       seq.int(
         1,
         nrow(df.par),
@@ -304,11 +309,13 @@ sc.process.batch <- function(
           m.feat
         )
       }
+    ),
+    df.par[["File.ID"]]
     )
   }
   if(Sys.info()[["sysname"]] == "Windows" &
      parl == FALSE) {
-    list.data <- lapply(
+    list.data <- setNames(lapply(
       seq.int(
         1,
         nrow(df.par),
@@ -328,6 +335,8 @@ sc.process.batch <- function(
           m.feat
         )
       }
+    ),
+    df.par[["File.ID"]]
     )
   }
   return(list.data)
