@@ -68,7 +68,6 @@ sc.integrate.data <- function(
         d.merged4,
         "processed/data.integrated.batch.4.rds"
         )
-      remove(list.d)
       ## Combine batch 1&2 then 3&4
       d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
       saveRDS(
@@ -116,7 +115,6 @@ sc.integrate.data <- function(
         d.merged3,
         "processed/data.integrated.batch.3.rds"
         )
-      remove(list.d)
       ## Combine batch 1&2 then 3
       d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
       saveRDS(
@@ -151,7 +149,6 @@ sc.integrate.data <- function(
         d.merged2,
         "processed/data.integrated.batch.2.rds"
         )
-      remove(list.d)
       ## Combine batch 1&2
       d.integrated <- fun.int(list(d.merged1,d.merged2),10000)
       saveRDS(
@@ -171,9 +168,302 @@ sc.integrate.data <- function(
         d.integrated,
         "processed/data.integrated.rds"
         )
-      remove(list.d)
       }
     }
+
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == FALSE) {
+    fun.int <- function(list.d.subset,future.size){
+      ## Find integration anchors
+      d.anchor <- Seurat::FindIntegrationAnchors(
+        object.list = list.d.subset,
+        anchor.features = 4000,
+        dims = 1:50
+        )
+      ## Integrate data
+      d.merged <- Seurat::IntegrateData(
+        anchorset = d.anchor,
+        dims = 1:50
+        )
+      return(d.merged)
+      }
+
+    if(length(list.d) <= 12 & length(list.d) > 9) {
+      print(paste(length(list.d),"samples present: dividing integration into 4 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:9],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+        )
+      # Batch 4
+      d.merged4 <- fun.int(list.d[10:length(list.d)],5000)
+      saveRDS(
+        d.merged4,
+        "processed/data.integrated.batch.4.rds"
+        )
+      ## Combine batch 1&2 then 3&4
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+        )
+      d.merged34 <- fun.int(list(d.merged3,d.merged4),10000)
+      saveRDS(
+        d.merged34,
+        "processed/data.integrated.batch.3and4.rds"
+        )
+      remove(d.merged1,d.merged2,d.merged3,d.merged4)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged34),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged12,d.merged34)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.4.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+      file.remove("processed/data.integrated.batch.3and4.rds")
+    }
+
+    if(length(list.d) <= 9 & length(list.d) > 6) {
+      print(paste(length(list.d),"samples present: dividing integration into 3 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:length(list.d)],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+        )
+      ## Combine batch 1&2 then 3
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+        )
+      remove(d.merged1,d.merged2)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged3),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged12,d.merged3)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+    }
+
+    if(length(list.d) <= 6 & length(list.d) > 3) {
+      print(paste(length(list.d),"samples present: dividing integration into 2 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+        )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+        )
+      ## Combine batch 1&2
+      d.integrated <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      remove(d.merged1,d.merged2)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      }
+
+    if(length(list.d) <= 3) {
+      print(paste(length(list.d),"samples present: integrating all samples as 1 batch...",sep = " "))
+      # Batch 1
+      d.integrated <- fun.int(list.d[1:length(list.d)],5000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+        )
+      }
+    }
+
+  if(Sys.info()[["sysname"]] == "Windows") {
+    fun.int <- function(list.d.subset,future.size){
+      ## Find integration anchors
+      d.anchor <- Seurat::FindIntegrationAnchors(
+        object.list = list.d.subset,
+        anchor.features = 4000,
+        dims = 1:50
+      )
+      ## Integrate data
+      d.merged <- Seurat::IntegrateData(
+        anchorset = d.anchor,
+        dims = 1:50
+      )
+      return(d.merged)
+    }
+
+    if(length(list.d) <= 12 & length(list.d) > 9) {
+      print(paste(length(list.d),"samples present: dividing integration into 4 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+      )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+      )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:9],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+      )
+      # Batch 4
+      d.merged4 <- fun.int(list.d[10:length(list.d)],5000)
+      saveRDS(
+        d.merged4,
+        "processed/data.integrated.batch.4.rds"
+      )
+      ## Combine batch 1&2 then 3&4
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+      )
+      d.merged34 <- fun.int(list(d.merged3,d.merged4),10000)
+      saveRDS(
+        d.merged34,
+        "processed/data.integrated.batch.3and4.rds"
+      )
+      remove(d.merged1,d.merged2,d.merged3,d.merged4)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged34),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+      )
+      remove(d.merged12,d.merged34)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.4.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+      file.remove("processed/data.integrated.batch.3and4.rds")
+    }
+
+    if(length(list.d) <= 9 & length(list.d) > 6) {
+      print(paste(length(list.d),"samples present: dividing integration into 3 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+      )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+      )
+      # Batch 3
+      d.merged3 <- fun.int(list.d[7:length(list.d)],5000)
+      saveRDS(
+        d.merged3,
+        "processed/data.integrated.batch.3.rds"
+      )
+      ## Combine batch 1&2 then 3
+      d.merged12 <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.merged12,
+        "processed/data.integrated.batch.1and2.rds"
+      )
+      remove(d.merged1,d.merged2)
+      ## Combine into final batch and save
+      d.integrated <- fun.int(list(d.merged12,d.merged3),15000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+      )
+      remove(d.merged12,d.merged3)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+      file.remove("processed/data.integrated.batch.3.rds")
+      file.remove("processed/data.integrated.batch.1and2.rds")
+    }
+
+    if(length(list.d) <= 6 & length(list.d) > 3) {
+      print(paste(length(list.d),"samples present: dividing integration into 2 batches...",sep = " "))
+      # Batch 1
+      d.merged1 <- fun.int(list.d[1:3],5000)
+      saveRDS(
+        d.merged1,
+        "processed/data.integrated.batch.1.rds"
+      )
+      # Batch 2
+      d.merged2 <- fun.int(list.d[4:6],5000)
+      saveRDS(
+        d.merged2,
+        "processed/data.integrated.batch.2.rds"
+      )
+      ## Combine batch 1&2
+      d.integrated <- fun.int(list(d.merged1,d.merged2),10000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+      )
+      remove(d.merged1,d.merged2)
+      file.remove("processed/data.integrated.batch.1.rds")
+      file.remove("processed/data.integrated.batch.2.rds")
+    }
+
+    if(length(list.d) <= 3) {
+      print(paste(length(list.d),"samples present: integrating all samples as 1 batch...",sep = " "))
+      # Batch 1
+      d.integrated <- fun.int(list.d[1:length(list.d)],5000)
+      saveRDS(
+        d.integrated,
+        "processed/data.integrated.rds"
+      )
+    }
+  }
+
+
+  remove(list.d)
   return(d.integrated)
   }
 

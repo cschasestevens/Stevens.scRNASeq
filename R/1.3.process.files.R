@@ -343,12 +343,63 @@ sc.process.batch <- function(
   return(list.data)
 }
 
-
-
-
-
-
-
+#' Plot Sample Contamination Fraction
+#'
+#' Generates a scatter plot indicating the individual and average contamination fractions for all samples.
+#'
+#' @param df.par Data frame of updated parameters used for data processing.
+#' @return A scatter plot indicating the individual and average contamination fractions for all samples.
+#' @examples
+#'
+#' sc.plot.rho(list.params)
+#'
+#' @export
+sc.plot.rho <- function(
+    df.par
+    ) {
+  p.rho <- ggplot2::ggplot(
+    df.par
+    ) +
+    ggplot2::geom_point(
+      ggplot2::aes(
+        x = .data[["File.ID"]],
+        y = .data[["rho"]]),
+      shape = 21,
+      size = 3,
+      alpha = 0.25,
+      fill = col.univ()[1]
+      ) +
+    ggplot2::geom_point(
+      ggplot2::aes(
+        x = .data[["File.ID"]],
+        y = .data[["adj.rho"]]),
+      shape = 21,
+      size = 3,
+      alpha = 1,
+      fill = col.univ()[2]
+    ) +
+    ggplot2::geom_hline(
+      yintercept = mean(
+        .data[["rho"]]
+        ),
+      linetype = "dashed"
+      ) +
+    ggplot2::geom_hline(
+      yintercept = mean(
+        .data[["adj.rho"]]
+        ),
+      linetype = "dashed",
+      color = "firebrick2"
+      ) +
+    sc.theme1()
+  ggsave(
+    "processed/data.ambientRNA.cont.png",
+    p.rho,
+    width = 10,
+    height = 10,
+    dpi = 600
+    )
+  }
 
 
 
