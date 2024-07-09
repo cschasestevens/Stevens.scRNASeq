@@ -27,114 +27,114 @@
 #' )
 #'
 #' @export
-sc.process.file <- function(
-    df.par,
-    i,
-    rho.adj,
-    m.cell,
-    m.feat
-    ){
-  #### Integration ####
-
-  fun.integration <- function(
-    subset1,
-    rds.path
-  ) {
-
-    ## Anchor function
-
-    f.anchor.fun <- function(
-    s1
-    ) {
-
-      ## Find integration anchors
-
-      data.files.anchor <- FindIntegrationAnchors(
-        object.list = s1,
-        anchor.features = 4000,
-        dims = 1:50)
-
-      return(data.files.anchor)
-
-    }
-
-
-    ## run for chosen subset
-
-    data.files.anchor1 <- f.anchor.fun(
-      subset1
-    )
-
-
-    ## Integration function
-
-    d.int.fun <- function(
-    x
-    ) {
-
-      data.files.merged <- IntegrateData(
-        anchorset = x,
-        dims = 1:50
-      )
-
-      return(data.files.merged)
-
-    }
-
-
-    data.files.merged1 <- d.int.fun(
-      data.files.anchor1
-    )
-
-    saveRDS(
-      data.files.merged1,
-      rds.path
-    )
-
-    return(data.files.merged1)
-
-  }
-
-
-  # Load .rds containing Seurat objects to integrate
-
-  sc.orig <- readRDS(
-    "Reference.sets/Ken_HBE10xLSAE5codes1mSAE_cls19noLQ15_seurat.rds"
-  )
-
-  sc.nkx <- readRDS(
-    "Analysis/RDS/1_NKX21KO_data_annotated.rds"
-  )
-
-  sc.nkx2 <- subset(
-    sc.nkx,
-    subset = Time == "D28"
-  )
-
-  remove(sc.nkx)
-
-  # Perform Integration
-
-  d.merged <- fun.integration(
-    c(
-      sc.orig,
-      sc.nkx2
-    ),
-    "Analysis/RDS/1.all.lsae.data.rds"
-  )
-
-  return(
-    list(
-      "Seurat.obj" = d.norm,
-      "Updated.param.df" = df.p,
-      "QC.pre" = plot.pre.qc,
-      "QC.post" = plot.pos.qc,
-      "var.feat.sum" = d.norm.sum,
-      "var.feat.plot" = plot.var.feat.out
-      )
-    )
-
-  }
+# sc.process.file <- function(
+#     df.par,
+#     i,
+#     rho.adj,
+#     m.cell,
+#     m.feat
+#     ){
+#   #### Integration ####
+#
+#   fun.integration <- function(
+#     subset1,
+#     rds.path
+#   ) {
+#
+#     ## Anchor function
+#
+#     f.anchor.fun <- function(
+#     s1
+#     ) {
+#
+#       ## Find integration anchors
+#
+#       data.files.anchor <- FindIntegrationAnchors(
+#         object.list = s1,
+#         anchor.features = 4000,
+#         dims = 1:50)
+#
+#       return(data.files.anchor)
+#
+#     }
+#
+#
+#     ## run for chosen subset
+#
+#     data.files.anchor1 <- f.anchor.fun(
+#       subset1
+#     )
+#
+#
+#     ## Integration function
+#
+#     d.int.fun <- function(
+#     x
+#     ) {
+#
+#       data.files.merged <- IntegrateData(
+#         anchorset = x,
+#         dims = 1:50
+#       )
+#
+#       return(data.files.merged)
+#
+#     }
+#
+#
+#     data.files.merged1 <- d.int.fun(
+#       data.files.anchor1
+#     )
+#
+#     saveRDS(
+#       data.files.merged1,
+#       rds.path
+#     )
+#
+#     return(data.files.merged1)
+#
+#   }
+#
+#
+#   # Load .rds containing Seurat objects to integrate
+#
+#   sc.orig <- readRDS(
+#     "Reference.sets/Ken_HBE10xLSAE5codes1mSAE_cls19noLQ15_seurat.rds"
+#   )
+#
+#   sc.nkx <- readRDS(
+#     "Analysis/RDS/1_NKX21KO_data_annotated.rds"
+#   )
+#
+#   sc.nkx2 <- subset(
+#     sc.nkx,
+#     subset = Time == "D28"
+#   )
+#
+#   remove(sc.nkx)
+#
+#   # Perform Integration
+#
+#   d.merged <- fun.integration(
+#     c(
+#       sc.orig,
+#       sc.nkx2
+#     ),
+#     "Analysis/RDS/1.all.lsae.data.rds"
+#   )
+#
+#   return(
+#     list(
+#       "Seurat.obj" = d.norm,
+#       "Updated.param.df" = df.p,
+#       "QC.pre" = plot.pre.qc,
+#       "QC.post" = plot.pos.qc,
+#       "var.feat.sum" = d.norm.sum,
+#       "var.feat.plot" = plot.var.feat.out
+#       )
+#     )
+#
+#   }
 
 
 
