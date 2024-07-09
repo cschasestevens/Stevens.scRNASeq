@@ -2,28 +2,26 @@
 #'
 #' Processes a single sample into a Seurat object for data integration.
 #'
-#' @param df.par Character string indicating the path to a set of CellRanger files for data processing.
-#' @param i A data frame containing sample metadata variables specific to an individual study.
+#' @param df.par Data frame of parameters to use for data processing.
+#' @param i Numeric value for sample ID.
 #' @param rho.adj Numeric value indicating a proportion to scale rho values calculated during the ambient RNA removal step. 10% (0.1)
 #' is generally suitable for most data sets.
-#' @param m.cell Threshold for including features in a Seurat Object. See ?Seurat::CreateSeuratObject() for more details.
-#' @param m.feat Threshold for including cells in a Seurat Object. See ?Seurat::CreateSeuratObject() for more details.
-#' @return Data frame containing a list of parameters to use for scRNA-Seq data processing by Seurat.
+#' @param m.cell Threshold for including features in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
+#' @param m.feat Threshold for including cells in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
+#' @return A processed sample file converted into a Seurat object with a summary list of QC and processing details.
 #' @examples
 #'
-#' # Dataset input parameters
-#' list.params <- Create.proc.param(
-#'   "data/",
-#'   data.frame(
-#'     # ID column name (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
-#'     "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
-#'     # 1st metadata column (include in CellRanger folder name)
-#'     "Knockout" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"ctrl","KO")),
-#'     # 2nd metadata column
-#'     "Region" = as.factor(ifelse(grepl("LAE",basename(list.files("data/"))),"1","2")),
-#'     # 3rd metadata column (add/remove columns as needed)
-#'     "Time" = as.factor(ifelse(grepl("D28",basename(list.files("data/"))),"a","b"))
-#'   )
+#' proc.data <- sc.process.file(
+#' # parameter list
+#' list.params,
+#' # sample ID
+#' 1,
+#' # adj.rho proportion
+#' 0.1,
+#' # minimum cells per feature
+#' 5,
+#' # minimum features per cell
+#' 200
 #' )
 #'
 #' @export
@@ -35,7 +33,7 @@ sc.process.file <- function(
     m.feat
     ){
   # Select file from chosen input parameter df
-  df.p <- list.params
+  df.p <- df.par
   d <- df.p[i,]
   # Estimate contamination fraction
   d <- SoupX::autoEstCont(
@@ -189,6 +187,154 @@ sc.process.file <- function(
     )
 
   }
+
+
+
+
+
+#' Batch Processing of CellRanger Files
+#'
+#' Processes a list of samples into separate Seurat objects for data integration.
+#'
+#' @param df.par Data frame of parameters to use for data processing.
+#' @param rho.adj Numeric value indicating a proportion to scale rho values calculated during the ambient RNA removal step. 10% (0.1)
+#' is generally suitable for most data sets.
+#' @param m.cell Threshold for including features in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
+#' @param m.feat Threshold for including cells in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
+#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @return A processed list of sample files converted into Seurat objects with a summary list of QC and processing details.
+#' @examples
+#'
+#' list.data <- sc.process.batch(
+#' # parameter list
+#' list.params,
+#' # adj.rho proportion
+#' 0.1,
+#' # minimum cells per feature
+#' 5,
+#' # minimum features per cell
+#' 200
+#' )
+#'
+#' @export
+sc.process.batch <- function(
+    df.par,
+    rho.adj,
+    m.cell,
+    m.feat,
+    parl,
+    core.perc
+    ){
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == TRUE) {
+  list.data <- parallel::mclapply(
+    mc.cores = ceiling(
+      parallel::detectCores()*
+        core.perc
+      ),
+    seq.int(
+      1,
+      nrow(df.par),
+      1
+      ),
+    function(x) {
+      sc.process.file(
+        # parameter list
+        list.params,
+        # sample ID
+        x,
+        # adj.rho proportion
+        rho.adj,
+        # minimum cells per feature
+        m.cell,
+        # minimum features per cell
+        m.feat
+        )
+      }
+    )
+  }
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == FALSE) {
+    list.data <- lapply(
+      seq.int(
+        1,
+        nrow(df.par),
+        1
+      ),
+      function(x) {
+        sc.process.file(
+          # parameter list
+          list.params,
+          # sample ID
+          x,
+          # adj.rho proportion
+          rho.adj,
+          # minimum cells per feature
+          m.cell,
+          # minimum features per cell
+          m.feat
+        )
+      }
+    )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" &
+     parl == TRUE) {
+    print("Windows OS does not support parallel sample processing, defaulting to sequential processing...")
+    list.data <- lapply(
+      seq.int(
+        1,
+        nrow(df.par),
+        1
+      ),
+      function(x) {
+        sc.process.file(
+          # parameter list
+          list.params,
+          # sample ID
+          x,
+          # adj.rho proportion
+          rho.adj,
+          # minimum cells per feature
+          m.cell,
+          # minimum features per cell
+          m.feat
+        )
+      }
+    )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" &
+     parl == FALSE) {
+    list.data <- lapply(
+      seq.int(
+        1,
+        nrow(df.par),
+        1
+      ),
+      function(x) {
+        sc.process.file(
+          # parameter list
+          list.params,
+          # sample ID
+          x,
+          # adj.rho proportion
+          rho.adj,
+          # minimum cells per feature
+          m.cell,
+          # minimum features per cell
+          m.feat
+        )
+      }
+    )
+  }
+  return(list.data)
+}
+
+
+
+
+
+
 
 
 
