@@ -233,6 +233,7 @@ sc.process.batch <- function(
       parallel::detectCores()*
         core.perc
       ),
+    mc.preschedule = FALSE,
     seq.int(
       1,
       nrow(df.par),
