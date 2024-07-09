@@ -41,7 +41,8 @@ sc.process.file <- function(
   d <- SoupX::autoEstCont(
     SoupX::load10X(
       df.p[i,"Path"]
-      )
+      ),
+    doPlot = FALSE
     )
   df.p[["rho"]] <- as.vector(
     unlist(
