@@ -32,6 +32,8 @@ sc.process.file <- function(
     m.cell,
     m.feat
     ){
+  RNGkind("L'Ecuyer-CMRG")
+  set.seed(1234)
   # Select file from chosen input parameter df
   df.p <- df.par
   d <- df.p[i,]
@@ -233,7 +235,6 @@ sc.process.batch <- function(
       parallel::detectCores()*
         core.perc
       ),
-    mc.preschedule = FALSE,
     seq.int(
       1,
       nrow(df.par),
