@@ -177,11 +177,12 @@ sc.process.file <- function(
     points = d.norm.sum,
     repel = T
     )
+  df.p <- df.p[i,]
 
   return(
     list(
       "Seurat.obj" = d.norm,
-      "Updated.param.df" = df.p,
+      "Params" = df.p,
       "QC.pre" = plot.pre.qc,
       "QC.post" = plot.pos.qc,
       "var.feat.sum" = d.norm.sum,
