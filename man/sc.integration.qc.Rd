@@ -4,10 +4,12 @@
 \alias{sc.integration.qc}
 \title{scRNA-Seq Integration Quality Control}
 \usage{
-sc.integration.qc(so)
+sc.integration.qc(so, cl.var)
 }
 \arguments{
 \item{so}{Integrated Seurat object.}
+
+\item{cl.var}{Clustering variable provided as a character string (generally use "seurat_clusters").}
 }
 \value{
 A panel of violin plots providing QC measures for an integrated Seurat object.
