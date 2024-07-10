@@ -481,7 +481,8 @@ sc.integrate.data <- function(
 #'
 #' @export
 sc.integration.qc <- function(
-    so
+    so,
+    cl.var
     ) {
   d <- so
   df <- d@meta.data[,c(
