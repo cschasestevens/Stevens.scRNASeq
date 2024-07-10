@@ -240,7 +240,7 @@ sc.umap.panel.gene <- function(
                size = 1,
                alpha = 0.6) +
 
-    ggplot2::geom_text_repel(data = setNames(
+    ggrepel::geom_text_repel(data = setNames(
       aggregate(
         d2[,c(
           "UMAP.1",
