@@ -468,6 +468,179 @@ sc.integrate.data <- function(
   }
 
 
+#' scRNA-Seq Integration Quality Control
+#'
+#' Displays the feature number, average counts, and percentage of reads derived from the mitochondrial genome given an integrated Seurat object.
+#'
+#' @param so Integrated Seurat object.
+#' @return A panel of violin plots providing QC measures for an integrated Seurat object.
+#' @examples
+#'
+#' d.integrated <- sc.integrate.data(d.integrated)
+#'
+#' @export
+sc.integration.qc <- function(
+    so
+    ) {
+  d <- so
+  df <- d@meta.data[,c(
+    "nFeature_RNA",
+    "nCount_RNA",
+    "percent.mt",
+    "seurat.clusters")]
+  p.qc <- ggpubr::ggarrange(
+    plotlist = lapply(
+      names(
+        dplyr::select(
+          df,
+          -.data[["seurat.clusters"]]
+          )
+        ),
+      function(x) {
+        ggplot2::ggplot(
+          df,
+          ggplot2::aes(
+            x = .data[["seurat.clusters"]],
+            y = .data[[x]],
+            fill = .data[["seurat.clusters"]]
+            )
+          ) +
+          ggplot2::scale_fill_manual(
+            name = "Cluster",
+            values = col.univ()
+            ) +
+          # Add violin plot and dotplot
+          ggplot2::geom_violin(
+            trim = F
+            ) +
+          ggplot2::geom_jitter(
+            ggplot2::aes(
+              alpha = 0.2
+              ),
+            shape = 16,
+            size = 0.1,
+            position = position_jitter(
+              width = 0.4
+              ),
+            show.legend = F
+            ) +
+          # Add Theme
+          sc.theme1() +
+          ggplot2::labs(y = x) +
+          ggplot2::theme(
+            plot.margin = ggplot2::unit(c(0.1,0.1,0.1,0.1),"cm")
+            )
+        }
+      ),
+    common.legend = T,
+    legend = "none",
+    nrow = 1,
+    ncol = 3
+    )
+  return(p.qc)
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#' scRNA-Seq Cluster Counts
+#'
+#' Calculates the proportion of cells derived from individual groups of a Seurat object.
+#'
+#' @param so Integrated Seurat object.
+#' @return A table indicating the proportion of cells derived from specified groups of a scRNA-Seq experiment.
+#' @examples
+#'
+#' d.integrated <- sc.integrate.data(d.integrated)
+#'
+#' @export
+# fun.cluster.counts <- function(
+#     so,
+#     var.clus,
+#     var1,
+#     title1
+# ) {
+#
+#   d <- so
+#
+#   cl.counts <- dplyr::count(
+#     dplyr::group_by(
+#       d@meta.data[,c(
+#         var.clus,
+#         var1
+#       )],
+#       .data[[var.clus]]
+#     ),
+#     .data[[var1]]
+#   )
+#
+#   cl.counts <- dplyr::left_join(
+#     cl.counts,
+#     setNames(
+#       aggregate(
+#         cl.counts$n,
+#         list(
+#           cl.counts[[var.clus]]
+#         ),
+#         FUN = sum
+#       ),
+#       c(
+#         var.clus,
+#         "Total Cells"
+#       )
+#     ),
+#     by = var.clus
+#   ) %>%
+#     dplyr::mutate(
+#       "Proportion" = round(
+#         .data[["n"]]/
+#           .data[["Total Cells"]],
+#         digits = 2
+#       )
+#     )
+#
+#   # Save as table
+#
+#   write.table(
+#     cl.counts,
+#     paste(
+#       "Analysis/Integrated/",
+#       "umap.",
+#       title1,
+#       ".",
+#       var1,
+#       ".counts.txt",
+#       sep = ""
+#     ),
+#     sep = "\t",
+#     col.names = T,
+#     row.names = F
+#   )
+#
+#   return(cl.counts)
+#
+# }
+
+
+
+
+
+
+
 
 
 
