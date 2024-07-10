@@ -473,6 +473,7 @@ sc.integrate.data <- function(
 #' Displays the feature number, average counts, and percentage of reads derived from the mitochondrial genome given an integrated Seurat object.
 #'
 #' @param so Integrated Seurat object.
+#' @param cl.var Clustering variable provided as a character string (generally use "seurat_clusters").
 #' @return A panel of violin plots providing QC measures for an integrated Seurat object.
 #' @examples
 #'
@@ -487,22 +488,22 @@ sc.integration.qc <- function(
     "nFeature_RNA",
     "nCount_RNA",
     "percent.mt",
-    "seurat.clusters")]
+    cl.var)]
   p.qc <- ggpubr::ggarrange(
     plotlist = lapply(
       names(
         dplyr::select(
           df,
-          -.data[["seurat.clusters"]]
+          -.data[[cl.var]]
           )
         ),
       function(x) {
         ggplot2::ggplot(
           df,
           ggplot2::aes(
-            x = .data[["seurat.clusters"]],
+            x = .data[[cl.var]],
             y = .data[[x]],
-            fill = .data[["seurat.clusters"]]
+            fill = .data[[cl.var]]
             )
           ) +
           ggplot2::scale_fill_manual(
@@ -519,7 +520,7 @@ sc.integration.qc <- function(
               ),
             shape = 16,
             size = 0.1,
-            position = position_jitter(
+            position = ggplot2::position_jitter(
               width = 0.4
               ),
             show.legend = F
