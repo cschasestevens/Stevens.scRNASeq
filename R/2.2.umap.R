@@ -198,13 +198,13 @@ sc.umap.panel.gene <- function(
     sc.theme1() +
 
     ggplot2::theme(
-      panel.grid.major.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
-      axis.ticks = element_blank(),
-      plot.margin = unit(
+      panel.grid.major.y = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      plot.margin = ggplot2::unit(
         c(
           0.1,0.1,0.1,0.1
         ),
