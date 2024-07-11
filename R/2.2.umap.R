@@ -370,23 +370,55 @@ sc.umap.panel.gene <- function(
 #' @param col.names A vector of the same length as the provided color scheme for assigning colors to each group.
 #' @param leg.x A numeric value indicating the placement of the figure legend on the x-axis.
 #' @param leg.y A numeric value indicating the placement of the figure legend on the y-axis.
+#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
 #' @return A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
 #' @examples
 #'
 #' sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95)
 #'
 #' @export
-sc.umap.panel.gene.list <- function(list.g,so,md.var,g.name,col.scheme,col.names,leg.x,leg.y) {
+sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc) {
   lg <- list.g
   d <- so
   lg <- unique(lg[lg %in% SeuratObject::Features(d)])
   lg.abs <- subset(lg, !(lg %in% SeuratObject::Features(d)))
-  print(paste(lg.abs, "was not found; plots for this gene will be excluded from the final list...",sep = " "))
   # Create plots
-  lapply(
-    lg,
-    function(x) {
-      pg <- sc.umap.panel.gene(
+  if(Sys.info()[["sysname"]] != "Windows" &
+     parl == TRUE){
+    parallel::mclapply(
+      mc.cores = ceiling(
+        parallel::detectCores()*
+          core.perc
+          ),
+      lg,
+      function(x) {
+        pg <- sc.umap.panel.gene(
+          d,
+          md.var,
+          x,
+          col.scheme,
+          col.names,
+          leg.x,
+          leg.y
+        )
+        # Save each plot
+        ggplot2::ggsave(
+          paste("analysis/gene/plot.umap.exp.",x,".png",sep = ""),
+          pg,
+          height = 12,
+          width = 36,
+          dpi = 700
+        )
+      }
+    )
+
+  }
+  if(Sys.info()[["sysname"]] == "Windows"){
+    lapply(
+      lg,
+      function(x) {
+        pg <- sc.umap.panel.gene(
           d,
           md.var,
           x,
@@ -395,16 +427,27 @@ sc.umap.panel.gene.list <- function(list.g,so,md.var,g.name,col.scheme,col.names
           leg.x,
           leg.y
           )
-      # Save each plot
-      ggplot2::ggsave(
-        paste("analysis/gene/plot.umap.exp.",x,".png",sep = ""),
-        pg,
-        height = 24,
-        width = 20,
-        dpi = 700
-        )
+        # Save each plot
+        ggplot2::ggsave(
+          paste("analysis/gene/plot.umap.exp.",x,".png",sep = ""),
+          pg,
+          height = 12,
+          width = 36,
+          dpi = 700
+          )
       }
     )
+
+  }
+  if(length(lg.abs) > 0) {
+    print(
+      paste(
+        lg.abs,
+        "was not found; plots for this gene will be excluded from the final list...",
+        sep = " "
+        )
+      )
+    }
   }
 
 
