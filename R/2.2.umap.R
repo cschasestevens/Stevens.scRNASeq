@@ -375,7 +375,7 @@ sc.umap.panel.gene <- function(
 #' @return A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
 #' @examples
 #'
-#' sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95)
+#' sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
 #'
 #' @export
 sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc) {
@@ -439,6 +439,31 @@ sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,
     )
 
   }
+  if(Sys.info()[["sysname"]] != "Windows" & parl == FALSE){
+    lapply(
+      lg,
+      function(x) {
+        pg <- sc.umap.panel.gene(
+          d,
+          md.var,
+          x,
+          col.scheme,
+          col.names,
+          leg.x,
+          leg.y
+        )
+        # Save each plot
+        ggplot2::ggsave(
+          paste("analysis/gene/plot.umap.exp.",x,".png",sep = ""),
+          pg,
+          height = 12,
+          width = 36,
+          dpi = 700
+        )
+      }
+    )
+
+  }
   if(length(lg.abs) > 0) {
     print(
       paste(
@@ -453,222 +478,225 @@ sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,
 
 
 
+# START HERE 7/12/24
+#' Standard UMAP Plot
+#'
+#' Generates a series of plots to visualize individual gene expression per cluster.
+#'
+#' @param so An object of class Seurat.
+#' @param md.var A character string indicating the clustering column for overlaying on a UMAP plot.
+#' @param g.name A character string indicating the gene name.
+#' @param col.scheme The color scheme to be used for distinguishing between groups, provided as a vector.
+#' @param col.names A vector of the same length as the provided color scheme for assigning colors to each group.
+#' @param leg.x A numeric value indicating the placement of the figure legend on the x-axis.
+#' @param leg.y A numeric value indicating the placement of the figure legend on the y-axis.
+#' @return A series of plots stored as a ggplot2 object for visualizing cluster gene expression.
+#' @examples
+#'
+#' p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+#'
+#' @export
+fun.sc.umap.plot <- function(
+    so,
+    md.list,
+    angle.lab,
+    type.lab,
+    col.scheme
+) {
+
+  # Format input data
+
+  d <- so
+
+  d2 <- data.frame(
+    d@meta.data,
+    `UMAP.1` = d@reductions$umap@cell.embeddings[,1],
+    `UMAP.2` = d@reductions$umap@cell.embeddings[,2],
+    `UMAP.3` = d@reductions$umap@cell.embeddings[,3]
+  )
+
+  # Generate df for each grouping
+
+  d2.list <- setNames(
+    lapply(
+      c(
+        md.list
+      ),
+      function(x)
+        d2[,c(
+            x,
+            "UMAP.1",
+            "UMAP.2",
+            "UMAP.3"
+          )]
+        ),
+    c(
+      md.list
+      )
+    )
+
+  # Generate plots
+
+  d2.plot <- lapply(
+    c(
+      md.list
+    ),
+    function(x)
+    {
+
+    p <-  ggplot(
+        d2.list[[x]],
+        aes(
+          x=`UMAP.1`,
+          y=`UMAP.2`,
+          z=`UMAP.3`,
+          color = .data[[x]],
+          label = .data[[x]]
+        )
+      ) +
+
+      scale_color_manual(
+        paste(""),
+        values = col.scheme
+      ) +
+
+      # Add 3D points, axes, and axis-labels
+
+      axes_3D(
+        linewidth = 1
+        ) +
+
+      stat_3D(
+        geom = "point",
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+        ) +
+
+      stat_3D(
+        geom = type.lab,
+        data = setNames(
+          aggregate(
+            d2.list[[x]][,c(
+              "UMAP.1",
+              "UMAP.2",
+              "UMAP.3"
+              )],
+            list(
+              d2.list[[x]][[x]]
+              ),
+            FUN = median
+            ),
+          c(
+            x,
+            names(
+              d2.list[[x]][,c(
+                "UMAP.1",
+                "UMAP.2",
+                "UMAP.3"
+                )]
+              )
+            )
+          ),
+        size = 4,
+        bg.color = "white"
+        ) +
+
+      labs_3D(
+        labs = c(
+          "UMAP-1",
+          "UMAP-2",
+          "UMAP-3"
+          ),
+        vjust = c(
+          -0.2,-0.2,-0.2
+          ),
+        hjust = c(
+          0,1,1
+          ),
+        angle = c(
+          angle.lab,
+          -angle.lab,
+          90
+          )
+        ) +
+
+        # Add general multivariate plot theme and adjust axis text
+        thm.mult +
+
+        theme(
+          panel.grid.major.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.ticks = element_blank(),
+          plot.margin = unit(
+            c(
+              0.1,0.1,0.1,0.1
+              ),
+            "cm"
+            ),
+          legend.position = "none"
+        )
+
+    }
+  )
+
+
+  # Combine output
+
+  if(
+    length(
+      d2.plot
+    ) >
+    1
+  ) {
+
+    d2.out <- ggarrange(
+      plotlist = d2.plot,
+      labels = c(
+        names(
+          d2.plot
+        )
+      ),
+      ncol = ifelse(
+        length(
+          d2.plot
+        ) <=3,
+        length(
+          d2.plot
+        ),
+        3
+      ),
+      nrow = ifelse(
+        length(
+          d2.plot
+        ) > 3,
+        2,
+        1
+      )
+    )
+
+  }
+
+
+  if(
+    length(
+      d2.plot
+    ) == 1
+  ) {
+
+    d2.out <- d2.plot[[1]]
+
+  }
 
 
 
 
+  return(d2.out)
 
-
-
-
-
-
-
-
-
-
-
-# fun.sc.umap.plot <- function(
-#     so,
-#     md.list,
-#     angle.lab,
-#     type.lab,
-#     col.scheme
-# ) {
-#
-#   # Format input data
-#
-#   d <- so
-#
-#   d2 <- data.frame(
-#     d@meta.data,
-#     `UMAP.1` = d@reductions$umap@cell.embeddings[,1],
-#     `UMAP.2` = d@reductions$umap@cell.embeddings[,2],
-#     `UMAP.3` = d@reductions$umap@cell.embeddings[,3]
-#   )
-#
-#   # Generate df for each grouping
-#
-#   d2.list <- setNames(
-#     lapply(
-#       c(
-#         md.list
-#       ),
-#       function(x)
-#         d2[,c(
-#             x,
-#             "UMAP.1",
-#             "UMAP.2",
-#             "UMAP.3"
-#           )]
-#         ),
-#     c(
-#       md.list
-#       )
-#     )
-#
-#   # Generate plots
-#
-#   d2.plot <- lapply(
-#     c(
-#       md.list
-#     ),
-#     function(x)
-#     {
-#
-#     p <-  ggplot(
-#         d2.list[[x]],
-#         aes(
-#           x=`UMAP.1`,
-#           y=`UMAP.2`,
-#           z=`UMAP.3`,
-#           color = .data[[x]],
-#           label = .data[[x]]
-#         )
-#       ) +
-#
-#       scale_color_manual(
-#         paste(""),
-#         values = col.scheme
-#       ) +
-#
-#       # Add 3D points, axes, and axis-labels
-#
-#       axes_3D(
-#         linewidth = 1
-#         ) +
-#
-#       stat_3D(
-#         geom = "point",
-#         shape = 16,
-#         size = 1,
-#         alpha = 0.6
-#         ) +
-#
-#       stat_3D(
-#         geom = type.lab,
-#         data = setNames(
-#           aggregate(
-#             d2.list[[x]][,c(
-#               "UMAP.1",
-#               "UMAP.2",
-#               "UMAP.3"
-#               )],
-#             list(
-#               d2.list[[x]][[x]]
-#               ),
-#             FUN = median
-#             ),
-#           c(
-#             x,
-#             names(
-#               d2.list[[x]][,c(
-#                 "UMAP.1",
-#                 "UMAP.2",
-#                 "UMAP.3"
-#                 )]
-#               )
-#             )
-#           ),
-#         size = 4,
-#         bg.color = "white"
-#         ) +
-#
-#       labs_3D(
-#         labs = c(
-#           "UMAP-1",
-#           "UMAP-2",
-#           "UMAP-3"
-#           ),
-#         vjust = c(
-#           -0.2,-0.2,-0.2
-#           ),
-#         hjust = c(
-#           0,1,1
-#           ),
-#         angle = c(
-#           angle.lab,
-#           -angle.lab,
-#           90
-#           )
-#         ) +
-#
-#         # Add general multivariate plot theme and adjust axis text
-#         thm.mult +
-#
-#         theme(
-#           panel.grid.major.y = element_blank(),
-#           axis.text.x = element_blank(),
-#           axis.text.y = element_blank(),
-#           axis.title.x = element_blank(),
-#           axis.title.y = element_blank(),
-#           axis.ticks = element_blank(),
-#           plot.margin = unit(
-#             c(
-#               0.1,0.1,0.1,0.1
-#               ),
-#             "cm"
-#             ),
-#           legend.position = "none"
-#         )
-#
-#     }
-#   )
-#
-#
-#   # Combine output
-#
-#   if(
-#     length(
-#       d2.plot
-#     ) >
-#     1
-#   ) {
-#
-#     d2.out <- ggarrange(
-#       plotlist = d2.plot,
-#       labels = c(
-#         names(
-#           d2.plot
-#         )
-#       ),
-#       ncol = ifelse(
-#         length(
-#           d2.plot
-#         ) <=3,
-#         length(
-#           d2.plot
-#         ),
-#         3
-#       ),
-#       nrow = ifelse(
-#         length(
-#           d2.plot
-#         ) > 3,
-#         2,
-#         1
-#       )
-#     )
-#
-#   }
-#
-#
-#   if(
-#     length(
-#       d2.plot
-#     ) == 1
-#   ) {
-#
-#     d2.out <- d2.plot[[1]]
-#
-#   }
-#
-#
-#
-#
-#   return(d2.out)
-#
-# }
+}
 
 
 
