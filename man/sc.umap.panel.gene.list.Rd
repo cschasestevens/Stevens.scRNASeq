@@ -8,11 +8,12 @@ sc.umap.panel.gene.list(
   list.g,
   so,
   md.var,
-  g.name,
   col.scheme,
   col.names,
   leg.x,
-  leg.y
+  leg.y,
+  parl,
+  core.perc
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ sc.umap.panel.gene.list(
 \item{leg.x}{A numeric value indicating the placement of the figure legend on the x-axis.}
 
 \item{leg.y}{A numeric value indicating the placement of the figure legend on the y-axis.}
+
+\item{parl}{Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.}
+
+\item{core.perc}{Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.}
 }
 \value{
 A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
@@ -38,6 +43,6 @@ Generates a series of plots to visualize the expression of a list of genes per c
 }
 \examples{
 
-sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95)
+sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
 
 }
