@@ -395,7 +395,7 @@ sc.predict.clusters <- function(
     fun.predict.prop.alt(
       list.d[["Predicted Clusters"]]@meta.data,
       "predicted.id",
-      c("Airway","Knockout",cl.var)
+      c(md.list,cl.var)
       ),
       .data[["Proportion"]] >
         0.001

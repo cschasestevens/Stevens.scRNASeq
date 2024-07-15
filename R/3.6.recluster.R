@@ -7,24 +7,29 @@
 #' The provided Seurat object is then subsetted to include only clusters from the provided group names.
 #' @param g.list Path to an existing text file containing genes for plotting expression.
 #' @param md.list A vector of character strings indicating metadata columns for overlaying on a loadings plot.
-
-#' @param h.h Numeric value for heatmap height (passed to ComplexHeatmap).
-#' @param fs.c Numeric value for column fontsize (passed to ComplexHeatmap).
-#' @param fs.r Numeric value for row fontsize (passed to ComplexHeatmap).
-
-#' @return A ComplexHeatmap object containing a top-10 marker gene heatmap.
+#' @param h.w Numeric value for marker gene heatmap width (passed to ComplexHeatmap).
+#' @param h.h Numeric value for marker gene heatmap height (passed to ComplexHeatmap).
+#' @param fs.c Numeric value for marker gene heatmap column fontsize (passed to ComplexHeatmap).
+#' @param fs.r Numeric value for marker gene heatmap row fontsize (passed to ComplexHeatmap).
+#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @return A reclustered Seurat Object with summary UMAP plots and a marker gene list.
 #' @examples
 #'
 #' p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
 #'
 #' @export
-
-
-fun.marker.gene.recluster <- function(
+sc.recluster.data <- function(
     so,
     ct,
     g.list,
-    md.list
+    md.list,
+    h.w,
+    h.h,
+    fs.c,
+    fs.r,
+    parl,
+    core.perc
     ) {
   # Load gene list and Seurat object
   list.genes <- read.table(
@@ -134,13 +139,13 @@ fun.marker.gene.recluster <- function(
     # Cluster column
     "recluster",
     # Heatmap width
-    36,
+    h.w,
     # Heatmap height
-    12,
+    h.h,
     # Column fontsize
-    4,
+    fs.c,
     # Row fontsize
-    8
+    fs.r
     )
 
   ## Save
@@ -154,237 +159,192 @@ fun.marker.gene.recluster <- function(
   print(p.heatmap.top10)
   dev.off()
 
+  # Predicted Cell Type Proportions for Each Cluster
+  ## Counting function
+  fun.predict.prop.alt <- function(
+    x,
+    c,
+    md
+  ) {
+    data.pred.prop2 <- setNames(
+      dplyr::count(
+        x,
+        .data[[c]]
+      ),
+      c(c,"Total Cells")
+    )
+    data.pred.prop <- dplyr::count(
+      x,
+      x[,c(md,c)]
+    )
+    data.pred.prop <- dplyr::left_join(
+      data.pred.prop,
+      data.pred.prop2,
+      by = c
+    )
+    data.pred.prop[["Proportion"]] <- round(
+      data.pred.prop$n/
+        data.pred.prop$`Total Cells`,
+      digits = 3
+    )
+    return(data.pred.prop)
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-  #START HERE 7/15/24
-
-  #---- Cluster Counts ----
-
-  ## Source function
-
-  source(
-    "Scripts/3.3.qc.cluster.violin.R",
-    local = knitr::knit_global()
-  )
-
-  ## Output and save table
-
-  cl.counts <- fun.cluster.counts(
-    list.analysis.subset,
-    "recluster",
-    "Code",
-    "Airway",
-    "Knockout",
-    "secretory"
-  )
-
-  cl.counts <- fun.prop.generic(
-    list.analysis.subset@meta.data,
-    "recluster",
-    c("Code",
-      "Airway",
-      "Knockout")
-  )
-
+  ## Cell Type Proportion Summary and Consensus Type
+  d.prop <- dplyr::filter(
+    fun.predict.prop.alt(
+      d@meta.data,
+      "recluster",
+      c(md.list)
+      ),
+    .data[["Proportion"]] >
+      0.001
+    )
   write.table(
-    cl.counts,
-    paste(
-      "Analysis/Integrated/",
-      "D28.integrated.prop.code.airway.knockout.secretory.only.txt",
-      sep = ""
-    ),
+    d.prop,
+    "analysis/recluster/table.recluster.prop.txt",
     col.names = T,
     row.names = F,
     sep = "\t"
-  )
-
-
-  #---- Single UMAP with Multiple Metadata Input ----
-
-  # Load reclustered data (if not already present)
-
-  list.analysis.subset <- readRDS("Analysis/RDS/D28.original.analysis.secretory.rds")
-
-  ## Add custom label
-
-  ### Re-grouping of clusters
-
-  cl.custom <- data.frame(
-    "recluster" = seq.int(
-      1,18,1
-    ),
-    "Group" = factor(
-      c(
-        "Secretory.set1","Secretory.set1","SecretoryCiliated","SecretoryCiliated","Secretory.set1",
-        "SecretoryCiliated","Secretory.set1","Secretory.set2","Secretory.set2","SecretoryCiliated",
-        "Secretory.set2","Secretory.set2","12.Secretory","Secretory.set1","SecretoryCiliated",
-        "Secretory.set1","16.SecretoryCiliated","SecretoryCiliated"),
-      levels = c(
-        "12.Secretory","16.SecretoryCiliated",
-        "Secretory.set1","Secretory.set2","SecretoryCiliated"
-      )
     )
-  )
-
-  cl.custom2 <- setNames(
-    as.data.frame(
-      as.numeric(
-        list.analysis.subset@meta.data$recluster
-      )
-    ),
-    c(
-      "recluster"
-    )
-  )
-
-
-  cl.custom3 <- dplyr::left_join(
-    cl.custom2,
-    cl.custom,
-    by = "recluster"
-  )
-
-  list.analysis.subset <- AddMetaData(
-    list.analysis.subset,
-    metadata = cl.custom3$Group,
-    col.name = "Group2"
-  )
-
-
-
-  # Save plot (either 3D or 2D)
-
-  ggsave(
-    paste(
-      list.p$a.path,
-      "umap.secretory.airway.2D.png",
-      sep = ""
-    ),
-    fun.sc.umap.plot.single.2D(
-      # Seurat object
-      list.analysis.subset,
-      # Variable for labeling clusters
-      "recluster",
-      # Variable for fill color
-      "Group2",
-      # Color scheme
-      ggsci::pal_npg("nrc")(10)
-    ),
-    height = 8,
-    width = 10,
-    dpi = 700
-  )
-
-
-
-  DefaultAssay(list.analysis.subset) <- "RNA"
-
-
-  ken.list <- c(
-    # Secretory Cell Markers (Orig.recluster # 12)
-    "SFTPB","HLA-DPB1","LTF",
-    "KLK13","HP","SCGB3A2",
-    "HLA-DQA1","HLA-DPA1","RNASE1",
-    "HLA-DQA2",
-    # Goblet Cell Markers
-    "ITLN1","FOXA3","MUC5AC",
-    "MUC5B","SPDEF","XBP1",
-    "TF",
-    # Extra markers
-    "TMEM45A","ATOH8","CP",
-    "CFTR","FOXI1","SCGB1A1",
-    "FOXJ1","KRT5","NKX2-1","IFI27","IL1R1",
-    "IL1A","IL1B","IL16",
-    "ICAM1","CEACAM6","SERPINB3","BSND",
-    "ASCL3","CLCNKB","ATP6V1C2",
-    "POU2F3","ALOX5","IL25",
-    "GRP","ASCL1","CALCA"
-  )
-
-
-  ggsave(
-    paste(
-      list.p$a.path,
-      "D28.integrated.umap.secretory.subs.exp.TF.png",
-      sep = ""
-    ),
-    fun.sc.umap.plot.panel2.2D(
-      # Seurat Object
-      list.analysis.subset,
-      # Group variable
-      "recluster",
-      # Gene name
-      "TF",
-      # Color scheme
-      col1[1:length(
-        levels(
-          list.analysis.subset@meta.data[["recluster"]]
-        )
-      )],
-      # Color Names
-      c(
-        levels(
-          list.analysis.subset@meta.data[["recluster"]]
-        )
+  d.prop.sum <- setNames(
+    aggregate(
+      d.prop[["Proportion"]],
+      list(
+        d.prop[["recluster"]]
+        ),
+      FUN = sum
       ),
-      # legend x-position
-      0.95,
-      # legend y-position
-      0.95
-    ),
-    height = 8,
-    width = 20,
-    dpi = 700
-  )
+    c("recluster","Proportion")
+    )
+  write.table(
+    d.prop.sum,
+    "analysis/recluster/table.recluster.prop.summary.txt",
+    col.names = T,
+    row.names = F,
+    sep = "\t"
+    )
 
-  lapply(ken.list,
-         function(x)
-           ggsave(
-             paste(
-               "Analysis/Integrated/20240603.D28.integrated.exp.umaps/",x,".png",
-               sep = ""
-             ),
-             fun.sc.umap.plot.panel2.2D(
-               # Seurat Object
-               list.analysis,
-               # Group variable
-               "CellType",
-               # Gene name
-               x,
-               # Color scheme
-               col1[1:length(
-                 levels(
-                   list.analysis.subset@meta.data[["CellType"]]
-                 )
-               )],
-               # Color Names
-               c(
-                 levels(
-                   list.analysis.subset@meta.data[["CellType"]]
-                 )
-               ),
-               # legend x-position
-               0.95,
-               # legend y-position
-               0.95
-             ),
-             height = 10,
-             width = 24,
-             dpi = 300
-           ))
+  # Reclustered gene expression plots
+  sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc) {
+    lg <- list.g
+    d <- so
+    lg <- unique(lg[lg %in% SeuratObject::Features(d)])
+    lg.abs <- subset(lg, !(lg %in% SeuratObject::Features(d)))
+    # Create plots
+    if(Sys.info()[["sysname"]] != "Windows" &
+       parl == TRUE){
+      parallel::mclapply(
+        mc.cores = ceiling(
+          parallel::detectCores()*
+            core.perc
+        ),
+        lg,
+        function(x) {
+          pg <- sc.umap.panel.gene(
+            d,
+            md.var,
+            x,
+            col.scheme,
+            col.names,
+            leg.x,
+            leg.y
+          )
+          # Save each plot
+          ggplot2::ggsave(
+            paste("analysis/recluster/gene/plot.umap.exp.",x,".png",sep = ""),
+            pg,
+            height = 12,
+            width = 36,
+            dpi = 700
+          )
+        }
+      )
 
+    }
+    if(Sys.info()[["sysname"]] == "Windows"){
+      lapply(
+        lg,
+        function(x) {
+          pg <- sc.umap.panel.gene(
+            d,
+            md.var,
+            x,
+            col.scheme,
+            col.names,
+            leg.x,
+            leg.y
+          )
+          # Save each plot
+          ggplot2::ggsave(
+            paste("analysis/recluster/gene/plot.umap.exp.",x,".png",sep = ""),
+            pg,
+            height = 12,
+            width = 36,
+            dpi = 700
+          )
+        }
+      )
 
-}
+    }
+    if(Sys.info()[["sysname"]] != "Windows" & parl == FALSE){
+      lapply(
+        lg,
+        function(x) {
+          pg <- sc.umap.panel.gene(
+            d,
+            md.var,
+            x,
+            col.scheme,
+            col.names,
+            leg.x,
+            leg.y
+          )
+          # Save each plot
+          ggplot2::ggsave(
+            paste("analysis/recluster/gene/plot.umap.exp.",x,".png",sep = ""),
+            pg,
+            height = 12,
+            width = 36,
+            dpi = 700
+          )
+        }
+      )
+
+    }
+    if(length(lg.abs) > 0) {
+      print(
+        paste(
+          lg.abs,
+          "was not found; plots for this gene will be excluded from the final list...",
+          sep = " "
+        )
+      )
+    }
+  }
+  sc.umap.panel.gene.list(
+    # Gene list
+    list.genes[[1]],
+    # Seurat Object
+    d,
+    # Group variable
+    "recluster",
+    # Color scheme
+    col.univ()[1:length(levels(d@meta.data[["recluster"]]))],
+    # Color Names
+    c(levels(d@meta.data[["recluster"]])),
+    # legend x-position
+    0.95,
+    # legend y-position
+    0.95,
+    # Run in parallel? (set to FALSE if on Windows)
+    parl,
+    # Percentage of available cores to use
+    core.perc
+    )
+
+  return(d)
+  }
 
 
 
