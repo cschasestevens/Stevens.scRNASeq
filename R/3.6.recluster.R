@@ -322,6 +322,7 @@ sc.recluster.data <- function(
       )
     }
   }
+  SeuratObject::DefaultAssay(d) <- "RNA"
   sc.umap.panel.gene.list(
     # Gene list
     list.genes[[1]],
