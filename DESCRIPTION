@@ -20,6 +20,8 @@ Imports:
   SoupX,
   scDblFinder,
   SingleCellExperiment,
+  SummarizedExperiment,
+  MAST,
   viridis,
   BiocGenerics,
   BiocParallel,
@@ -33,4 +35,5 @@ Imports:
   ComplexHeatmap,
   magrittr,
   ggnewscale,
-  EnhancedVolcano
+  EnhancedVolcano,
+  lazyeval
