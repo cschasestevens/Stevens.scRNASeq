@@ -11,7 +11,7 @@ sc.top10.deg.heatmap(l.deg, so, cl.var, hm.w, hm.h, fs.c, fs.r, c.name)
 
 \item{so}{An object of class Seurat.}
 
-\item{cl.var}{Character string containing the name of the cluster variable for cell type predictions.}
+\item{cl.var}{Character string containing the name of the clustering variable.}
 
 \item{fs.c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 

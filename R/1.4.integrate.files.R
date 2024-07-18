@@ -4,7 +4,7 @@
 #'
 #' @param l.so List of processed Seurat objects to be integrated.
 #' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
-#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @param core.perc Proportion (as a numeric value) of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
 #' @return A Seurat object containing integrated data for all samples present in a scRNA-Seq experiment.
 #' @examples
 #'

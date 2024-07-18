@@ -1,0 +1,1538 @@
+---
+title: "scRNA-Seq Main"
+output: 
+  html_document: 
+    toc: yes
+    toc_float: TRUE
+    toc_depth: 2
+    theme: cerulean
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = F, 
+                      warning = F,
+                      message = F,
+                      dpi = 600,
+                      fig.width = 7,
+                      cache = T,
+                      dev = "png")
+
+```
+
+
+# **Load Libraries and Plot Themes**
+
+```{r, echo=F, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Loads all libraries, color schemes, and plot themes
+
+source("Scripts/3.1.processing.libs.themes.R",
+       local = knitr::knit_global())
+
+
+```
+
+
+
+**Input Parameters**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Parameter list
+
+## Global parameters
+
+list.p <- data.frame(
+  # Path to integrated Seurat object
+  d.path = "Processed/",
+  # Number of metadata columns in input data
+  md = 17,
+  a.path = "Analysis/")
+
+## Study groups
+
+list.p.cols <- c(
+  "Code","Airway","Batch",
+  "Knockout","Time"
+)
+
+
+### Hong list
+
+list.g.1 <- c(
+  "CFTR","FOXI1","SCGB1A1",
+  "SCGB3A2","MUC5AC","MUC5B",
+  "FOXJ1","KRT5","SFTPB",
+  "IFI27","IL1R1","IL1A",
+  "IL1B","IL16","NKX2-1",
+  # Secretory Cell Markers (Orig.recluster # 12)
+  "SFTPB","HLA-DPB1","LTF",
+  "KLK13","HP","SCGB3A2",
+  "HLA-DQA1","HLA-DPA1","RNASE1",
+  "HLA-DQA2",
+  # Goblet Cell Markers
+  "ITLN1","FOXA3","MUC5AC",
+  "MUC5B","SPDEF","XBP1",
+  "TF"
+  )
+
+### Ken list 1: rare cell genes
+
+list.g.2 <- c(
+  "CFTR","FOXI1","BSND",
+  "ASCL3","CLCNKB","ATP6V1C2",
+  "POU2F3","ALOX5","IL25",
+  "GRP","ASCL1","CALCA"
+  )
+
+
+### Levels for Grouping Cell Type Clusters
+
+list.ct <- c(
+  "Secretory",
+  "SecretoryCiliated",
+  "Ciliated",
+  "Basal",
+  "Suprabasal",
+  "Cycling",
+  "Ionocyte/NE"
+)
+
+
+
+# Load integrated dataset (if not in global environment)
+list.analysis <- d.merged
+
+d.integrated <- readRDS(
+  paste(
+    list.p$d.path,
+    "Analysis/RDS/ lsae.analysis.rds",
+    sep = ""
+    )
+)
+
+## If PCA and UMAP have already been run
+
+list.analysis <- readRDS(
+  "Analysis/RDS/lsae.analysis.rds"
+)
+
+
+# Reference dataset for cell-type prediction
+
+## Reference
+
+data.ref <- readRDS(
+  "Reference.sets/Ken_HBE10xLSAE5codes1mSAE_cls19noLQ15_seurat.rds"
+  )
+
+
+# Subset integrated data
+
+list.analysis.subset <- readRDS(
+  "Analysis/RDS/D28.integrated.analysis.annotated.secretory.subs.rds"
+  )
+
+
+## 20240603 Ken integrated analyses
+
+list.analysis <- readRDS(
+  "Analysis/RDS/D28.integrated.analysis.annotated.rds"
+  )
+
+
+
+
+
+
+```
+
+
+
+
+
+# **PCA and UMAP**
+
+## After integrating all data, check representation of clusters by multiple codes and separation of clusters using UMAP and PCA plots. Quickly visualize dimension loadings using Seurat plotting functions or create ggplot2 objects.
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#---- PCA ----
+
+# Run PCA
+
+source("Scripts/3.2.1.pca.R",
+       local = knitr::knit_global())
+
+
+list.analysis <- fun.sc.pca(
+  list.analysis
+  )
+
+
+# Visualize dim loadings and elbow plot
+
+VizDimLoadings(
+  object = list.analysis,
+  dims = 1:2,
+  reduction = "pca")
+
+ElbowPlot(
+  list.analysis,
+  reduction = "pca",
+  ndims = 50)
+
+
+# Create PCA loadings plots
+
+p.pca.1 <- fun.sc.pca.plot(
+  list.analysis,
+  list.p.cols
+  )
+
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "QC/",
+    "pca.D28.integrated.png",
+    sep = ""
+  ),
+  p.pca.1,
+  width = 36,
+  height = 12,
+  dpi = 700)
+
+
+
+
+
+#---- UMAP ----
+
+# Run UMAP
+
+list.analysis <- RunUMAP(
+  object = list.analysis,
+  dims = 1:20,
+  n.components = 3
+  )
+
+
+source("Scripts/3.2.2.umap.R",
+       local = knitr::knit_global())
+
+
+list.analysis <- AddMetaData(
+  list.analysis,
+  factor(
+    list.analysis@meta.data$seurat_clusters,
+    levels = c(
+      seq.int(
+        0,
+        length(
+          unique(
+            list.analysis@meta.data$seurat_clusters
+            )
+          ) - 1,
+        1
+        )
+      )
+    ),
+  col.name = "seurat.clusters"
+  )
+
+p.umap.1 <- fun.sc.umap.sum(
+  list.analysis,
+  c(
+    "seurat.clusters",
+    list.p.cols
+  ),
+  col1
+  )
+
+
+# Save UMAP summary
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "QC/2.umap.D28.integrated.summary.png",
+    sep = ""
+  ),
+  p.umap.1,
+  height = 16,
+  width = 32,
+  dpi = 400
+  )
+
+
+
+saveRDS(
+  list.analysis,
+  paste(
+    list.p$a.path,
+    "lsae.analysis.D28.rds",
+    sep = "")
+  )
+
+remove(data.ref)
+
+#### !!!! D24S cluster 22 D28 KO and D31S cluster 2 D7 control are from single codes
+
+```
+
+
+
+
+
+# **UMAP Extended (Plot Subsets of a Seurat Object)**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#---- Subset and save plot panel ----
+
+# Subset data
+
+list.analysis.subs <- data.frame(
+  "Comp.no" = c(1,2,3,4),
+  "Airway" = c("SAE","SAE","LAE","LAE"),
+  "Knockout" = c("Control","KO","Control","KO")
+  )
+
+list.analysis.subs.d <- setNames(
+  lapply(
+    list.analysis.subs[["Comp.no"]],
+    function(x) {
+      l.sub <- subset(
+        list.analysis,
+        subset = Airway == list.analysis.subs[x,"Airway"] &
+          Knockout == list.analysis.subs[x,"Knockout"]
+        )
+      
+      DefaultAssay(l.sub) <- "RNA"
+      
+      return(l.sub)
+      
+      }
+    ),
+  c(
+    paste(
+      list.analysis.subs[["Airway"]],
+      list.analysis.subs[["Knockout"]],
+      sep = "."
+      )
+    )
+  )
+
+
+
+
+
+# Create UMAPs and save
+
+list.analysis.subs.p <- ggarrange(
+  plotlist = lapply(
+    list.analysis.subs[["Comp.no"]],
+    function(x) {
+      
+      p.list <- fun.sc.umap.plot.panel(
+        # Seurat Object
+        list.analysis.subs.d[[x]],
+        # Label variable
+        "CellType",
+        # Fill variable
+        "CellType",
+        # Axis label angle
+        31,
+        # Text function (text or text_repel)
+        "text_repel",
+        # Color scheme
+        col3a[1:length(
+          levels(
+            list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+            )
+          )
+          ],
+        # Color Names
+        c(
+          levels(
+            list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+            )
+          ),
+        # Plot title
+        names(list.analysis.subs.d)[[x]]
+        ) 
+      }
+    ),
+  nrow = 2,
+  ncol = 2,
+  common.legend = F
+  )
+
+
+## Gene expression
+
+### Gene list
+
+list.analysis.subs.g.list <- lapply(
+  c(
+    # Goblet cell genes
+    "ITLN1","FOXA3","SPDEF","XBP1","TF","MUC5AC","MUC5B",
+    # Small airway secretory cell genes
+    "TRPC6","RNASE1","LTF","SGSM1","SFTPA2",
+    "SFTPA1","AASS","HP","NPR3","ENPP3",
+    "RASGRP1","CYP1A1","ATP13A4","GGT1","CEACAM6",
+    "SLC5A5","CAVIN2","PI3","B4GALNT2","CILP",
+    "SCNN1G","GPC3"
+    ),
+  function(y) {
+    
+    ## Create plot
+    
+      list.analysis.subs.g <- ggarrange(
+        plotlist = lapply(
+          list.analysis.subs[["Comp.no"]],
+          function(x) {
+            
+            p.list <- fun.sc.umap.plot.panel2(
+              # Seurat Object
+              list.analysis.subs.d[[x]],
+              # Group variable
+              "CellType",
+              # Gene name
+              y,
+              # Axis label angle
+              31,
+              # Text function (text or text_repel)
+              "text_repel",
+              # Color scheme
+              col3a[1:length(
+                levels(
+                  list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+                  )
+                )
+                ],
+              # Color Names
+              c(
+                levels(
+                  list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+                  )
+                )
+              ) 
+            }
+          ),
+      nrow = 4,
+      ncol = 1,
+      labels = c(
+        names(
+          list.analysis.subs.d
+          )
+        ),
+      common.legend = F
+      )
+  
+  ## Save UMAP summary
+  
+  ggsave(
+    paste(
+      list.p$a.path,
+      "umap.KO.summary.",
+      y,
+      ".png",
+      sep = ""
+    ),
+    list.analysis.subs.g,
+    height = 24,
+    width = 20,
+    dpi = 700
+    )
+  }
+  )
+
+
+## Single
+
+list.analysis.subs.g <- ggarrange(
+  plotlist = lapply(
+    list.analysis.subs[["Comp.no"]],
+    function(x) {
+      
+      p.list <- fun.sc.umap.plot.panel2(
+        # Seurat Object
+        list.analysis.subs.d[[x]],
+        # Group variable
+        "CellType",
+        # Gene name
+        "SCGB3A2",
+        # Axis label angle
+        31,
+        # Text function (text or text_repel)
+        "text_repel",
+        # Color scheme
+        col1[1:length(
+          levels(
+            list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+            )
+          )
+          ],
+        # Color Names
+        c(
+          levels(
+            list.analysis.subs.d[[x]]@meta.data[["CellType"]]
+            )
+          )
+        ) 
+      }
+    ),
+  nrow = 4,
+  ncol = 1,
+  labels = c(
+    names(
+      list.analysis.subs.d
+      )
+    ),
+  common.legend = F
+  )
+
+
+# Save UMAP summary
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "umap.KO.summary.SCGB3A2.png",
+    sep = ""
+  ),
+  list.analysis.subs.g,
+  height = 24,
+  width = 20,
+  dpi = 700
+  )
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# **Integration QC**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+# Create violin plot to visualize number of features, counts, and percentage of mitochondrial gene reads to identify low quality clusters
+
+d.analysis.qc <- list.analysis@meta.data[,c(
+  "nFeature_RNA",
+  "nCount_RNA",
+  "percent.mt",
+  "seurat.clusters")]
+
+source("Scripts/3.3.qc.cluster.violin.R",
+       local = knitr::knit_global())
+
+
+p.qc.vio <- ggarrange(
+  plotlist = lapply(
+    names(
+      dplyr::select(
+        d.analysis.qc,
+        -.data[["seurat.clusters"]]
+      )
+    ),
+    function(x)
+      fun.qc.vio(
+        d.analysis.qc,
+        x,
+        "seurat.clusters"
+      )
+  ),
+  common.legend = T,
+  legend = "none",
+  nrow = 1,
+  ncol = 3
+  )
+
+
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "QC/3.vio.D28.integrated.QC.plots.png",
+    sep = ""
+  ),
+  p.qc.vio,
+  width = 24,
+  height = 8,
+  dpi = 700)
+
+
+
+
+
+```
+
+
+
+
+
+# **Cluster (Cell Type) Annotation**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#---- Marker Genes and Reference-based Cell Type Predictions ----
+
+source(
+  "Scripts/3.4.1.predict.clusters.R",
+  local = knitr::knit_global()
+  )
+
+# Change active grouping variable
+
+list.analysis <- SetIdent(
+  list.analysis,
+  value = list.analysis@meta.data[["seurat.clusters"]]
+  )
+
+
+list.analysis <- fun.predict.clusters(
+  # Reference set
+  data.ref,
+  # Query set
+  list.analysis,
+  # Allocated memory of output results (in Gb)
+  5000
+  )
+
+
+### If successful, remove reference set to conserve memory
+
+remove(
+  data.ref
+  )
+
+
+## Save predictions and overwrite analysis rds object
+
+list.analysis[["Prediction Scores"]] <- dplyr::select(
+    list.analysis$`Predicted Clusters`@meta.data,
+    c(
+      list.p.cols,
+      "seurat.clusters",
+      names(
+        list.analysis$`Predicted Clusters`@meta.data[grepl(
+          "predicted|prediction",
+          names(
+            list.analysis$`Predicted Clusters`@meta.data
+            )
+          )]
+        )
+      )
+  )
+
+write.table(
+  list.analysis$`Prediction Scores`,
+  paste(
+    list.p$a.path,
+    "predicted.types.txt",
+    sep = ""
+  ),
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+)
+
+
+
+
+
+#---- Visualize predicted classes ----
+
+## Number of cells with prediction scores > 0.5
+
+table(
+  list.analysis$`Predicted Clusters`$prediction.score.max >
+    0.5
+  )
+
+
+## Plot prediction score distribution and UMAPs comparing query and reference
+
+source(
+  "Scripts/3.4.2.predict.dist.proportion.R",
+  local = knitr::knit_global()
+  )
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "D28.integrated.predicted.scores.dist.png",
+    sep = ""
+    ),
+  fun.dist.score(
+    list.analysis$`Prediction Scores`
+  ),
+  width = 8,
+  height = 8,
+  dpi = 700
+  )
+
+
+## Cell Type Proportion Summary and Consensus Type
+
+list.analysis[["pred.prop.group"]] <- dplyr::filter(
+    fun.predict.prop(
+      list.analysis$`Prediction Scores`,
+      list.p.cols
+      ),
+    .data[["Proportion"]] >
+      0.001
+    )
+
+test <- dplyr::filter(
+    fun.predict.prop.alt(
+      list.analysis@meta.data,
+      "CellType",
+      c("Airway","Knockout")
+      ),
+    .data[["Proportion"]] >
+      0.001
+    )
+
+
+list.analysis[["pred.prop.summary"]] <- setNames(
+  aggregate(
+    list.analysis[["pred.prop.group"]][["Proportion"]],
+    list(
+      list.analysis[["pred.prop.group"]][["seurat.clusters"]],
+      list.analysis[["pred.prop.group"]][["predicted.id"]]
+      ),
+    FUN = sum
+    ),
+  c(
+    "seurat.clusters",
+    "predicted.id",
+    "Proportion")
+  )
+
+### Save outputs
+
+list.prop <- fun.prop.generic(
+  list.analysis.subset@meta.data,
+  "seurat_clusters",
+  c(
+    "Code","Airway","Knockout"
+    )
+  )
+
+write.table(
+  list.prop,
+  paste(
+    "Analysis/Integrated/",
+    "D28.integrated.prop.airway.secretory.only.txt",
+    sep = ""
+    ),
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+  )
+
+write.table(
+  list.analysis$pred.prop.summary,
+  paste(
+    list.p$a.path,
+    "D28.integrated.predicted.prop.summary.txt",
+    sep = ""
+  ),
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+)
+
+
+
+
+
+#---- Cluster Annotation ----
+
+## Return cell type predictions and assign highest ranked type to each cell (requires pred.prop.summary from previous step)
+
+source(
+  "Scripts/3.4.3.cluster.assignment.R",
+  local = knitr::knit_global()
+  )
+
+## Manual assignment of CellType and CellGroup columns based on marker gene lists (if automatic assignment is unsuccessful)
+list.analysis.ct <- dplyr::select(
+  dplyr::left_join(
+    list.analysis$`Predicted Clusters`@meta.data["seurat.clusters"],
+    data.frame(
+  "seurat.clusters" = paste(sort(unique(list.analysis$`Predicted Clusters`@meta.data$seurat.clusters))),
+  "CellType" = factor(
+    c("0.Basal","1.Suprabasal","2.Secretory","3.SecretoryCiliated","4.Secretory",
+      "5.SecretoryCiliated","6.Secretory","7.Ciliated","8.Ciliated","9.Ciliated",
+      "10.Cycling","11.Secretory","12.SecretoryCiliated","13.Secretory","14.Cycling",
+      "15.SecretoryCiliated","16.Secretory","17.SecretoryCiliated","18.Rare","19.Secretory",
+      "20.Rare"),
+    levels = c("0.Basal","1.Suprabasal","2.Secretory","3.SecretoryCiliated","4.Secretory",
+      "5.SecretoryCiliated","6.Secretory","7.Ciliated","8.Ciliated","9.Ciliated",
+      "10.Cycling","11.Secretory","12.SecretoryCiliated","13.Secretory","14.Cycling",
+      "15.SecretoryCiliated","16.Secretory","17.SecretoryCiliated","18.Rare","19.Secretory",
+      "20.Rare")),
+  "CellGroup" = factor(
+    c("Basal","Suprabasal","Secretory","SecretoryCiliated","Secretory",
+      "SecretoryCiliated","Secretory","Ciliated","Ciliated","Ciliated",
+      "Cycling","Secretory","SecretoryCiliated","Secretory","Cycling",
+      "SecretoryCiliated","Secretory","SecretoryCiliated","Rare","Secretory",
+      "Rare"),
+    levels = c("Basal","Suprabasal","Cycling","Ciliated","SecretoryCiliated",
+      "Secretory","Rare"))
+  ),
+  by = "seurat.clusters"),
+  .data[["CellType"]],.data[["CellGroup"]])
+
+list.analysis$`Predicted Clusters` <- AddMetaData(
+  list.analysis$`Predicted Clusters`,
+  list.analysis.ct[["CellType"]],
+  col.name = "CellType"
+  )
+
+list.analysis$`Predicted Clusters` <- AddMetaData(
+  list.analysis$`Predicted Clusters`,
+  list.analysis.ct[["CellGroup"]],
+  col.name = "CellGroup"
+)
+
+## UMAP with final cluster assignments (Type and Group)
+
+### Cell Type
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "D28.integrated.umap.annotated.celltype.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot(
+    list.analysis$`Predicted Clusters`,
+    c(
+      "CellType"
+    ),
+    31.5,
+    "text_repel",
+    col1
+  ),
+  height = 8,
+  width = 8,
+  dpi = 700
+  )
+
+### Cell Group
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "D28.integrated.umap.annotated.cellgroup.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot(
+    list.analysis$`Predicted Clusters`,
+    c(
+      "CellGroup"
+    ),
+    31.5,
+    "text_repel",
+    col1
+  ),
+  height = 8,
+  width = 8,
+  dpi = 700
+  )
+
+
+
+
+
+## Save analysis rds
+
+saveRDS(
+  list.analysis$`Predicted Clusters`,
+  paste(
+    list.p$a.path,
+    "D28.integrated.analysis.annotated.rds",
+    sep = ""
+    )
+  )
+
+
+
+
+
+```
+
+
+
+
+
+# **Visualize Marker Genes for Validation of Cluster Annotations**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#---- Plot gene expression: UMAP and violin plot panel ----
+
+## Ensure all genes in gene list are present in Seurat Object before plotting
+
+DefaultAssay(list.analysis$`Predicted Clusters`) <- "RNA"
+
+list.analysis.gene.list <- fun.sc.umap.plot2(
+  list.analysis$`Predicted Clusters`,
+  "CellType",
+  list.g.1,
+  29,
+  "text_repel",
+  col1
+  )
+
+
+## Save plots in designated folder
+
+lapply(
+  list.g.1,
+  function(x) {
+    
+    ggsave(
+  paste(
+    list.p$a.path,
+    "Integrated/D28.gene.exp.umaps/",
+    x,
+    ".png",
+    sep = ""
+  ),
+  list.analysis.gene.list[[x]],
+  height = 8,
+  width = 26,
+  dpi = 400
+  )
+    
+  }
+)
+
+
+
+
+
+#---- Marker Gene Plot: Heatmap ----
+
+## Determine marker genes (if not already present)
+## Change seurat_clusters to match grouped cell types
+### Convert cell groups to numeric variable
+d.g <- data.frame("CellGroup" = levels(list.analysis@meta.data$CellGroup),
+                  "seurat_clusters" = as.factor(seq.int(1,length(levels(list.analysis@meta.data$CellGroup)),1)))
+
+### assign new seurat_clusters and add to metadata
+d.g2 <- dplyr::left_join(data.frame("CellGroup" = list.analysis@meta.data$CellGroup),d.g, by = "CellGroup")
+list.analysis <- AddMetaData(list.analysis,d.g2[["seurat_clusters"]],col.name = "seurat_clusters")
+list.analysis <- SetIdent(list.analysis,value = list.analysis@meta.data$seurat_clusters)
+
+
+if(
+    !file.exists(
+      paste(
+        list.p$a.path,
+        "marker.genes.txt",
+        sep = ""
+      ) 
+    )
+  ) {
+    
+    cl.mark <- FindAllMarkers(
+      list.analysis,
+      verbose = T    
+      )
+    
+    write.table(
+      cl.mark,
+      paste(
+        list.p$a.path,
+        "marker.genes.txt",
+        sep = ""
+      ),
+      col.names = T,
+      row.names = F,
+      sep = "\t"
+    )
+    
+}
+
+
+
+
+## Source function
+source(
+  "Scripts/3.5.heatmaps.R",
+  local = knitr::knit_global()
+  )
+
+
+
+
+list.analysis$cluster.assignments <- list.analysis$`Predicted Clusters`@meta.data[,c("CellType","CellGroup")]
+
+
+h.out <- fun.hm.top10.mark(
+  # Seurat object
+  list.analysis$`Predicted Clusters`,
+  # Marker gene list
+  "D28.integrated.marker.genes.txt",
+  # Cluster column
+  "CellType",
+  # Heatmap width
+  36,
+  # Heatmap height
+  12,
+  # Column fontsize
+  4,
+  # Row fontsize
+  8
+  )
+
+
+## Save
+
+png("Analysis/D28.integrated.heatmap.marker.genes.png",
+  width = 40,
+  height = 14,
+  units = "cm",
+  res = 1000
+  )
+
+print(h.out)
+
+dev.off()
+
+
+
+
+
+```
+
+
+
+
+
+# **Reclustering of Specific Cell Types**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+#---- Recluster ----
+
+## Subset annotated Seurat object and re-run PCA/UMAP, display marker genes
+
+list.analysis.subset <- subset(
+  list.analysis,
+  subset = CellGroup == "Secretory" |
+    CellGroup == "SecretoryCiliated"
+    )
+
+## Re-run PCA/UMAP
+
+### PCA
+
+list.analysis.subset <- fun.sc.pca(
+  list.analysis.subset
+  )
+
+ggsave(
+  paste(
+    "Analysis/",
+    "QC/",
+    "D28.integrated.pca.secretory.subs.png",
+    sep = ""
+  ),
+  fun.sc.pca.plot(
+    list.analysis.subset,
+    c(
+      "Code",
+      "Airway",
+      "Batch"
+    )
+  ),
+  width = 24,
+  height = 12,
+  dpi = 700)
+
+
+### UMAP
+
+list.analysis.subset <- SetIdent(list.analysis.subset, value = list.analysis.subset@meta.data$CellType)
+
+list.analysis.subset <- RunUMAP(
+  object = list.analysis.subset,
+  dims = 1:20,
+  n.components = 3
+  )
+
+DefaultAssay(list.analysis.subset) <- "integrated"
+
+list.analysis.subset <- FindNeighbors(
+  list.analysis.subset,
+  reduction = "umap",
+  dims = 1:3,
+  verbose = T
+  )
+
+list.analysis.subset <- FindClusters(
+  list.analysis.subset,
+  cluster.name = "recluster",
+  resolution = 0.3
+  )
+
+
+ggsave(
+  paste(
+    "Analysis/",
+    "QC/D28.integrated.umap.summary.secretory.subs.png",
+    sep = ""
+  ),
+  fun.sc.umap.sum(
+  list.analysis,
+  c(
+    "CellType",
+    "recluster",
+    "Code",
+      "Airway",
+      "Batch"
+  ),
+  c(col1,ggsci::pal_jama("default")(5))
+  ),
+  height = 24,
+  width = 36,
+  dpi = 300
+  )
+
+
+#---- QC ----
+
+d.analysis.qc <- list.analysis.subset@meta.data[,c(
+  "nFeature_RNA",
+  "nCount_RNA",
+  "percent.mt",
+  "recluster")]
+
+source("Scripts/3.3.qc.cluster.violin.R",
+       local = knitr::knit_global())
+
+
+p.qc.vio <- ggarrange(
+  plotlist = lapply(
+    names(
+      dplyr::select(
+        d.analysis.qc,
+        -.data[["recluster"]]
+      )
+    ),
+    function(x)
+      fun.qc.vio(
+        d.analysis.qc,
+        x,
+        "recluster"
+      )
+  ),
+  common.legend = T,
+  legend = "none",
+  nrow = 1,
+  ncol = 3
+  )
+
+
+
+ggsave(
+  paste(
+    "Analysis/",
+    "QC/D28.integrated.vio.secretory.subs.png",
+    sep = ""
+  ),
+  p.qc.vio,
+  width = 24,
+  height = 8,
+  dpi = 700)
+
+#---- Cell Type and New Cluster UMAPS ----
+
+### Cell Type
+
+ggsave(
+  paste(
+    "Analysis/Integrated/",
+    "D28.integrated.umap.cellgroup.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot.2D(
+    list.analysis,
+    c(
+      "CellGroup"
+    ),
+    col1
+  ),
+  height = 8,
+  width = 10,
+  dpi = 700
+  )
+
+
+### Recluster
+
+ggsave(
+  paste(
+    "Analysis/Integrated/",
+    "D28.integrated.umap.secretory.subs.reclustering.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot.2D(
+    list.analysis,
+    c(
+      "recluster"
+    ),
+    col1
+  ),
+  height = 8,
+  width = 10,
+  dpi = 700
+  )
+
+
+#---- Marker Gene Plot: Heatmap ----
+
+## Source function
+
+source(
+  "Scripts/3.6.reclustered.marker.genes.R",
+  local = knitr::knit_global()
+  )
+
+list.analysis.subset <- SetIdent(list.analysis.subset, value = list.analysis.subset@meta.data$recluster)
+
+
+cl.mark <- fun.marker.gene.recluster(
+  list.analysis.subset,
+  "Analysis/Integrated/D28.integrated.marker.genes.secretory.subs.txt"
+  )
+
+h.out <- fun.hm.marker.gene.recluster(
+  # List object containing: Seurat object, marker gene list (either in list or in analysis folder), and cluster assignments (in list)
+  list(
+    "Predicted Clusters" = list.analysis.subset,
+    "Marker Genes" = cl.mark
+    ),
+  # Marker gene list
+  "D28.integrated.marker.genes.secretory.subs.txt",
+  # Heatmap width
+  32,
+  # Heatmap height
+  10,
+  # Column fontsize
+  6,
+  # Row fontsize
+  6
+  )
+
+
+## Save
+
+png("Analysis/Integrated/D28.integrated.heatmap.marker.genes.secretory.subs.png",
+  width = 40,
+  height = 14,
+  units = "cm",
+  res = 1000
+  )
+
+print(h.out)
+
+dev.off()
+
+
+#---- Cluster Counts ----
+
+## Source function
+
+source(
+  "Scripts/3.3.qc.cluster.violin.R",
+  local = knitr::knit_global()
+  )
+
+## Output and save table
+
+cl.counts <- fun.cluster.counts(
+  list.analysis.subset,
+  "recluster",
+  "Code",
+  "Airway",
+  "Knockout",
+  "secretory"
+  )
+
+cl.counts <- fun.prop.generic(
+  list.analysis.subset@meta.data,
+  "recluster",
+  c("Code",
+  "Airway",
+  "Knockout")
+  )
+
+write.table(
+  cl.counts,
+  paste(
+    "Analysis/Integrated/",
+    "D28.integrated.prop.code.airway.knockout.secretory.only.txt",
+    sep = ""
+    ),
+  col.names = T,
+  row.names = F,
+  sep = "\t"
+  )
+
+
+#---- Single UMAP with Multiple Metadata Input ----
+
+# Load reclustered data (if not already present)
+
+list.analysis.subset <- readRDS("Analysis/RDS/D28.original.analysis.secretory.rds")
+
+## Add custom label
+
+### Re-grouping of clusters
+
+cl.custom <- data.frame(
+  "recluster" = seq.int(
+    1,18,1
+    ),
+  "Group" = factor(
+    c(
+      "Secretory.set1","Secretory.set1","SecretoryCiliated","SecretoryCiliated","Secretory.set1",
+      "SecretoryCiliated","Secretory.set1","Secretory.set2","Secretory.set2","SecretoryCiliated",
+      "Secretory.set2","Secretory.set2","12.Secretory","Secretory.set1","SecretoryCiliated",
+      "Secretory.set1","16.SecretoryCiliated","SecretoryCiliated"),
+      levels = c(
+        "12.Secretory","16.SecretoryCiliated",
+        "Secretory.set1","Secretory.set2","SecretoryCiliated"
+        )
+    )
+  )
+
+cl.custom2 <- setNames(
+  as.data.frame(
+    as.numeric(
+      list.analysis.subset@meta.data$recluster
+      )
+    ),
+  c(
+    "recluster"
+    )
+  )
+
+
+cl.custom3 <- dplyr::left_join(
+  cl.custom2,
+  cl.custom,
+  by = "recluster"
+  )
+
+list.analysis.subset <- AddMetaData(
+  list.analysis.subset,
+  metadata = cl.custom3$Group,
+  col.name = "Group2"
+  )
+
+
+
+# Save plot (either 3D or 2D)
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "umap.secretory.airway.2D.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot.single.2D(
+    # Seurat object
+    list.analysis.subset,
+    # Variable for labeling clusters
+    "recluster",
+    # Variable for fill color
+    "Group2",
+    # Color scheme
+    ggsci::pal_npg("nrc")(10)
+  ),
+  height = 8,
+  width = 10,
+  dpi = 700
+  )
+
+
+
+DefaultAssay(list.analysis.subset) <- "RNA"
+
+
+ken.list <- c(
+  # Secretory Cell Markers (Orig.recluster # 12)
+  "SFTPB","HLA-DPB1","LTF",
+  "KLK13","HP","SCGB3A2",
+  "HLA-DQA1","HLA-DPA1","RNASE1",
+  "HLA-DQA2",
+  # Goblet Cell Markers
+  "ITLN1","FOXA3","MUC5AC",
+  "MUC5B","SPDEF","XBP1",
+  "TF",
+  # Extra markers
+  "TMEM45A","ATOH8","CP",
+  "CFTR","FOXI1","SCGB1A1",
+  "FOXJ1","KRT5","NKX2-1","IFI27","IL1R1",
+  "IL1A","IL1B","IL16",
+  "ICAM1","CEACAM6","SERPINB3","BSND",
+  "ASCL3","CLCNKB","ATP6V1C2",
+  "POU2F3","ALOX5","IL25",
+  "GRP","ASCL1","CALCA"
+  )
+
+
+ggsave(
+  paste(
+    list.p$a.path,
+    "D28.integrated.umap.secretory.subs.exp.TF.png",
+    sep = ""
+  ),
+  fun.sc.umap.plot.panel2.2D(
+              # Seurat Object
+              list.analysis.subset,
+              # Group variable
+              "recluster",
+              # Gene name
+              "TF",
+              # Color scheme
+              col1[1:length(
+                levels(
+                  list.analysis.subset@meta.data[["recluster"]]
+                  )
+                )],
+              # Color Names
+              c(
+                levels(
+                  list.analysis.subset@meta.data[["recluster"]]
+                  )
+                ),
+              # legend x-position
+              0.95,
+              # legend y-position
+              0.95
+              ),
+  height = 8,
+  width = 20,
+  dpi = 700
+  )
+
+lapply(ken.list,
+       function(x)
+         ggsave(
+  paste(
+    "Analysis/Integrated/20240603.D28.integrated.exp.umaps/",x,".png",
+    sep = ""
+  ),
+  fun.sc.umap.plot.panel2.2D(
+              # Seurat Object
+              list.analysis,
+              # Group variable
+              "CellType",
+              # Gene name
+              x,
+              # Color scheme
+              col1[1:length(
+                levels(
+                  list.analysis.subset@meta.data[["CellType"]]
+                  )
+                )],
+              # Color Names
+              c(
+                levels(
+                  list.analysis.subset@meta.data[["CellType"]]
+                  )
+                ),
+              # legend x-position
+              0.95,
+              # legend y-position
+              0.95
+              ),
+  height = 10,
+  width = 24,
+  dpi = 300
+  ))
+
+
+```
+
+
+
+
+
+# **Save RDS Objects**
+
+```{r, echo=T, fig.align= "center", results=T, message=T, warning=T, eval=T}
+
+## Integrated Analysis Seurat Object
+
+saveRDS(
+  list.analysis$`Predicted Clusters`,
+  paste(
+    list.p$a.path,
+    "RDS/D28.integrated.analysis.annotated.rds",
+    sep = ""
+    )
+  )
+
+
+## Integrated Analysis Marker Genes/Tables list
+
+saveRDS(
+  list.analysis[2:7],
+  paste(
+    list.p$a.path,
+    "RDS/lsae.analysis.list.rds",
+    sep = ""
+    )
+  )
+  
+  
+## Reclustered Seurat Object
+
+saveRDS(
+  list.analysis.subset,
+  paste(
+    "Analysis/RDS/D28.integrated.analysis.secretory.subs.rds",
+    sep = ""
+    )
+  )
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

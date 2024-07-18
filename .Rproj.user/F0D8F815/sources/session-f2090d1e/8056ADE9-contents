@@ -1,0 +1,699 @@
+#### Perform DGEA for each cell type comparing Knockout, Airway, and Time ####
+
+
+#---- Input Data ----
+
+# Create DGE object from Seurat
+
+fun.dge.input <- function(
+    so,
+    md.list
+    ) {
+  
+  # Input Seurat
+  
+  d <- so
+  
+  # Data matrix
+  
+  deg.mat <- as.matrix(
+    GetAssayData(
+      d,
+      "data",
+      assay = "RNA"
+      )
+    )
+  
+  # Metadata
+  
+  deg.cols <- data.frame(
+    d@meta.data[,c(
+      md.list
+    )]
+  )
+  
+  
+  # Output DGEA object (SingleCellExperiment) and Cell Type list
+  
+  deg.sc <- FromMatrix(
+    deg.mat,
+    cData = deg.cols
+  )
+  
+  deg.cel <- unique(
+    colData(
+      deg.sc
+    )[["CellType"]]
+  )
+  
+  return(
+    list(
+      "SCE" = deg.sc,
+      "CellType" = deg.cel
+    )
+  )
+  
+}
+
+
+# DGE object based on CellGroup
+
+fun.dge.input.g <- function(
+    so,
+    md.list
+) {
+  
+  # Input Seurat
+  
+  d <- so
+  
+  # Data matrix
+  
+  deg.mat <- as.matrix(
+    GetAssayData(
+      d,
+      "data",
+      assay = "RNA"
+    )
+  )
+  
+  # Metadata
+  
+  deg.cols <- data.frame(
+    d@meta.data[,c(
+      md.list
+    )]
+  )
+  
+  
+  # Output DGEA object (SingleCellExperiment) and Cell Type list
+  
+  deg.sc <- FromMatrix(
+    deg.mat,
+    cData = deg.cols
+  )
+  
+  deg.cel <- unique(
+    colData(
+      deg.sc
+    )[["CellGroup"]]
+  )
+  
+  return(
+    list(
+      "SCE" = deg.sc,
+      "CellGroup" = deg.cel
+    )
+  )
+  
+}
+
+
+
+
+
+#---- Subset of Input Data ----
+
+# Create DGE object from Seurat
+
+fun.dge.subset.input <- function(
+    so,
+    md.list,
+    c1,c2,
+    md1,md2,ct.col
+  ) {
+  
+  # Input Seurat
+  
+  d <- so
+  
+  # Subset
+  
+  d <- d[,
+         rownames(
+           d@meta.data
+           )[grepl(
+             c1,
+             d@meta.data[[md1]]
+             ) &
+               grepl(
+                 c2,
+                 d@meta.data[[md2]]
+                 )]]
+  
+  # Data matrix
+  
+  deg.mat <- as.matrix(
+    GetAssayData(
+      d,
+      "data",
+      assay = "RNA"
+    )
+  )
+  
+  # Metadata
+  
+  deg.cols <- data.frame(
+    d@meta.data[,c(
+      md.list
+    )]
+  )
+  
+  
+  # Output DGEA object (SingleCellExperiment) and Cell Type list
+  
+  deg.sc <- FromMatrix(
+    deg.mat,
+    cData = deg.cols
+  )
+  
+  deg.cel <- unique(
+    colData(
+      deg.sc
+    )[[ct.col]]
+  )
+  
+  return(
+    list(
+      "SCE" = deg.sc,
+      "CellGroup" = deg.cel
+    )
+  )
+  
+}
+
+
+
+
+
+#---- Single Subset of Input Data ----
+
+# Create DGE object from Seurat
+
+fun.dge.single.input <- function(
+    so,
+    md.list,
+    g.col
+) {
+  
+  # Input Seurat
+  
+  d <- so
+  
+  # Data matrix
+  
+  deg.mat <- as.matrix(
+    GetAssayData(
+      d,
+      "data",
+      assay = "RNA"
+    )
+  )
+  
+  # Metadata
+  
+  deg.cols <- data.frame(
+    d@meta.data[,c(
+      md.list
+    )]
+  )
+  
+  
+  # Output DGEA object (SingleCellExperiment) and Cell Type list
+  
+  deg.sc <- FromMatrix(
+    deg.mat,
+    cData = deg.cols
+  )
+  
+  deg.cel <- unique(
+    colData(
+      deg.sc
+    )[[g.col]]
+  )
+  
+  return(
+    list(
+      "SCE" = deg.sc,
+      "CellType" = deg.cel
+    )
+  )
+  
+}
+
+
+
+
+
+
+
+
+
+
+#---- Run DGEA ----
+
+fun.dge.run <- function(
+    ct,
+    dge.object,
+    form1,
+    g.col,
+    MAST.comps,
+    MAST.comps.name
+    ) {
+  
+  tryCatch(
+    {
+      
+      # Determine core number (for parallelization)
+      num.core <- detectCores()
+      
+      options(mc.cores = num.core*
+                0.9
+              )
+      
+      # List of comparisons for output dataframes
+      l.comps <- MAST.comps
+      
+      # List of comparison names
+      l.comp.names <- MAST.comps.name
+      
+      # Subset data
+      s1 <- dge.object[,
+                       colData(
+                         dge.object
+                         )[[g.col]] == ct]
+      
+      s1.sum <- rowSums(
+        assay(
+          s1
+          ) >
+          0
+        )
+      
+      s1 <- s1[s1.sum/
+                 ncol(
+                   s1
+                   ) >= 
+                 0.05,]
+      
+      ### create glm (generalized linear model for each variable)
+      
+      s1.fit <- zlm(
+        formula = form1,
+        s1,
+        method = "glm",
+        ebayes = F,
+        parallel = T
+        )
+
+      ### Output DFs
+      
+      d.mast.sum.fun <- function(
+        comp1,
+        ct2,
+        comp1.name) {
+        
+          s1.res <- summary(
+            s1.fit,
+            doLRT = comp1,
+            logFC = T,
+            parallel = T
+            )
+          
+          ### make dfs to display summary results by comp
+          
+          s1.dt <- reshape2::melt(
+            dplyr::select(
+              dplyr::filter(
+                s1.res$datatable,
+                contrast == comp1 &
+                  component != "S"
+                ),
+              -c(
+                "contrast"
+                )
+              ),
+            id.vars = c(
+              "primerid","component"
+              )
+            )
+          
+          s1.dt[["vars"]] <- paste(
+            s1.dt$component,
+            s1.dt$variable,
+            sep = "."
+            )
+          
+          s1.dt <- dplyr::select(
+            dplyr::mutate(
+              reshape2::dcast(
+                dplyr::select(
+                  dplyr::filter(
+                    s1.dt,
+                    vars != "logFC.Pr(>Chisq)" &
+                      vars != "H.ci.hi" &
+                      vars != "H.ci.lo" &
+                      vars != "H.coef" &
+                      vars != "H.z"
+                    ),
+                  -c(
+                    "component",
+                    "variable"
+                    )
+                  ),
+                primerid ~ vars
+                ),
+              "CellType" = ct2,
+              "Comparison" = comp1.name
+              ),
+            c(
+              "CellType","Comparison","primerid",
+              "logFC.coef","H.Pr(>Chisq)","C.Pr(>Chisq)",
+              "D.Pr(>Chisq)",everything()
+              )
+            )
+          
+          
+          names(s1.dt) <- c(
+            "CellType","Comparison","GENE",
+            "logFC","H.pval","C.pval",
+            "D.pval",
+            names(
+              s1.dt[8:ncol(
+                s1.dt
+                )]
+              )
+            )
+          
+          s1.mis <- s1.dt[is.na(s1.dt$logFC),]
+          
+          list.s1 <- list(s1.dt,
+                          s1.mis)
+          
+          return(list.s1)
+        
+      }
+      
+      dgea.comb <- dplyr::bind_rows(
+        lapply(
+          seq(
+            1:length(
+              MAST.comps
+            )
+          ),
+          function(x) {
+            
+            d.mast.sum.fun(
+              MAST.comps[[x]],
+              ct,
+              MAST.comps.name[[x]]
+              )[[1]]
+            }
+          )
+        )
+      
+      
+      
+      dgea.sum <- list(
+        "DGEA.results" = dplyr::bind_rows(
+          lapply(
+            seq(
+              1:length(
+                MAST.comps
+              )
+            ),
+            function(x) {
+              
+              d.mast.sum.fun(
+                MAST.comps[[x]],
+                ct,
+                MAST.comps.name[[x]]
+              )[[1]]
+            }
+          )
+        ),
+        "DGEA.missing" = dplyr::bind_rows(
+          lapply(
+            seq(
+              1:length(
+                MAST.comps
+              )
+            ),
+            function(x) {
+              
+              d.mast.sum.fun(
+                MAST.comps[[x]],
+                ct,
+                MAST.comps.name[[x]]
+              )[[2]]
+            }
+          )
+        )
+      )
+      
+      return(dgea.sum) 
+      
+      },
+    
+    error = function(e) 
+    {
+      print("DGEA unsuccessful for selected cell type...")
+      
+      }
+    )
+  
+}
+
+
+
+
+
+#---- Format Results ----
+
+fun.dge.output.single <- function(
+    dge.res,
+    dge.in,
+    ct.col,
+    operator
+    ) {
+  
+  list.dgea.output <- dplyr::bind_rows(
+    setNames(
+      lapply(
+        dge.res,
+        "[[",
+        1
+      ),
+      c(
+        unique(
+          dge.in[[ct.col]]
+        )
+      )
+    )[grepl(
+      "data.frame",
+      dplyr::bind_rows(
+        lapply(
+          setNames(
+            lapply(
+              dge.res,
+              "[[",
+              1
+            ),
+            c(
+              unique(
+                dge.in[[ct.col]]
+              )
+            )
+          ),
+          function(x) 
+            class(x)
+        )
+      )
+    )]
+  )
+  
+  list.dgea.output[["H.qval"]] <- p.adjust(
+    list.dgea.output[["H.pval"]],
+    method = "BH"
+  )
+  
+  list.dgea.output <- dplyr::select(
+    list.dgea.output,
+    1:4,
+    H.qval,
+    everything()
+  )
+  
+  list.dgea.output <- list.dgea.output[!is.na(
+    list.dgea.output$logFC),]
+  
+  return(list.dgea.output)
+  
+  }
+
+
+
+
+
+list.dgea.output <- dplyr::bind_rows(
+  setNames(
+    lapply(
+      list.analysis.dgea.result,
+      "[[",
+      1
+      ),
+    c(
+      unique(
+        list.analysis.dgea$CellType
+        )
+      )
+    )[grepl(
+      "data.frame",
+      dplyr::bind_rows(
+        lapply(
+          setNames(
+            lapply(
+              list.analysis.dgea.result,
+              "[[",
+              1
+              ),
+            c(
+              unique(
+                list.analysis.dgea$CellGroup
+                )
+              )
+            ),
+          function(x) 
+            class(x)
+          )
+        )
+      )]
+  )
+
+list.dgea.output[["H.qval"]] <- p.adjust(
+  list.dgea.output[["H.pval"]],
+  method = "BH"
+)
+
+list.dgea.output <- dplyr::select(
+  list.dgea.output,
+  1:4,
+  H.qval,
+  everything()
+)
+
+list.dgea.output <- list.dgea.output[!is.na(
+  list.dgea.output$logFC),]
+
+
+
+
+
+
+
+fun.dge.output <- function(
+    dgea.input,
+    operator,
+    dgea.result
+    ) {
+  
+  # Format DGEA list object
+  
+  list.dgea.output <- dplyr::bind_rows(
+    lapply(
+      lapply(
+        lapply(
+          setNames(
+            dgea.result,
+            c(
+              names(
+                dgea.input
+              )
+            )
+          ),
+          function(x)
+            lapply(
+              x,
+              operator,
+              1
+            )
+        ),
+        function(y)
+          y[lengths(y) > 
+              1]
+      ), 
+      function(z) 
+        dplyr::bind_rows(
+          z
+        )
+    )
+  )
+  
+  
+  
+  list.dgea.output[["H.qval"]] <- p.adjust(
+    list.dgea.output[["H.pval"]],
+    method = "BH"
+  )
+  
+  list.dgea.output <- dplyr::select(
+    list.dgea.output,
+    1:4,
+    H.qval,
+    everything()
+  )
+  
+  list.dgea.output <- list.dgea.output[!is.na(
+    list.dgea.output$logFC),]
+  
+  # Separate missing values
+  
+  list.dgea.miss <- dplyr::bind_rows(
+    lapply(
+      lapply(
+        lapply(
+          setNames(
+            dgea.result,
+            c(
+              names(
+                dgea.input
+              )
+            )
+          ),
+          function(x)
+            lapply(
+              x[lengths(x) >
+                  1],
+              operator,
+              2
+            )
+        ),
+        function(y)
+          y[lengths(y) > 
+              1]
+      ), 
+      function(z) 
+        dplyr::bind_rows(
+          z
+        )
+    )
+  )
+  
+  
+  # Output as list object
+  
+  return(
+    list(
+      "DGEA.output" = list.dgea.output,
+      "DGEA.missing.FC" = list.dgea.miss
+    )
+  )
+  
+  }
+
+
+
+
+
+
+

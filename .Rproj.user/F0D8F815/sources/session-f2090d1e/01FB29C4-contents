@@ -1,0 +1,14 @@
+#### Doublet Removal ####
+
+# Remove doublet cells
+
+data.list.sce <- parLapply(clus1,
+                           data.list.adj,
+                           function(x) d.dbl.fun(x)
+)
+
+## remove adjusted counts list to conserve memory and close multiple connections
+
+remove(data.list.adj)
+
+stopCluster(clus1)

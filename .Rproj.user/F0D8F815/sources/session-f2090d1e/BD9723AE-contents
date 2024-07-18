@@ -1,0 +1,59 @@
+#' Universal Color Palette
+#'
+#' Combines the npg, aaas, and lancet ggsci palettes for use with datasets
+#' containing up to 29 groups.
+#'
+#' @param d.path Character string indicating the path to a set of CellRanger files for data processing.
+#' @param study.md A data frame containing sample metadata variables specific to an individual study.
+#' @return Data frame containing a list of parameters to use for scRNA-Seq data processing by Seurat.
+#' @examples
+#'
+#' col.univ()
+#'
+#' @export
+
+
+#### Define Cluster for Parallel Processing ####
+
+## CLUSTER SETUP: creates a cluster for parallelization of script execution using 50% of available cores or length of listed data files
+
+
+## Specify number of nodes
+
+clus1 <- makeCluster(num.core)
+
+## Pass libraries and functions to cluster
+
+clusterEvalQ(clus1,{
+
+  ### Libraries
+
+  library(Seurat)
+  library(ggplot2)
+  library(SoupX)
+  library(SingleCellExperiment)
+  library(scDblFinder)
+
+  ### Functions
+
+
+
+  })
+
+
+## Export global environment variables to cluster
+
+clusterExport(clus1,
+              varlist = c("list.params",
+                          "thm.mult","thm.univ",
+                          "thm.gen","col1a",
+                          "col1b","col2a",
+                          "col3a","num.core"))
+
+
+
+
+
+
+
+

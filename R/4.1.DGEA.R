@@ -416,10 +416,15 @@ sc.DGEA <- function(
     method = "BH"
     )
 
+  dgea.sum[["DGEA.results"]][["log2FC"]] <- log2(
+    exp(dgea.sum[["DGEA.results"]][["logFC"]])
+    )
+
   dgea.sum[["DGEA.results"]] <- dplyr::select(
     dgea.sum[["DGEA.results"]],
     1:4,
     H.qval,
+    log2FC,
     everything()
     )
 

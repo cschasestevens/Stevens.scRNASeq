@@ -484,8 +484,15 @@ sc.predict.clusters <- function(
       list.d$cluster.assignments,
       by = cl.var
       ),
-    c("predicted.id.y","CellGroup.y")
-  )}
+    c("predicted.id.y","CellGroup.y"))
+
+    list.d$`Predicted Clusters` <- Seurat::AddMetaData(
+      list.d$`Predicted Clusters`,
+      list.d$cluster.assignments[["CellGroup.y"]],
+      col.name = "CellGroup"
+    )
+
+  }
   if("CellGroup" %in% names(list.d[["Predicted Clusters"]]@meta.data) == FALSE){
     list.d[["cluster.assignments"]] <- dplyr::select(
       dplyr::left_join(
@@ -493,18 +500,19 @@ sc.predict.clusters <- function(
         list.d$cluster.assignments,
         by = cl.var
       ),
-      c("predicted.id.y","CellGroup")
-    )}
+      c("predicted.id.y","CellGroup"))
+
+      list.d$`Predicted Clusters` <- Seurat::AddMetaData(
+        list.d$`Predicted Clusters`,
+        list.d$cluster.assignments[["CellGroup"]],
+        col.name = "CellGroup"
+      )
+    }
   ### Add Cell Type and Cell Group columns to seurat object
   list.d$`Predicted Clusters` <- Seurat::AddMetaData(
     list.d$`Predicted Clusters`,
     list.d$cluster.assignments[["predicted.id.y"]],
     col.name = "CellType"
-    )
-  list.d$`Predicted Clusters` <- Seurat::AddMetaData(
-    list.d$`Predicted Clusters`,
-    list.d$cluster.assignments[["CellGroup.y"]],
-    col.name = "CellGroup"
     )
 
   return(list.d)

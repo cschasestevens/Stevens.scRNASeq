@@ -1,0 +1,48 @@
+#### Perform QC for each sample ####
+
+d.qc.fun <- function(x,
+                     dir1) {
+  
+  x[["percent.mt"]] <- PercentageFeatureSet(object = x,
+                                            pattern = "^MT-")
+  
+  plot.pre.qc <- VlnPlot(object = x,
+                         features = c("nFeature_RNA",
+                                      "nCount_RNA",
+                                      "percent.mt"), 
+                         ncol = 3, 
+                         pt.size = 0.2)
+  
+  data.list.filter <- subset(x,
+                             subset = nFeature_RNA > 300 &
+                               nFeature_RNA < 7000 &
+                               percent.mt < 20)
+  
+  plot.pos.qc <- VlnPlot(object = data.list.filter,
+                         features = c("nFeature_RNA",
+                                      "nCount_RNA",
+                                      "percent.mt"), 
+                         ncol=3, 
+                         pt.size=0.2)
+  
+  ggsave(paste(dir1,
+               "1_prenorm_",
+               paste(unique(x$orig.ident)),
+               ".png"),
+         plot.pre.qc,
+         width = 6,
+         height = 6,
+         dpi = 600)
+  
+  ggsave(paste(dir1,
+               "1_posnorm_",
+               paste(unique(x$orig.ident)),
+               ".png"),
+         plot.pos.qc,
+         width = 6,
+         height = 6,
+         dpi = 600)
+  
+  return(data.list.filter)
+  
+}

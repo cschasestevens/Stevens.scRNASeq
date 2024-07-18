@@ -4,10 +4,13 @@
 \alias{sc.top10.deg.dotplot}
 \title{Top-10 DEG Dot Plot}
 \usage{
-sc.top10.deg.dotplot(l.deg, so, ct, cl.var, list.var)
+sc.top10.deg.dotplot(p.type, l.deg, so, ct, cl.var, list.var)
 }
 \arguments{
-\item{l.deg}{A list of DGEA results returned by sc.DGEA().}
+\item{p.type}{Should a custom gene list or DGEA results object be used for plotting? Type "cstm.list" for custom gene lists and "deg.list"
+for using dgea.results objects.}
+
+\item{l.deg}{A list of DGEA results returned by sc.DGEA() or a vector of selected genes for plotting.}
 
 \item{so}{An object of class Seurat.}
 

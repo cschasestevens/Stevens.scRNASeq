@@ -11,7 +11,7 @@ Vector of colors to replace default discrete color scale.
 }
 \description{
 Combines the npg, aaas, and lancet ggsci palettes for use with datasets
-containing up to 29 groups.
+containing up to 36 groups.
 }
 \examples{
 

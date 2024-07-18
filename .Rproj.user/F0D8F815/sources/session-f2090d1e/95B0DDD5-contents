@@ -1,0 +1,49 @@
+#' Subset scRNA-Seq Data
+#'
+#' Subsets an existing Seurat object based on a data frame of experimental conditions.
+#'
+#' @param so An object on class Seurat.
+#' @param name description
+#' @return A Seurat object containing PCA results.
+#' @examples
+#'
+#' d.integrated <- sc.pca(d.integrated)
+#'
+#' @export
+
+
+
+list.analysis.subs <- data.frame(
+  "Comp.no" = c(1,2,3,4),
+  "Airway" = c("SAE","SAE","LAE","LAE"),
+  "Knockout" = c("Control","KO","Control","KO")
+)
+
+list.analysis.subs.d <- setNames(
+  lapply(
+    list.analysis.subs[["Comp.no"]],
+    function(x) {
+      l.sub <- subset(
+        list.analysis,
+        subset = Airway == list.analysis.subs[x,"Airway"] &
+          Knockout == list.analysis.subs[x,"Knockout"]
+      )
+
+      DefaultAssay(l.sub) <- "RNA"
+
+      return(l.sub)
+
+    }
+  ),
+  c(
+    paste(
+      list.analysis.subs[["Airway"]],
+      list.analysis.subs[["Knockout"]],
+      sep = "."
+    )
+  )
+)
+
+
+
+
