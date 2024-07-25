@@ -39,4 +39,10 @@ Imports:
   magrittr,
   ggnewscale,
   EnhancedVolcano,
-  lazyeval
+  lazyeval,
+  BiocParallel,
+  fuzzyjoin,
+  ggnewscale,
+  presto,
+  purrr,
+  qpdf

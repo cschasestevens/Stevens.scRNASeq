@@ -20,7 +20,7 @@ Creates a data frame of processing parameters used in scRNA-Seq data processing 
 \examples{
 
 # Dataset input parameters
-list.params <- Create.proc.param(
+list.params <- Create.proc.params(
   "data/",
   data.frame(
     # ID column name (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')

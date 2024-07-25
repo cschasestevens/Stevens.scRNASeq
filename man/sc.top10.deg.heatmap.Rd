@@ -13,15 +13,15 @@ sc.top10.deg.heatmap(l.deg, so, cl.var, hm.w, hm.h, fs.c, fs.r, c.name)
 
 \item{cl.var}{Character string containing the name of the clustering variable.}
 
+\item{hm.w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
+
+\item{hm.h}{Numeric value for heatmap height (passed to ComplexHeatmap).}
+
 \item{fs.c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
 \item{fs.r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
 
 \item{c.name}{Comparison name for plot title, provided as a character string.}
-
-\item{h.w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
-
-\item{h.h}{Numeric value for heatmap height (passed to ComplexHeatmap).}
 }
 \value{
 A ComplexHeatmap object containing a top-10 marker gene heatmap.

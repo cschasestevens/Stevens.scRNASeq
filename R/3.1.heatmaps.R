@@ -337,8 +337,8 @@ sc.top10.marker.heatmap <- function(
 #' @param l.deg A list of DGEA results returned by sc.DGEA().
 #' @param so An object of class Seurat.
 #' @param cl.var Character string containing the name of the clustering variable.
-#' @param h.w Numeric value for heatmap width (passed to ComplexHeatmap).
-#' @param h.h Numeric value for heatmap height (passed to ComplexHeatmap).
+#' @param hm.w Numeric value for heatmap width (passed to ComplexHeatmap).
+#' @param hm.h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs.c Numeric value for column fontsize (passed to ComplexHeatmap).
 #' @param fs.r Numeric value for row fontsize (passed to ComplexHeatmap).
 #' @param c.name Comparison name for plot title, provided as a character string.

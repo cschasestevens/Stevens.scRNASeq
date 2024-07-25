@@ -8,10 +8,11 @@
 #' @examples
 #'
 #' # Dataset input parameters
-#' list.params <- Create.proc.param(
+#' list.params <- Create.proc.params(
 #'   "data/",
 #'   data.frame(
-#'     # ID column name (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
+#'     # ID column name 
+#'     # (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
 #'     "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
 #'     # 1st metadata column (include in CellRanger folder name)
 #'     "Knockout" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"ctrl","KO")),

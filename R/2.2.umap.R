@@ -375,10 +375,22 @@ sc.umap.panel.gene <- function(
 #' @return A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
 #' @examples
 #'
-#' sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
+#' sc.umap.panel.gene.list(
+#' list.genes,
+#' d.seurat,
+#' "seurat_clusters",
+#' col.vec,
+#' col.vec.names,
+#' 0.95,
+#' 0.95,
+#' TRUE,
+#' 0.5
+#' )
 #'
 #' @export
-sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc) {
+sc.umap.panel.gene.list <- function(
+    list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc
+    ) {
   lg <- list.g
   d <- so
   lg <- unique(lg[lg %in% SeuratObject::Features(d)])
