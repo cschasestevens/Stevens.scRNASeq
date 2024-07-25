@@ -65,7 +65,7 @@ browseVignettes("Stevens.scRNA.Seq")
 
 ```
 # Type function name after package name
-??Stevens.scRNASeq::sc.predict.clusters
+?Stevens.scRNASeq::sc.predict.clusters
 ```
 
 ## Authors
