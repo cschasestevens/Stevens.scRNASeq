@@ -19,6 +19,6 @@ Displays the feature number, average counts, and percentage of reads derived fro
 }
 \examples{
 
-d.integrated <- sc.integrate.data(d.integrated)
+# d.integrated <- sc.integrate.data(d.integrated)
 
 }

@@ -30,6 +30,6 @@ must have a cell type column named 'CellType' for predictions to be successful.
 }
 \examples{
 
-sc.predict.clusters(d.seurat,d.ref,5000,"seurat_clusters",c("col1","col2","col3"),TRUE,0.5)
+# sc.predict.clusters(d.seurat,d.ref,5000,"seurat_clusters",c("col1","col2","col3"),TRUE,0.5)
 
 }

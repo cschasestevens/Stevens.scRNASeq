@@ -11,18 +11,18 @@
 #' @return A processed sample file converted into a Seurat object with a summary list of QC and processing details.
 #' @examples
 #'
-#' proc.data <- sc.process.file(
-#' # parameter list
-#' list.params,
-#' # sample ID
-#' 1,
-#' # adj.rho proportion
-#' 0.1,
-#' # minimum cells per feature
-#' 5,
-#' # minimum features per cell
-#' 200
-#' )
+#' # proc.data <- sc.process.file(
+#' # # parameter list
+#' # list.params,
+#' # # sample ID
+#' # 1,
+#' # # adj.rho proportion
+#' # 0.1,
+#' # # minimum cells per feature
+#' # 5,
+#' # # minimum features per cell
+#' # 200
+#' # )
 #'
 #' @export
 sc.process.file <- function(
@@ -210,16 +210,16 @@ sc.process.file <- function(
 #' @return A processed list of sample files converted into Seurat objects with a summary list of QC and processing details.
 #' @examples
 #'
-#' list.data <- sc.process.batch(
-#' # parameter list
-#' list.params,
-#' # adj.rho proportion
-#' 0.1,
-#' # minimum cells per feature
-#' 5,
-#' # minimum features per cell
-#' 200
-#' )
+#' # list.data <- sc.process.batch(
+#' # # parameter list
+#' # list.params,
+#' # # adj.rho proportion
+#' # 0.1,
+#' # # minimum cells per feature
+#' # 5,
+#' # # minimum features per cell
+#' # 200
+#' # )
 #'
 #' @export
 sc.process.batch <- function(
@@ -351,7 +351,7 @@ sc.process.batch <- function(
 #' @return A scatter plot indicating the individual and average contamination fractions for all samples.
 #' @examples
 #'
-#' sc.plot.rho(list.params)
+#' # sc.plot.rho(list.params)
 #'
 #' @export
 sc.plot.rho <- function(

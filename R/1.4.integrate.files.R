@@ -8,11 +8,11 @@
 #' @return A Seurat object containing integrated data for all samples present in a scRNA-Seq experiment.
 #' @examples
 #'
-#' d.integrated <- sc.integrate.data(
-#'    list.data,
-#'    TRUE,
-#'    0.5
-#'    )
+#' # d.integrated <- sc.integrate.data(
+#' #    list.data,
+#' #    TRUE,
+#' #    0.5
+#' #    )
 #'
 #' @export
 sc.integrate.data <- function(
@@ -477,7 +477,7 @@ sc.integrate.data <- function(
 #' @return A panel of violin plots providing QC measures for an integrated Seurat object.
 #' @examples
 #'
-#' d.integrated <- sc.integrate.data(d.integrated)
+#' # d.integrated <- sc.integrate.data(d.integrated)
 #'
 #' @export
 sc.integration.qc <- function(

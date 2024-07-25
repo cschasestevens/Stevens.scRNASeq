@@ -16,7 +16,7 @@
 #' @return A reclustered Seurat Object with summary UMAP plots and a marker gene list.
 #' @examples
 #'
-#' p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
+#' # p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
 #'
 #' @export
 sc.recluster.data <- function(

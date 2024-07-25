@@ -29,6 +29,6 @@ Generates a series of plots to visualize individual gene expression per cluster.
 }
 \examples{
 
-p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+# p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
 
 }

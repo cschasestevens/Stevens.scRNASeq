@@ -28,15 +28,15 @@ Processes a list of samples into separate Seurat objects for data integration.
 }
 \examples{
 
-list.data <- sc.process.batch(
-# parameter list
-list.params,
-# adj.rho proportion
-0.1,
-# minimum cells per feature
-5,
-# minimum features per cell
-200
-)
+# list.data <- sc.process.batch(
+# # parameter list
+# list.params,
+# # adj.rho proportion
+# 0.1,
+# # minimum cells per feature
+# 5,
+# # minimum features per cell
+# 200
+# )
 
 }

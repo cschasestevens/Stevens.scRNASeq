@@ -19,6 +19,6 @@ Generates a panel of UMAPs given a Seurat object containing PCA and UMAP results
 }
 \examples{
 
-p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+# p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
 
 }

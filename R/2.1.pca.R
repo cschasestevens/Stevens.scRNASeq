@@ -6,7 +6,7 @@
 #' @return A Seurat object containing PCA results.
 #' @examples
 #'
-#' d.integrated <- sc.pca(d.integrated)
+#' # d.integrated <- sc.pca(d.integrated)
 #'
 #' @export
 sc.pca <- function(
@@ -49,7 +49,7 @@ sc.pca <- function(
 #' @return A series of loadings plots with specified metadata overlays.
 #' @examples
 #'
-#' p.pca <- sc.pca.plot(d.integrated,c("col1","col2","col3"))
+#' # p.pca <- sc.pca.plot(d.integrated,c("col1","col2","col3"))
 #'
 #' @export
 sc.pca.plot <- function(

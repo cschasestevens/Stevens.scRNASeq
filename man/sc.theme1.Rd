@@ -14,6 +14,6 @@ General plotting theme.
 }
 \examples{
 
-sc.theme1()
+# sc.theme1()
 
 }

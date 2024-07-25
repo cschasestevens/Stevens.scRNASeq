@@ -15,18 +15,6 @@ sc.umap.panel.gene.list(
   parl,
   core.perc
 )
-
-sc.umap.panel.gene.list(
-  list.g,
-  so,
-  md.var,
-  col.scheme,
-  col.names,
-  leg.x,
-  leg.y,
-  parl,
-  core.perc
-)
 }
 \arguments{
 \item{list.g}{A vector containing a list of genes to be plotted for a given Seurat object.}
@@ -49,29 +37,22 @@ sc.umap.panel.gene.list(
 }
 \value{
 A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
-
-A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
 }
 \description{
-Generates a series of plots to visualize the expression of a list of genes per cluster.
-
 Generates a series of plots to visualize the expression of a list of genes per cluster.
 }
 \examples{
 
-sc.umap.panel.gene.list(
-list.genes,
-d.seurat,
-"seurat_clusters",
-col.vec,
-col.vec.names,
-0.95,
-0.95,
-TRUE,
-0.5
-)
-
-
-sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
+# sc.umap.panel.gene.list(
+# list.genes,
+# d.seurat,
+# "seurat_clusters",
+# col.vec,
+# col.vec.names,
+# 0.95,
+# 0.95,
+# TRUE,
+# 0.5
+# )
 
 }

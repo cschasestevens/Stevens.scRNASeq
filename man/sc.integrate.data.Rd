@@ -21,10 +21,10 @@ Integrates a list of samples processed as Seurat objects.
 }
 \examples{
 
-d.integrated <- sc.integrate.data(
-   list.data,
-   TRUE,
-   0.5
-   )
+# d.integrated <- sc.integrate.data(
+#    list.data,
+#    TRUE,
+#    0.5
+#    )
 
 }

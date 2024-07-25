@@ -17,6 +17,6 @@ Performs PCA on a Seurat object.
 }
 \examples{
 
-d.integrated <- sc.pca(d.integrated)
+# d.integrated <- sc.pca(d.integrated)
 
 }

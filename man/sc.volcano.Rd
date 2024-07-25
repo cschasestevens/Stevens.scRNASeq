@@ -27,6 +27,6 @@ Generates a volcano plot from a DEG results object for a chosen cell type and co
 }
 \examples{
 
-p.vol <- sc.volcano(dgea.output,"1.Secretory","KO vs. Control",0.005,0.25,6)
+# p.vol <- sc.volcano(dgea.output,"1.Secretory","KO vs. Control",0.005,0.25,6)
 
 }

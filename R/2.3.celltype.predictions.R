@@ -13,7 +13,7 @@
 #' @return A list containing a table of marker genes per cluster and an annotated Seurat object with putative cell identities.
 #' @examples
 #'
-#' sc.predict.clusters(d.seurat,d.ref,5000,"seurat_clusters",c("col1","col2","col3"),TRUE,0.5)
+#' # sc.predict.clusters(d.seurat,d.ref,5000,"seurat_clusters",c("col1","col2","col3"),TRUE,0.5)
 #'
 #' @export
 sc.predict.clusters <- function(

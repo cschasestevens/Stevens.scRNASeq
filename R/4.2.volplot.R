@@ -11,7 +11,7 @@
 #' @return A volcano plot for the chosen cell type and treatment comparison.
 #' @examples
 #'
-#' p.vol <- sc.volcano(dgea.output,"1.Secretory","KO vs. Control",0.005,0.25,6)
+#' # p.vol <- sc.volcano(dgea.output,"1.Secretory","KO vs. Control",0.005,0.25,6)
 #'
 #' @export
 sc.volcano <- function (

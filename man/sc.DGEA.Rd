@@ -34,29 +34,29 @@ Performs DGEA per cell type of a Seurat Object.
 }
 \examples{
 
-dgea.output <- sc.DGEA(
-# Seurat object
-d1,
-# metadata column list
-c(list.p.cols,"CellType","nFeature_RNA"),
-# Cell type column name
-"CellType",
-# MAST comparison name
-"KnockoutKO",
-# MAST name (user-provided)
-"KO vs. NG ",
-# Formula
-as.formula(
-  paste(
-    "~","Knockout","+",
-    "nFeature_RNA",
-    sep = " "
-    )
-  ),
-# run in parallel? (Set to FALSE if on Windows)
-TRUE,
-# core percentage to use
-0.5
-)
+# dgea.output <- sc.DGEA(
+# # Seurat object
+# d1,
+# # metadata column list
+# c(list.p.cols,"CellType","nFeature_RNA"),
+# # Cell type column name
+# "CellType",
+# # MAST comparison name
+# "KnockoutKO",
+# # MAST name (user-provided)
+# "KO vs. NG ",
+# # Formula
+# as.formula(
+#   paste(
+#     "~","Knockout","+",
+#     "nFeature_RNA",
+#     sep = " "
+#     )
+#   ),
+# # run in parallel? (Set to FALSE if on Windows)
+# TRUE,
+# # core percentage to use
+# 0.5
+# )
 
 }

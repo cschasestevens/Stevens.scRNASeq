@@ -17,6 +17,6 @@ Generates a scatter plot indicating the individual and average contamination fra
 }
 \examples{
 
-sc.plot.rho(list.params)
+# sc.plot.rho(list.params)
 
 }

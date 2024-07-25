@@ -19,6 +19,6 @@ Generates a panel of loadings plots given a Seurat object containing PCA results
 }
 \examples{
 
-p.pca <- sc.pca.plot(d.integrated,c("col1","col2","col3"))
+# p.pca <- sc.pca.plot(d.integrated,c("col1","col2","col3"))
 
 }

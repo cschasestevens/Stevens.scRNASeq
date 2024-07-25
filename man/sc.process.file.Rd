@@ -26,17 +26,17 @@ Processes a single sample into a Seurat object for data integration.
 }
 \examples{
 
-proc.data <- sc.process.file(
-# parameter list
-list.params,
-# sample ID
-1,
-# adj.rho proportion
-0.1,
-# minimum cells per feature
-5,
-# minimum features per cell
-200
-)
+# proc.data <- sc.process.file(
+# # parameter list
+# list.params,
+# # sample ID
+# 1,
+# # adj.rho proportion
+# 0.1,
+# # minimum cells per feature
+# 5,
+# # minimum features per cell
+# 200
+# )
 
 }

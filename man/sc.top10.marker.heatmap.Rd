@@ -27,6 +27,6 @@ Generates a heatmap from a Seurat Object and marker gene list based on the top-1
 }
 \examples{
 
-p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
+# p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
 
 }

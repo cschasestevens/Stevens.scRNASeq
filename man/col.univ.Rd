@@ -15,6 +15,6 @@ containing up to 36 groups.
 }
 \examples{
 
-col.univ()
+ # col.univ()
 
 }

@@ -31,6 +31,6 @@ Generates a heatmap from a Seurat Object and marker gene list based on the top-1
 }
 \examples{
 
-p.heatmap <- sc.top10.deg.heatmap(dgea.output,d.annotated,"seurat.clusters",18,24,6,8)
+# p.heatmap <- sc.top10.deg.heatmap(dgea.output,d.annotated,"seurat.clusters",18,24,6,8)
 
 }

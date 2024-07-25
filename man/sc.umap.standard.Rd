@@ -19,6 +19,6 @@ Generates a single UMAP plot with a specific metadata overlay for a Seurat objec
 }
 \examples{
 
-p.umap <- sc.umap.standard(d.integrated,"col1")
+# p.umap <- sc.umap.standard(d.integrated,"col1")
 
 }

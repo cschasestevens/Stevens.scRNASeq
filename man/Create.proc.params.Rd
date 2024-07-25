@@ -19,20 +19,20 @@ Creates a data frame of processing parameters used in scRNA-Seq data processing 
 }
 \examples{
 
-# Dataset input parameters
-list.params <- Create.proc.params(
-  "data/",
-  data.frame(
-    # ID column name 
-    # (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
-    "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
-    # 1st metadata column (include in CellRanger folder name)
-    "Knockout" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"ctrl","KO")),
-    # 2nd metadata column
-    "Region" = as.factor(ifelse(grepl("LAE",basename(list.files("data/"))),"1","2")),
-    # 3rd metadata column (add/remove columns as needed)
-    "Time" = as.factor(ifelse(grepl("D28",basename(list.files("data/"))),"a","b"))
-  )
-)
+# # Dataset input parameters
+# list.params <- Create.proc.params(
+#   "data/",
+#   data.frame(
+#     # ID column name 
+#     # (splits by underscore, should be listed first in folder name as in 's01_1_KO_a')
+#     "Code" = unlist(lapply(strsplit(basename(list.files("data/")),"_",fixed = T),"[",1)),
+#     # 1st metadata column (include in CellRanger folder name)
+#     "Knockout" = as.factor(ifelse(grepl("NG",basename(list.files("data/"))),"ctrl","KO")),
+#     # 2nd metadata column
+#     "Region" = as.factor(ifelse(grepl("LAE",basename(list.files("data/"))),"1","2")),
+#     # 3rd metadata column (add/remove columns as needed)
+#     "Time" = as.factor(ifelse(grepl("D28",basename(list.files("data/"))),"a","b"))
+#   )
+# )
 
 }

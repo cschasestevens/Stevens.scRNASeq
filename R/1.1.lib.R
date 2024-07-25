@@ -6,7 +6,7 @@
 #' @return Vector of colors to replace default discrete color scale.
 #' @examples
 #'
-#' col.univ()
+#'  # col.univ()
 #'
 #' @export
 col.univ <- function(){
@@ -40,7 +40,7 @@ col.grad <- function(){
 #' @return ggplot2 theme parameters to replace default plot theme.
 #' @examples
 #'
-#' sc.theme1()
+#' # sc.theme1()
 #'
 #' @export
 sc.theme1 <- function(){

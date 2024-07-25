@@ -6,12 +6,13 @@ Version: 1.1
 Author: Nathanial C. Stevens
 Maintainer: Nathanial C. Stevens <cschasestevens@gmail.com>
 Description: Utilizes Seurat in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat functions, statistical methods, and visualization of scRNA-Seq data.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
-License: GNU GPL v.3.0
+License: GPL-3
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
-Suggests: knitr,
+Suggests: 
+  knitr,
   rmarkdown
 Imports: 
   ggplot2,
@@ -19,7 +20,6 @@ Imports:
   ggsci,
   ggrepel,
   gtools,
-  presto,
   SoupX,
   scDblFinder,
   SingleCellExperiment,
@@ -27,22 +27,14 @@ Imports:
   MAST,
   viridis,
   BiocGenerics,
-  BiocParallel,
-  fuzzyjoin,
   parallel,
-  purrr,
   reshape2,
   ggpubr,
   Seurat,
+  SeuratObject,
+  future,
   circlize,
   ComplexHeatmap,
   magrittr,
-  ggnewscale,
   EnhancedVolcano,
-  lazyeval,
-  BiocParallel,
-  fuzzyjoin,
-  ggnewscale,
-  presto,
-  purrr,
-  qpdf
+  lazyeval
