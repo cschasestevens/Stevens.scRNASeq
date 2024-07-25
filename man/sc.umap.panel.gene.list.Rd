@@ -59,7 +59,17 @@ Generates a series of plots to visualize the expression of a list of genes per c
 }
 \examples{
 
-sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
+sc.umap.panel.gene.list(
+list.genes,
+d.seurat,
+"seurat_clusters",
+col.vec,
+col.vec.names,
+0.95,
+0.95,
+TRUE,
+0.5
+)
 
 
 sc.umap.panel.gene.list(list.genes,d.seurat,"seurat_clusters",col.vec,col.vec.names,0.95,0.95,TRUE,0.5)
