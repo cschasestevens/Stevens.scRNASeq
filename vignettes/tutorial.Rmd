@@ -35,6 +35,9 @@ devtools::install_github("immunogenomics/presto")
 # load package
 library(Stevens.scRNASeq)
 
+# Access package vignettes
+??Stevens.scRNASeq
+
 # Change working directory to analysis folder
 ## Please note, analysis folders should have the following subfolders prior to running functions: analysis/, ref/, data/, processed/
 setwd("/home/ncsteven/analyze/Stevens.scRNASeq.test")
@@ -46,7 +49,7 @@ getwd()
 
 ## Data processing
 
-```{r data-dist, echo=T, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r data-proc, echo=T, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 # Define dataset input parameters (replace with columns specific to study design)
 list.params <- Create.proc.params(
@@ -153,7 +156,7 @@ ggplot2::ggsave(
 
 ## PCA, UMAP, and Visualization of Gene Expression
 
-```{r data-dist, echo=T, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r umap, echo=T, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 # Load gene list
 list.genes <- read.table(
@@ -334,7 +337,7 @@ sc.umap.panel.gene(
 
 ## CellType Prediction
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r cell-pred, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 # Automatic cell type prediction
 gc(reset = T)
@@ -436,7 +439,7 @@ saveRDS(d.list,"analysis/data.annotated.rds")
 
 ## Visualize Marker Genes
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r mark-gene, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 ## Create Heatmap
 p.heatmap.top10 <- sc.top10.marker.heatmap(
@@ -471,7 +474,7 @@ dev.off()
 
 ## Analyze a Reclustered Subset of scRNA-Seq Data
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r reclus, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 # Recluster based on two cell types
 d.recluster <- sc.recluster.data(
@@ -504,7 +507,7 @@ d.recluster <- sc.recluster.data(
 
 ### Differential Gene Expression Analysis (DGEA)
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r dgea, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 # Load gene list
 list.genes <- read.table(
@@ -559,7 +562,7 @@ dgea.output <- sc.DGEA(
 
 ### Visualize DGEA Results
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
+```{r dgea-vis, echo=F, fig.align= "center", out.width="90%", results=T, message=F, warning=F,eval=FALSE}
 
 if(!exists("dgea.output") & file.exists("analysis/object.dgea.result.rds")) {
   dgea.output <- readRDS("analysis/object.dgea.result.rds")
@@ -651,7 +654,7 @@ ggplot2::ggsave(
 
 ### Coming Soon: Gene Ontology/Custom Gene Set Enrichment Analysis
 
-```{r data-dist, echo=F, fig.align= "center", out.width="90%", results=F, message=F, warning=F,eval=FALSE}
+```{r go-enrich, echo=F, fig.align= "center", out.width="90%", results=F, message=F, warning=F,eval=FALSE}
 
 # Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
 # 
