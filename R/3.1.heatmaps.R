@@ -546,7 +546,20 @@ sc.top10.deg.heatmap <- function(
 #' @return An input data frame and corresponding dot plot displaying the expression of the top-10 DEGs for a specific cell type.
 #' @examples
 #'
-#' p.dotplot <- sc.top10.deg.dotplot("deg.list",dgea.output,d.annotated,"3.Se|6.Se","CellType",c("Knockout","Airway"))
+#' p.dotplot <- sc.top10.deg.dotplot(
+#' # Type "deg.list" or "cstm.list" to toggle between inputs
+#' "deg.list",
+#' # Name of a custom gene list or dgea.results object
+#' dgea.output,
+#' # Seurat object
+#' d.annotated,
+#' # Unique character strings corresponding to cell types
+#' "3.Se|6.Se",
+#' # Name of clustering variable
+#' "CellType",
+#' # Vector of up to 2 variables for stratifying clustering variables
+#' c("Knockout","Airway")
+#' )
 #'
 #' @export
 sc.top10.deg.dotplot <- function(
