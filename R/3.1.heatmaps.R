@@ -596,7 +596,7 @@ sc.top10.deg.dotplot <- function(
   }
 
   if(p.type == "cstm.list"){
-    top10 <- l.deg[[1]]
+    top10 <- as.vector(l.deg[[1]])
     top10 <- unique(top10[top10 %in% SeuratObject::Features(d)])
     top10.abs <- subset(top10, !(top10 %in% SeuratObject::Features(d)))
     }
