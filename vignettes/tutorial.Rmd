@@ -23,7 +23,11 @@ knitr::opts_chunk$set(
 install.packages("devtools")
 
 # Install package from Github
-devtools::install_github("cschasestevens/Stevens.scRNASeq", ref = "master")
+devtools::install_github(
+  "cschasestevens/Stevens.scRNASeq", 
+  ref = "master", 
+  build_vignettes = T
+  )
 
 # Some packages may need to be installed from Bioconductor if not already present in local library
 ## Use the following with the package name in quotations to install packages from Bioconductor
