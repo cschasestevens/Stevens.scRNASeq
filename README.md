@@ -4,7 +4,9 @@ Streamlined Processing and Analysis of Single-cell RNA-Sequencing Datasets
 
 ## Description
 
-Utilizes Seurat in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat functions, statistical methods, and visualization of scRNA-Seq data.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
+Utilizes Seurat in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) datasets. The methods included in this package provide a seamless workflow for commonly used Seurat functions, statistical methods, and visualization of scRNA-Seq data. Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis. The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
+
+* Important: Seurat objects created in Seurat v5 may not integrate counts data properly. A forthcoming update will address this issue and while retaining backwards compatibility with Seurat v4 objects.
 
 ## Getting Started
 
@@ -57,6 +59,13 @@ devtools::install_github(
 
 ```
 browseVignettes("Stevens.scRNA.Seq")
+```
+
+* Access function documentation by running the following:
+
+```
+# Type function name after package name
+??Stevens.scRNASeq::sc.predict.clusters
 ```
 
 ## Authors
