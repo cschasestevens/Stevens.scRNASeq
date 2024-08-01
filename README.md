@@ -80,6 +80,8 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 1.2
+    * Added functions for enrichment analysis (both Gene Ontology and custom gene sets)
 * 1.0
     * Initial Release
 
