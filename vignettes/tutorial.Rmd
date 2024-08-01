@@ -654,7 +654,7 @@ ggplot2::ggsave(
 
 ## Gene Ontology/Custom Gene Set Enrichment Analysis
 
-```{r go-enrich, echo=F, fig.align= "center", out.width="90%", results=F, message=F, warning=F,eval=FALSE}
+```{r go-enrich, echo=T, fig.align= "center", out.width="90%", results=F, message=F, warning=F,eval=FALSE}
 
 # Run function (results are saved in 'analysis/' folder)
 enr <- sc.enrichment(
