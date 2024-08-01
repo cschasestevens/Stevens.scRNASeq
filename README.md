@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v1.0
+# Stevens.scRNASeq v1.2
 
 Streamlined Processing and Analysis of Single-cell RNA-Sequencing Datasets
 
@@ -13,7 +13,7 @@ Utilizes Seurat in tandem with various R packages to perform processing and anal
 ### Dependencies
 * Windows 10-11, WSL Ubuntu 22.04 or higher, Linux Ubuntu 22.04 or higher, or macOS 12.7.1 or higher
 * R version 4.3.1 or higher (https://cran.r-project.org/)
-* RStudio version 2023.06.2 or higher (https://posit.co/download/rstudio-desktop/)
+* (Optional) RStudio version 2023.06.2 or higher (https://posit.co/download/rstudio-desktop/)
 * R-packages (downloaded from CRAN unless otherwise specified):
     * Suggests: 
         * knitr,
@@ -41,7 +41,11 @@ Utilizes Seurat in tandem with various R packages to perform processing and anal
         * ComplexHeatmap,
         * magrittr,
         * EnhancedVolcano,
-        * lazyeval
+        * lazyeval,
+        * topGO,
+        * org.Hs.eg.db,
+        * biomaRt,
+        * shadowtext
 
 ### Installation
 * Run the following in a new R session on the command line or within R-Studio:
