@@ -62,7 +62,7 @@ devtools::install_github(
 * Browse vignettes by running the following:
 
 ```
-browseVignettes("Stevens.scRNA.Seq")
+browseVignettes("Stevens.scRNASeq")
 ```
 
 * Access function documentation by running the following:
