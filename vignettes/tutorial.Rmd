@@ -29,15 +29,14 @@ devtools::install_github(
   build_vignettes = T
   )
 
-# Some packages may need to be installed from Bioconductor if not already present in local library
-## Use the following with the package name in quotations to install packages from Bioconductor
-BiocManager::install()
-
 # Install presto package for faster performance of the Seurat FindAllMarkers() function
 devtools::install_github("immunogenomics/presto")
 
 # load package
 library(Stevens.scRNASeq)
+
+# Check to see if all required packages are installed; if not, install from CRAN and Bioconductor
+sc.check.lib()
 
 # Access package vignettes
 ??Stevens.scRNASeq
@@ -45,7 +44,7 @@ browseVignettes("Stevens.scRNASeq")
 
 # Change working directory to analysis folder
 ## Please note, analysis folders should have the following subfolders prior to running functions: analysis/, ref/, data/, processed/
-setwd("/home/ncsteven/analyze/Stevens.scRNASeq.test")
+setwd("C:/Users/ncsteven/Documents/Analysis/tutorials.scRNASeq")
 getwd()
 
 ## If running in WSL2, be sure to increase the memory limit by creating a .wslconfig file in the user directory (see online for specific details).

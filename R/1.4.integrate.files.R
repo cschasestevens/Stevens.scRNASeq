@@ -21,6 +21,34 @@ sc.integrate.data <- function(
     core.perc
     ){
   list.d <- l.so
+  
+  # if(as.numeric(paste(stringr::str_split(as.character(packageVersion("Seurat")),"\\.",simplify = T)[,c(1,2)],collapse = ".")) >= 5.1){
+  #   future::plan("multisession",workers = ceiling(parallel::detectCores()*0.5))
+  #   options(future.globals.maxSize = 10000 * 1024^2)
+  #   
+  #   layer.merge <- merge(
+  #     x = list.integrate[[1]],
+  #     y = c(list.integrate[2:length(list.integrate)]),
+  #     add.cell.ids = c(names(list.integrate))
+  #     )
+  #   
+  #   Seurat::DefaultAssay(
+  #     object = layer.merge
+  #   ) <- "RNA"
+  #   
+  #   layer.merge <- Seurat::RunPCA(
+  #     object = Seurat::ScaleData(
+  #       object = layer.merge,
+  #       verbose = T
+  #     ),
+  #     verbose = T
+  #   )
+  #   
+  #   d.merged <- Seurat::IntegrateLayers(object = layer.merge,method = RPCAIntegration,orig.reduction = "pca", new.reduction = "integrated.cca",verbose = T)
+  # 
+  # }
+  
+  
   if(Sys.info()[["sysname"]] != "Windows" &
      parl == TRUE) {
     fun.int <- function(list.d.subset,future.size){
@@ -42,6 +70,8 @@ sc.integrate.data <- function(
       return(d.merged)
       }
 
+    
+    
     if(length(list.d) <= 12 & length(list.d) > 9) {
       print(paste(length(list.d),"samples present: dividing integration into 4 batches...",sep = " "))
       # Batch 1
