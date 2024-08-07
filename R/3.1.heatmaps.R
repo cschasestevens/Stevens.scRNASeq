@@ -297,7 +297,8 @@ sc.top10.marker.heatmap <- function(
       probs = c(
         0.05,
         0.95
-        )
+        ),
+      na.rm = T
       )
     
     h.in <- as.matrix(
