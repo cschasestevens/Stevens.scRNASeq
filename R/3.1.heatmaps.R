@@ -71,6 +71,7 @@
         )
       )
     )
+    
     ### Heatmap annotation (average expression)
     h.anno <- as.data.frame(
       lapply(
@@ -81,6 +82,8 @@
           mean(x)
       )
     )
+    
+    h.anno <- h.anno[,h.anno[1,] > 0]
     ### Scale and plot average expression per cell type
     h.in <- scale(
       as.matrix(
@@ -116,8 +119,17 @@
       probs = c(
         0.05,
         0.95
+      ),
+      na.rm = T
       )
-    )
+    
+    h.in <- as.matrix(
+      as.data.frame(h.in)[,unlist(
+        lapply(
+          seq.int(1,ncol(as.data.frame(h.in)),1),
+          function(x) 
+            !anyNA(as.data.frame(h.in)[x])))])
+    
     fun.hm.col <- circlize::colorRamp2(
       c(
         qs[[1]],
@@ -248,6 +260,8 @@ sc.top10.marker.heatmap <- function(
           mean(x)
         )
       )
+    
+    h.anno <- h.anno[,h.anno[1,] > 0]
     ### Scale and plot average expression per cell type
     h.in <- scale(
       as.matrix(
@@ -285,6 +299,14 @@ sc.top10.marker.heatmap <- function(
         0.95
         )
       )
+    
+    h.in <- as.matrix(
+      as.data.frame(h.in)[,unlist(
+        lapply(
+          seq.int(1,ncol(as.data.frame(h.in)),1),
+          function(x) 
+            !anyNA(as.data.frame(h.in)[x])))])
+    
     fun.hm.col <- circlize::colorRamp2(
       c(
         qs[[1]],
