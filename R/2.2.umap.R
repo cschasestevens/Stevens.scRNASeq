@@ -23,14 +23,7 @@ sc.umap.panel <- function(
     `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
     `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
     `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[,3]
-  )}
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2){
-    d2 <- data.frame(
-      d@meta.data,
-      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
-      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
-    )}
-  # Generate df for each grouping
+  )
   d2.list <- setNames(
     lapply(
       c(md.list),
@@ -40,10 +33,32 @@ sc.umap.panel <- function(
           "UMAP.1",
           "UMAP.2",
           "UMAP.3"
+        )]
+    ),
+    c(md.list)
+  )
+  
+  }
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2){
+    d2 <- data.frame(
+      d@meta.data,
+      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2]
+    )
+    d2.list <- setNames(
+      lapply(
+        c(md.list),
+        function(x)
+          d2[,c(
+            x,
+            "UMAP.1",
+            "UMAP.2"
           )]
       ),
-    c(md.list)
+      c(md.list)
     )
+    
+    }
   # Generate plots
   d2.plot <- lapply(
     c(md.list),
@@ -80,8 +95,8 @@ sc.umap.panel <- function(
             "cm"
             ),
           legend.position = c(
-            1,
-            0.95)
+            0.9,
+            0.85)
           )
       }
     )
