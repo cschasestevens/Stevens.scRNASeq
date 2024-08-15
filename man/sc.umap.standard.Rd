@@ -10,6 +10,8 @@ sc.umap.standard(so, md.var)
 \item{so}{An object of class Seurat.}
 
 \item{md.var}{A character string indicating the clustering column for overlaying on a UMAP plot.}
+
+\item{slot1}{A character string corresponding to the umap slot name to plot.}
 }
 \value{
 A UMAP plot with points grouped by a specific metadata column.
@@ -19,6 +21,6 @@ Generates a single UMAP plot with a specific metadata overlay for a Seurat objec
 }
 \examples{
 
-# p.umap <- sc.umap.standard(d.integrated,"col1")
+# p.umap <- sc.umap.standard(d.integrated,"col1","wnn.umap")
 
 }

@@ -4,7 +4,16 @@
 \alias{sc.umap.panel.gene}
 \title{Visualize Individual Gene Expression}
 \usage{
-sc.umap.panel.gene(so, md.var, g.name, col.scheme, col.names, leg.x, leg.y)
+sc.umap.panel.gene(
+  so,
+  md.var,
+  g.name,
+  col.scheme,
+  col.names,
+  leg.x,
+  leg.y,
+  slot1
+)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
@@ -20,6 +29,8 @@ sc.umap.panel.gene(so, md.var, g.name, col.scheme, col.names, leg.x, leg.y)
 \item{leg.x}{A numeric value indicating the placement of the figure legend on the x-axis.}
 
 \item{leg.y}{A numeric value indicating the placement of the figure legend on the y-axis.}
+
+\item{slot1}{A character string corresponding to the umap slot name to plot.}
 }
 \value{
 A series of plots stored as a ggplot2 object for visualizing cluster gene expression.
@@ -29,6 +40,7 @@ Generates a series of plots to visualize individual gene expression per cluster.
 }
 \examples{
 
-# p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+# p.umap <- sc.umap.panel.gene(
+# d.integrated,c("col1","col2","col3"),"CFTR",col.univ,c("group1","group2"),0.95,0.95,"wnn.umap")
 
 }

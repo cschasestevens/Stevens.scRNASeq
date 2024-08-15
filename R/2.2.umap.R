@@ -4,23 +4,32 @@
 #'
 #' @param so An object of class Seurat.
 #' @param md.list A vector of character strings indicating metadata columns for overlaying on a loadings plot.
+#' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @return A series of UMAPs with specified metadata overlays.
 #' @examples
 #'
-#' # p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+#' # p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"),"wnn.umap")
 #'
 #' @export
 sc.umap.panel <- function(
   so,
-  md.list
+  md.list,
+  slot1
   ) {
   d <- so
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3){
   d2 <- data.frame(
     d@meta.data,
-    `UMAP.1` = d@reductions$umap@cell.embeddings[,1],
-    `UMAP.2` = d@reductions$umap@cell.embeddings[,2],
-    `UMAP.3` = d@reductions$umap@cell.embeddings[,3]
-    )
+    `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+    `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
+    `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[,3]
+  )}
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2){
+    d2 <- data.frame(
+      d@meta.data,
+      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
+    )}
   # Generate df for each grouping
   d2.list <- setNames(
     lapply(
@@ -132,10 +141,12 @@ sc.umap.panel <- function(
 #' @param col.names A vector of the same length as the provided color scheme for assigning colors to each group.
 #' @param leg.x A numeric value indicating the placement of the figure legend on the x-axis.
 #' @param leg.y A numeric value indicating the placement of the figure legend on the y-axis.
+#' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @return A series of plots stored as a ggplot2 object for visualizing cluster gene expression.
 #' @examples
 #'
-#' # p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+#' # p.umap <- sc.umap.panel.gene(
+#' # d.integrated,c("col1","col2","col3"),"CFTR",col.univ,c("group1","group2"),0.95,0.95,"wnn.umap")
 #'
 #' @export
 sc.umap.panel.gene <- function(
@@ -145,7 +156,8 @@ sc.umap.panel.gene <- function(
     col.scheme,
     col.names,
     leg.x,
-    leg.y
+    leg.y,
+    slot1
 ) {
   # Format input data
   cols <- setNames(col.scheme,
@@ -163,8 +175,8 @@ sc.umap.panel.gene <- function(
         md.var
       )
     ),
-    `UMAP.1` = d@reductions$umap@cell.embeddings[,1],
-    `UMAP.2` = d@reductions$umap@cell.embeddings[,2]
+    `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+    `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2]
     )
 
   # Generate plots
@@ -498,10 +510,11 @@ sc.umap.panel.gene.list <- function(
 #'
 #' @param so An object of class Seurat.
 #' @param md.var A character string indicating the clustering column for overlaying on a UMAP plot.
+#' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @return A UMAP plot with points grouped by a specific metadata column.
 #' @examples
 #'
-#' # p.umap <- sc.umap.standard(d.integrated,"col1")
+#' # p.umap <- sc.umap.standard(d.integrated,"col1","wnn.umap")
 #'
 #' @export
 sc.umap.standard <- function(
@@ -510,13 +523,22 @@ sc.umap.standard <- function(
   ) {
   # Format input data
   d <- so
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3){
   d2 <- data.frame(
     d@meta.data,
-    `UMAP.1` = d@reductions$umap@cell.embeddings[,1],
-    `UMAP.2` = d@reductions$umap@cell.embeddings[,2],
-    `UMAP.3` = d@reductions$umap@cell.embeddings[,3],
+    `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+    `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
+    `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[,3],
     md.var = d@meta.data[[md.var]]
-    )
+  )}
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2){
+    d2 <- data.frame(
+      d@meta.data,
+      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[,1],
+      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[,2],
+      md.var = d@meta.data[[md.var]]
+    )}
+  
   # Generate plot
   d2.plot <- ggplot2::ggplot(
     d2,

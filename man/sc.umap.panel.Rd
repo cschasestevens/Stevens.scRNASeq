@@ -4,12 +4,14 @@
 \alias{sc.umap.panel}
 \title{scRNA-Seq UMAP Plot}
 \usage{
-sc.umap.panel(so, md.list)
+sc.umap.panel(so, md.list, slot1)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
 
 \item{md.list}{A vector of character strings indicating metadata columns for overlaying on a loadings plot.}
+
+\item{slot1}{A character string corresponding to the umap slot name to plot.}
 }
 \value{
 A series of UMAPs with specified metadata overlays.
@@ -19,6 +21,6 @@ Generates a panel of UMAPs given a Seurat object containing PCA and UMAP results
 }
 \examples{
 
-# p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"))
+# p.umap <- sc.umap.panel(d.integrated,c("col1","col2","col3"),"wnn.umap")
 
 }
