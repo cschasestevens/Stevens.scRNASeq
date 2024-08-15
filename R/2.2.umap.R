@@ -519,7 +519,8 @@ sc.umap.panel.gene.list <- function(
 #' @export
 sc.umap.standard <- function(
   so,
-  md.var
+  md.var,
+  slot1
   ) {
   # Format input data
   d <- so
