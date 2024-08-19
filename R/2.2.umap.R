@@ -399,6 +399,7 @@ sc.umap.panel.gene <- function(
 #' @param leg.y A numeric value indicating the placement of the figure legend on the y-axis.
 #' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
 #' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @return A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
 #' @examples
 #'
@@ -411,12 +412,13 @@ sc.umap.panel.gene <- function(
 #' # 0.95,
 #' # 0.95,
 #' # TRUE,
-#' # 0.5
+#' # 0.5,
+#' # "umap"
 #' # )
 #'
 #' @export
 sc.umap.panel.gene.list <- function(
-    list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc
+    list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc,slot1
     ) {
   lg <- list.g
   d <- so
@@ -439,7 +441,8 @@ sc.umap.panel.gene.list <- function(
           col.scheme,
           col.names,
           leg.x,
-          leg.y
+          leg.y,
+          slot1
         )
         # Save each plot
         ggplot2::ggsave(
@@ -464,7 +467,8 @@ sc.umap.panel.gene.list <- function(
           col.scheme,
           col.names,
           leg.x,
-          leg.y
+          leg.y,
+          slot1
           )
         # Save each plot
         ggplot2::ggsave(
@@ -489,7 +493,8 @@ sc.umap.panel.gene.list <- function(
           col.scheme,
           col.names,
           leg.x,
-          leg.y
+          leg.y,
+          slot1
         )
         # Save each plot
         ggplot2::ggsave(
