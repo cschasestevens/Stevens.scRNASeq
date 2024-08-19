@@ -13,6 +13,9 @@
 #' @param fs.r Numeric value for marker gene heatmap row fontsize (passed to ComplexHeatmap).
 #' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
 #' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @param slot1 A character string indicating which assay should be used for dimension reduction.
+#' @param slot2 A character string indicating the reduction name for plotting gene expression UMAPs.
+#' @param run.qc A logical indicating whether gene expression QC plots should be generated for the reclustered data.
 #' @return A reclustered Seurat Object with summary UMAP plots and a marker gene list.
 #' @examples
 #'
@@ -29,7 +32,10 @@ sc.recluster.data <- function(
     fs.c,
     fs.r,
     parl,
-    core.perc
+    core.perc,
+    slot1,
+    slot2,
+    run.qc
     ) {
   # Load gene list and Seurat object
   list.genes <- read.table(
@@ -53,7 +59,7 @@ sc.recluster.data <- function(
     }
 
   # Run PCA/UMAP
-  d <- sc.pca(d)
+  d <- sc.pca(d,"RNA")
   d.pca <- sc.pca.plot(
     d,
     c(md.list,"seurat_clusters")
@@ -72,7 +78,7 @@ sc.recluster.data <- function(
     dims = 1:20,
     n.components = 3
     )
-  SeuratObject::DefaultAssay(d) <- "integrated"
+  SeuratObject::DefaultAssay(d) <- slot1
   d <- Seurat::FindNeighbors(
     d,
     reduction = "umap",
@@ -86,7 +92,8 @@ sc.recluster.data <- function(
     )
   d.umap1 <- sc.umap.panel(
     d,
-    c("CellType","recluster",md.list)
+    c("CellType","recluster",md.list),
+    slot2
     )
   ggplot2::ggsave(
     "analysis/recluster/plot.umap.panel.png",
@@ -97,13 +104,15 @@ sc.recluster.data <- function(
     )
 
   # Recluster QC
-  ggplot2::ggsave(
-    "analysis/recluster/plot.recluster.qc.png",
-    sc.integration.qc(d,"recluster"),
-    width = 24,
-    height = 8,
-    dpi = 700)
-
+  if(run.qc == T){
+    ggplot2::ggsave(
+      "analysis/recluster/plot.recluster.qc.png",
+      sc.integration.qc(d,"recluster"),
+      width = 24,
+      height = 8,
+      dpi = 700)
+    }
+  
   # Recluster UMAP
   ### Cell Type
   ggplot2::ggsave(
@@ -112,7 +121,8 @@ sc.recluster.data <- function(
       # Seurat object
       d,
       # metadata column
-      "CellType"
+      "CellType",
+      slot2
       ),
     height = 8,
     width = 8,
@@ -125,7 +135,8 @@ sc.recluster.data <- function(
       # Seurat object
       d,
       # metadata column
-      "recluster"
+      "recluster",
+      slot2
       ),
     height = 8,
     width = 8,
@@ -226,7 +237,7 @@ sc.recluster.data <- function(
     )
 
   # Reclustered gene expression plots
-  sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc) {
+  sc.umap.panel.gene.list <- function(list.g,so,md.var,col.scheme,col.names,leg.x,leg.y,parl,core.perc,slot2) {
     lg <- list.g
     d <- so
     lg <- unique(lg[lg %in% SeuratObject::Features(d)])
@@ -248,7 +259,8 @@ sc.recluster.data <- function(
             col.scheme,
             col.names,
             leg.x,
-            leg.y
+            leg.y,
+            slot2
           )
           # Save each plot
           ggplot2::ggsave(
@@ -273,7 +285,8 @@ sc.recluster.data <- function(
             col.scheme,
             col.names,
             leg.x,
-            leg.y
+            leg.y,
+            slot2
           )
           # Save each plot
           ggplot2::ggsave(
@@ -298,7 +311,8 @@ sc.recluster.data <- function(
             col.scheme,
             col.names,
             leg.x,
-            leg.y
+            leg.y,
+            slot2
           )
           # Save each plot
           ggplot2::ggsave(
@@ -341,7 +355,9 @@ sc.recluster.data <- function(
     # Run in parallel? (set to FALSE if on Windows)
     parl,
     # Percentage of available cores to use
-    core.perc
+    core.perc,
+    # reduction to plot
+    slot2
     )
 
   return(d)

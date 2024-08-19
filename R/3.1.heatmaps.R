@@ -629,15 +629,16 @@ sc.top10.deg.dotplot <- function(
       "H.pval"
     )
   )
-  ## filter list for chosen cell type
+  ## filter list for chosen cell types
   top10 <- top10[grepl(c,top10[["CellType"]]),]
   ## return list of unique genes
-  top10 <- unique(top10[["GENE"]])
+  top10.pres <- unique(top10[["GENE"]][top10[["GENE"]] %in% SeuratObject::Features(d)])
+  top10.abs <- subset(top10[["GENE"]], !(top10[["GENE"]] %in% SeuratObject::Features(d)))
   }
 
   if(p.type == "cstm.list"){
     top10 <- as.vector(l.deg[[1]])
-    top10 <- unique(top10[top10 %in% SeuratObject::Features(d)])
+    top10.pres <- unique(top10[top10 %in% SeuratObject::Features(d)])
     top10.abs <- subset(top10, !(top10 %in% SeuratObject::Features(d)))
     }
 
@@ -648,7 +649,7 @@ sc.top10.deg.dotplot <- function(
       vars = c(
         cl.var,
         list.var,
-        top10
+        top10.pres
         )
       )
     )
@@ -666,7 +667,7 @@ sc.top10.deg.dotplot <- function(
   d1.prc <- dplyr::bind_rows(
     setNames(
       lapply(
-        top10,
+        top10.pres,
         function(x)
         {
           # Determine average expression of each gene per cell type and comparison
@@ -833,7 +834,7 @@ sc.top10.deg.dotplot <- function(
           return(d.comb.out)
         }
       ),
-      c(top10)
+      c(top10.pres)
       ),
     .id = "GENE"
     )

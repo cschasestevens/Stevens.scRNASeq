@@ -3,6 +3,7 @@
 #' Performs PCA on a Seurat object.
 #'
 #' @param so An object on class Seurat.
+#' @param slot1 Character string indicating which assay to use for PCA.
 #' @return A Seurat object containing PCA results.
 #' @examples
 #'
@@ -10,13 +11,14 @@
 #'
 #' @export
 sc.pca <- function(
-    so
+    so,
+    slot1
     ) {
   d <- so
   # Change assay, scale, and run PCA
   Seurat::DefaultAssay(
     object = d
-    ) <- "integrated"
+    ) <- slot1
   d <- Seurat::RunPCA(
     object = Seurat::ScaleData(
       object = d,
