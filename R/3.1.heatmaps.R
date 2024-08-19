@@ -231,6 +231,10 @@ sc.top10.marker.heatmap <- function(
       "gene",
       "cluster"
       )]
+    if(class(d.mark[["cluster"]]) == "character"){
+      d.mark <- d.mark[gtools::mixedorder(d.mark[["cluster"]]),]
+      }
+
     #### Save table
     write.table(
       d.mark,
