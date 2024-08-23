@@ -8,6 +8,7 @@
 #' @param p.cut Numeric value for p-value cutoff to indicate significance.
 #' @param f.cut Numeric value for fold change cutoff to indicate a high effect size.
 #' @param f.lim Numeric value for fold change limits on the x-axis (given in multiples of 6).
+#' @param y.limit Numeric value for the upper-bound -log10 p-value to display on the y-axis.
 #' @return A volcano plot for the chosen cell type and treatment comparison.
 #' @examples
 #'
@@ -20,7 +21,8 @@ sc.volcano <- function (
     comp.name,
     p.cut,
     f.cut,
-    f.lim
+    f.lim,
+    y.limit
     ) {
     # Subset Input data
     ld <- l.deg[[1]]
@@ -60,7 +62,7 @@ sc.volcano <- function (
       ggplot2::ggtitle(paste(comp.name,ct,sep = " ")) +
       ggplot2::theme(plot.margin = ggplot2::unit(c(.2,.2,.2,.2),"cm")) +
       ggplot2::coord_cartesian(xlim=c(-f.lim,f.lim),
-                               ylim = c(0,350)) +
+                               ylim = c(0,y.limit)) +
       ggplot2::scale_x_continuous(breaks=seq(-f.lim,f.lim,(f.lim/6)))
 
     return(v)

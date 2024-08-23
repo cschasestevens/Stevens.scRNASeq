@@ -13,7 +13,8 @@ sc.umap.panel.gene.list(
   leg.x,
   leg.y,
   parl,
-  core.perc
+  core.perc,
+  slot1
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ sc.umap.panel.gene.list(
 \item{parl}{Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.}
 
 \item{core.perc}{Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.}
+
+\item{slot1}{A character string corresponding to the umap slot name to plot.}
 }
 \value{
 A list of plots saved as ggplot2 objects for visualizing cluster gene expression.
@@ -52,7 +55,8 @@ Generates a series of plots to visualize the expression of a list of genes per c
 # 0.95,
 # 0.95,
 # TRUE,
-# 0.5
+# 0.5,
+# "umap"
 # )
 
 }

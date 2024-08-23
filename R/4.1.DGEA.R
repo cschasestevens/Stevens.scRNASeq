@@ -3,6 +3,7 @@
 #' Performs DGEA per cell type of a Seurat Object.
 #'
 #' @param so An object of class Seurat. Must contain the columns 'CellType' and 'CellGroup' in the metadata slot.
+#' @param asy Character string providing the name of the assay to use for differential analysis.
 #' @param md.list A vector of character strings indicating metadata columns for overlaying on a loadings plot.
 #' @param ct Character string vector containing the name(s) of up to 2 cell type groups present in the CellGroup column.
 #' The provided Seurat object is then subsetted to include only clusters from the provided group names.
@@ -16,9 +17,11 @@
 #' with errors.
 #' @examples
 #'
-#' # dgea.output <- sc.DGEA(
+#' # dgea.output <- sc.diff(
 #' # # Seurat object
 #' # d1,
+#' # # Assay
+#' # "RNA",
 #' # # metadata column list
 #' # c(list.p.cols,"CellType","nFeature_RNA"),
 #' # # Cell type column name
@@ -42,8 +45,9 @@
 #' # )
 #'
 #' @export
-sc.DGEA <- function(
+sc.diff <- function(
     so,
+    asy,
     md.list,
     ct,
     MAST.comp,
@@ -53,12 +57,12 @@ sc.DGEA <- function(
     core.perc
     ) {
   # Load an existing DGEA results object and skip DGEA if present
-  if(file.exists("analysis/object.dgea.result.rds")){
-    print("A DGEA results object already exists for this data set! Loading results object...")
-    dgea.sum <- readRDS("analysis/object.dgea.result.rds")
+  if(file.exists("analysis/object.diff.result.rds")){
+    print("A Differential analysis results object already exists for this data set! Loading existing .rds object...")
+    dgea.sum <- readRDS("analysis/object.diff.result.rds")
     }
 
-  if(!file.exists("analysis/object.dgea.result.rds")){
+  if(!file.exists("analysis/object.diff.result.rds")){
   # Seurat object
   d <- so
   # Metadata columns
@@ -72,7 +76,7 @@ sc.DGEA <- function(
 
   ## Input
   deg.mat <- as.matrix(
-    SeuratObject::GetAssayData(d,'data',assay = 'RNA'))
+    SeuratObject::GetAssayData(d,'data',assay = asy))
   deg.cols <- data.frame(d@meta.data[,c(lc)])
 
   ## Format input as DGEA object
@@ -182,7 +186,7 @@ sc.DGEA <- function(
 
             return(d1)
             },
-        error = function(e) {print("DGEA unsuccessful for selected cell type...")}
+        error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
         )
       }
     ),as.character(list.dgea[[2]]))
@@ -284,7 +288,7 @@ sc.DGEA <- function(
 
             return(d1)
           },
-    error = function(e) {print("DGEA unsuccessful for selected cell type...")}
+    error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
         )
       }
     ),as.character(list.dgea[[2]]))
@@ -386,7 +390,7 @@ sc.DGEA <- function(
 
               return(d1)
             },
-    error = function(e) {print("DGEA unsuccessful for selected cell type...")}
+    error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
         )
       }
     ),as.character(list.dgea[[2]]))
@@ -406,22 +410,22 @@ sc.DGEA <- function(
     function(x) x[!is.na(x[["logFC"]]),]
     )
   dgea.sum <- list(
-    "DGEA.results" = dplyr::bind_rows(dgea.res),
-    "DGEA.missing" = dplyr::bind_rows(dgea.miss),
-    "DGEA.errors" = dplyr::bind_rows(dgea.error)
+    "D.results" = dplyr::bind_rows(dgea.res),
+    "D.missing" = dplyr::bind_rows(dgea.miss),
+    "D.errors" = dplyr::bind_rows(dgea.error)
     )
 
-  dgea.sum[["DGEA.results"]][["H.qval"]] <- p.adjust(
-    dgea.sum[["DGEA.results"]][["H.pval"]],
+  dgea.sum[["D.results"]][["H.qval"]] <- p.adjust(
+    dgea.sum[["D.results"]][["H.pval"]],
     method = "BH"
     )
 
-  dgea.sum[["DGEA.results"]][["log2FC"]] <- log2(
-    exp(dgea.sum[["DGEA.results"]][["logFC"]])
+  dgea.sum[["D.results"]][["log2FC"]] <- log2(
+    exp(dgea.sum[["D.results"]][["logFC"]])
     )
 
-  dgea.sum[["DGEA.results"]] <- dplyr::select(
-    dgea.sum[["DGEA.results"]],
+  dgea.sum[["D.results"]] <- dplyr::select(
+    dgea.sum[["D.results"]],
     1:4,
     H.qval,
     log2FC,
@@ -431,26 +435,26 @@ sc.DGEA <- function(
   ## Export list elements and save as RDS
   write.table(
     dgea.sum[[1]],
-    file = "analysis/table.dgea.results.txt",
+    file = "analysis/table.diff.results.txt",
     sep = "\t",
     col.names = T,
     row.names = F
     )
   write.table(
     dgea.sum[[2]],
-    file = "analysis/table.dgea.missFC.txt",
+    file = "analysis/table.diff.missFC.txt",
     sep = "\t",
     col.names = T,
     row.names = F
     )
   write.table(
     dgea.sum[[3]],
-    file = "analysis/table.dgea.errors.txt",
+    file = "analysis/table.diff.errors.txt",
     sep = "\t",
     col.names = T,
     row.names = F
     )
-  saveRDS(dgea.sum,"analysis/object.dgea.result.rds")
+  saveRDS(dgea.sum,"analysis/object.diff.result.rds")
   }
 
   return(dgea.sum)

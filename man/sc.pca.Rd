@@ -4,10 +4,12 @@
 \alias{sc.pca}
 \title{Seurat PCA}
 \usage{
-sc.pca(so)
+sc.pca(so, slot1)
 }
 \arguments{
 \item{so}{An object on class Seurat.}
+
+\item{slot1}{Character string indicating which assay to use for PCA.}
 }
 \value{
 A Seurat object containing PCA results.

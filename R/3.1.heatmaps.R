@@ -219,21 +219,41 @@ sc.top10.marker.heatmap <- function(
       sep = "\t",
       header = T
       )
+    if(class(d.mark[["cluster"]]) == "character"){
+      d.mark <- d.mark[gtools::mixedorder(d.mark[["cluster"]]),]
+      }
     d.mark[["CellType.no"]] <- d.mark[["cluster"]]
-    ### Top 10 genes per cluster
+    
+    d.mark <- dplyr::group_by(
+      d.mark,
+      .data[["CellType.no"]]
+      )
+    
+    ### Top 10 genes per cluster (by p value then by fold change)
     d.mark <- dplyr::slice_max(
-      dplyr::group_by(
-        d.mark,
-        .data[["CellType.no"]]),
+      d.mark[d.mark[["avg_log2FC"]] > 0,],
+      order_by = -.data[["p_val_adj"]],
+      n = 25
+      )[,c(
+      "gene",
+      "cluster",
+      "avg_log2FC",
+      "p_val_adj"
+      )]
+    
+    d.mark <- dplyr::group_by(
+      d.mark,
+      .data[["cluster"]]
+      )
+    
+    d.mark <- dplyr::slice_max(
+      d.mark,
       order_by = .data[["avg_log2FC"]],
       n = 10
       )[,c(
       "gene",
       "cluster"
       )]
-    if(class(d.mark[["cluster"]]) == "character"){
-      d.mark <- d.mark[gtools::mixedorder(d.mark[["cluster"]]),]
-      }
 
     #### Save table
     write.table(
@@ -363,6 +383,7 @@ sc.top10.marker.heatmap <- function(
 #'
 #' @param l.deg A list of DGEA results returned by sc.DGEA().
 #' @param so An object of class Seurat.
+#' @param asy Character string providing the name of the assay to use.
 #' @param cl.var Character string containing the name of the clustering variable.
 #' @param hm.w Numeric value for heatmap width (passed to ComplexHeatmap).
 #' @param hm.h Numeric value for heatmap height (passed to ComplexHeatmap).
@@ -375,9 +396,10 @@ sc.top10.marker.heatmap <- function(
 #' # p.heatmap <- sc.top10.deg.heatmap(dgea.output,d.annotated,"seurat.clusters",18,24,6,8)
 #'
 #' @export
-sc.top10.deg.heatmap <- function(
+sc.top10.de.da.heatmap <- function(
   l.deg,
   so,
+  asy,
   cl.var,
   hm.w,
   hm.h,
@@ -386,8 +408,8 @@ sc.top10.deg.heatmap <- function(
   c.name
   ) {
   d1 <- so
-  SeuratObject::DefaultAssay(d1) <- "RNA"
-  ld <- l.deg[["DGEA.results"]]
+  SeuratObject::DefaultAssay(d1) <- asy
+  ld <- l.deg[[1]]
 
   ## Return specified number of DEGs for selected comparison and cell types
   d <- dplyr::select(

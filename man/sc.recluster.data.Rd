@@ -14,7 +14,10 @@ sc.recluster.data(
   fs.c,
   fs.r,
   parl,
-  core.perc
+  core.perc,
+  slot1,
+  slot2,
+  run.qc
 )
 }
 \arguments{
@@ -38,6 +41,12 @@ The provided Seurat object is then subsetted to include only clusters from the p
 \item{parl}{Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.}
 
 \item{core.perc}{Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.}
+
+\item{slot1}{A character string indicating which assay should be used for dimension reduction.}
+
+\item{slot2}{A character string indicating the reduction name for plotting gene expression UMAPs.}
+
+\item{run.qc}{A logical indicating whether gene expression QC plots should be generated for the reclustered data.}
 }
 \value{
 A reclustered Seurat Object with summary UMAP plots and a marker gene list.

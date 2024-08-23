@@ -4,7 +4,7 @@
 \alias{sc.volcano}
 \title{Volcano Plot}
 \usage{
-sc.volcano(l.deg, ct, comp.name, p.cut, f.cut, f.lim)
+sc.volcano(l.deg, ct, comp.name, p.cut, f.cut, f.lim, y.limit)
 }
 \arguments{
 \item{l.deg}{A list of DGEA results returned by sc.DGEA().}
@@ -18,6 +18,8 @@ sc.volcano(l.deg, ct, comp.name, p.cut, f.cut, f.lim)
 \item{f.cut}{Numeric value for fold change cutoff to indicate a high effect size.}
 
 \item{f.lim}{Numeric value for fold change limits on the x-axis (given in multiples of 6).}
+
+\item{y.limit}{Numeric value for the upper-bound -log10 p-value to display on the y-axis.}
 }
 \value{
 A volcano plot for the chosen cell type and treatment comparison.

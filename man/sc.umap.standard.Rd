@@ -4,7 +4,7 @@
 \alias{sc.umap.standard}
 \title{Standard UMAP Plot}
 \usage{
-sc.umap.standard(so, md.var)
+sc.umap.standard(so, md.var, slot1)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
