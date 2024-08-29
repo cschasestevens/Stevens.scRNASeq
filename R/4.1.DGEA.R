@@ -6,6 +6,9 @@
 #' 'CellType' and 'CellGroup' in the metadata slot.
 #' @param asy Character string providing the name of the assay
 #' to use for differential analysis.
+#' @param slot1 Character string selecting the slot from the
+#' Seurat object to pull from the chosen assay. Either type "data"
+#' if using expression data and "counts" if analyzing ATAC data.
 #' @param md_list A vector of character strings indicating
 #' metadata columns for overlaying on a loadings plot.
 #' @param ct Character string vector containing the name(s) of up to
@@ -60,6 +63,7 @@
 sc_diff <- function(
   so,
   asy,
+  slot1,
   md_list,
   ct,
   mast_comp,
@@ -67,7 +71,7 @@ sc_diff <- function(
   form1,
   parl,
   core_perc,
-  atac_type = NULL
+  atac_type
 ) {
   # Load an existing DGEA results object and skip DGEA if present
   if(file.exists("analysis/object.diff.result.rds")) { # nolint
@@ -77,7 +81,7 @@ sc_diff <- function(
   }
 
   if(!file.exists("analysis/object.diff.result.rds")) { # nolint
-    if(is.null(atac_type)) { # nolint
+    if(missing(atac_type) == TRUE) { # nolint
       # Seurat object
       d <- so
       # Metadata columns
@@ -86,8 +90,7 @@ sc_diff <- function(
       c <- ct
     }
 
-    if(!is.null(atac_type)) { # nolint
-      library(Seurat)
+    if(missing(atac_type) == FALSE) { # nolint
       # Seurat object
       d <- so
       # Metadata columns
@@ -96,7 +99,7 @@ sc_diff <- function(
       c <- ct
 
       ## Seurat
-      d <- subset(d, subset = CellType == ct) # nolint
+      d <- SeuratObject:::subset.Seurat(d, subset = CellType == atac_type) # nolint
     }
 
     # MAST Comparison (combines column name and leading factor level for name)
@@ -105,14 +108,39 @@ sc_diff <- function(
     mn <- mast_name
 
     ## Input
-    deg_mat <- as.matrix(SeuratObject::GetAssayData(d, "data", assay = asy))
-    deg_cols <- data.frame(d@meta.data[, c(lc)])
+    deg_mat <- as.matrix(
+      SeuratObject::GetAssayData(d, slot = slot1, assay = asy)
+    )
+
+    if(missing(atac_type) == FALSE) { # nolint
+      rownames(deg_mat) <- paste(
+        d@assays$ATAC@meta.features$nearestGene,
+        seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+        sep = "."
+      )
+    }
+
+    deg_cols <- data.frame(
+      d@meta.data[, lc]
+    )
 
     ## Format input as DGEA object
-    dgea_sc <- MAST::FromMatrix(
-      deg_mat,
-      cData = deg_cols
-    )
+    if(missing(atac_type) == FALSE) { # nolint
+      dgea_sc <- MAST::FromMatrix(
+        deg_mat,
+        cData = deg_cols,
+        check_sanity = FALSE
+      )
+    }
+
+    if(missing(atac_type) == TRUE) { # nolint
+      dgea_sc <- MAST::FromMatrix(
+        deg_mat,
+        cData = deg_cols
+      )
+    }
+
+    dgea_sc
     dgea_celltype <- unique(SingleCellExperiment::colData(dgea_sc)[[c]])
     list_dgea <- list("SCE" = dgea_sc, "CellType" = dgea_celltype)
     remove(d)
