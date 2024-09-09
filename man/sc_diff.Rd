@@ -7,6 +7,7 @@
 sc_diff(
   so,
   asy,
+  slot1,
   md_list,
   ct,
   mast_comp,
@@ -14,7 +15,7 @@ sc_diff(
   form1,
   parl,
   core_perc,
-  atac_type = NULL
+  atac_type
 )
 }
 \arguments{
@@ -23,6 +24,10 @@ sc_diff(
 
 \item{asy}{Character string providing the name of the assay
 to use for differential analysis.}
+
+\item{slot1}{Character string selecting the slot from the
+Seurat object to pull from the chosen assay. Either type "data"
+if using expression data and "counts" if analyzing ATAC data.}
 
 \item{md_list}{A vector of character strings indicating
 metadata columns for overlaying on a loadings plot.}
@@ -60,31 +65,35 @@ Performs DGEA per cell type of a Seurat Object.
 }
 \examples{
 
-# dgea.output <- sc.diff(
-# # Seurat object
-# d1,
-# # Assay
-# "RNA",
-# # metadata column list
-# c(list.p.cols,"CellType","nFeature_RNA"),
-# # Cell type column name
-# "CellType",
-# # MAST comparison name
-# "KnockoutKO",
-# # MAST name (user-provided)
-# "KO vs. NG ",
-# # Formula
-# as.formula(
-#   paste(
-#     "~","Knockout","+",
-#     "nFeature_RNA",
-#     sep = " "
+# diff.output <- sc_diff(
+#   # Seurat object
+#   d,
+#   # Assay
+#   "ATAC",
+#   # Slot
+#   "counts",
+#   # metadata column list
+#   c("Code","Airway","CellType","nFeature_ATAC"),
+#   # Cell type column name
+#   "CellType",
+#   # MAST comparison name
+#   "AirwaySAE",
+#   # MAST name (user-provided)
+#   "SAE vs. LAE",
+#   # Formula
+#   as.formula(
+#     paste(
+#       "~","Airway","+",
+#       "nFeature_ATAC",
+#       sep = " "
 #     )
 #   ),
-# # run in parallel? (Set to FALSE if on Windows)
-# TRUE,
-# # core percentage to use
-# 0.5
+#   # run in parallel? (Set to FALSE if on Windows)
+#   TRUE,
+#   # core percentage to use
+#   0.08,
+#   # (optional) CellType to use if assay is "ATAC"
+#   atac_type = x
 # )
 
 }

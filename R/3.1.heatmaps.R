@@ -282,7 +282,7 @@ sc_top10_marker_heatmap <- function(
       order_by = .data[["avg_log2FC"]],
       n = 10
       )[,c(
-      "gene"
+      "gene",
       "cluster"
       )]
 

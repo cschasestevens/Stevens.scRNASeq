@@ -2,18 +2,22 @@
 #'
 #' Processes a single sample into a Seurat object for data integration.
 #'
-#' @param df.par Data frame of parameters to use for data processing.
+#' @param df_par Data frame of parameters to use for data processing.
 #' @param i Numeric value for sample ID.
-#' @param rho.adj Numeric value indicating a proportion to scale rho values calculated during the ambient RNA removal step. 10% (0.1)
+#' @param rho_adj Numeric value indicating a proportion to scale
+#' rho values calculated during the ambient RNA removal step. 10% (0.1)
 #' is generally suitable for most data sets.
-#' @param m.cell Threshold for including features in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
-#' @param m.feat Threshold for including cells in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
-#' @return A processed sample file converted into a Seurat object with a summary list of QC and processing details.
+#' @param m_cell Threshold for including features in a Seurat Object.
+#' Run ?Seurat::CreateSeuratObject() for more details.
+#' @param m_feat Threshold for including cells in a Seurat Object.
+#' Run ?Seurat::CreateSeuratObject() for more details.
+#' @return A processed sample file converted into a Seurat object
+#' with a summary list of QC and processing details.
 #' @examples
 #'
-#' # proc.data <- sc.process.file(
+#' # proc_data <- sc_process_file(
 #' # # parameter list
-#' # list.params,
+#' # list_params,
 #' # # sample ID
 #' # 1,
 #' # # adj.rho proportion
@@ -25,172 +29,173 @@
 #' # )
 #'
 #' @export
-sc.process.file <- function(
-    df.par,
-    i,
-    rho.adj,
-    m.cell,
-    m.feat
-    ){
+sc_process_file <- function(
+  df_par,
+  i,
+  rho_adj,
+  m_cell,
+  m_feat
+) {
   RNGkind("L'Ecuyer-CMRG")
   set.seed(1234)
   # Select file from chosen input parameter df
-  df.p <- df.par
-  d <- df.p[i,]
+  df_p <- df_par
+  d <- df_p[i, ]
   # Estimate contamination fraction
   d <- SoupX::autoEstCont(
     SoupX::load10X(
-      df.p[i,"Path"]
-      ),
+      df_p[i, "Path"]
+    ),
     doPlot = FALSE
-    )
-  df.p[["rho"]] <- as.vector(
+  )
+  df_p[["rho"]] <- as.vector(
     unlist(
       unique(
         d[["metaData"]][["rho"]]
-        )
       )
     )
+  )
   ## Adjusted rho
-  df.p[["adj.rho"]] <- df.p[["rho"]] +
-    rho.adj*
-    df.p[["rho"]]
+  df_p[["adj.rho"]] <- df_p[["rho"]] +
+    rho_adj *
+      df_p[["rho"]]
   ## Cluster and cell numbers
-  df.p[["Clusters"]] <- length(
+  df_p[["Clusters"]] <- length(
     unique(
       (d)$metaData$clusters
-      )
     )
-  df.p[["Cell.No"]] <- nrow(d$metaData)
+  )
+  df_p[["Cell.No"]] <- nrow(d$metaData)
   # Adjust contamination fraction by selected adj.rho value
   d <- SoupX::adjustCounts(
     SoupX::setContaminationFraction(
       d,
-      df.p[["adj.rho"]]
-      )
+      df_p[["adj.rho"]]
     )
+  )
   # Doublet removal/Create single cell experiment
   d <- scDblFinder::scDblFinder(
     SingleCellExperiment::SingleCellExperiment(
       list(
         counts = as.matrix(d)
-        )
       )
     )
+  )
   d <- SummarizedExperiment::assay(
-    d[,d$scDblFinder.class == "singlet"],
+    d[, d$scDblFinder.class == "singlet"],
     "counts"
-    )
+  )
   # Create Seurat object
   d <- Seurat::CreateSeuratObject(
     counts = d,
-    project = paste(df.p[i,"File.ID"]),
-    min.cells = m.cell,
-    min.features = m.feat
-    )
-  d.md <- df.p[i,5:ncol(df.p)]
-  d.md <- setNames(
+    project = paste(df_p[i, "File.ID"]),
+    min.cells = m_cell,
+    min.features = m_feat
+  )
+  d_md <- df_p[i, 5:ncol(df_p)]
+  d_md <- setNames(
     as.data.frame(
       lapply(
         seq.int(
           1,
-          ncol(d.md),
+          ncol(d_md),
           1
-          ),
-        function(x)
+        ),
+        function(x) {
           rep(
-            d.md[1,x],
+            d_md[1, x],
             nrow(d@meta.data)
-            )
-        )
-      ),
-    names(d.md)
-    )
+          )
+        }
+      )
+    ),
+    names(d_md)
+  )
   d <- Seurat::AddMetaData(
     object = d,
-    metadata = d.md
-    )
+    metadata = d_md
+  )
   # Add gene names
-  d.g <- setNames(
-      read.table(
-      df.p[i,
+  d_g <- setNames(
+    read.table(
+      df_p[i,
            c("Path.feat")],
       sep = "\t",
-      header = F
-      ),
-      c("GENEID","GENE","TYPE")
-      )
-  d.g <- d.g[!duplicated(d.g[["GENE"]]),]
-  rownames(d.g) <- d.g[["GENE"]]
+      header = FALSE
+    ),
+    c("GENEID", "GENE", "TYPE")
+  )
+  d_g <- d_g[!duplicated(d_g[["GENE"]]), ]
+  rownames(d_g) <- d_g[["GENE"]]
   d[["RNA"]] <- Seurat::AddMetaData(
     object = d[["RNA"]],
-    metadata = d.g
-    )
+    metadata = d_g
+  )
   # Subset Seurat object
   d[["percent.mt"]] <- Seurat::PercentageFeatureSet(
     object = d,
     pattern = "^MT-"
-    )
-  plot.pre.qc <- Seurat::VlnPlot(
+  )
+  plot_pre_qc <- Seurat::VlnPlot(
     object = d,
     features = c("nFeature_RNA",
                  "nCount_RNA",
                  "percent.mt"),
     ncol = 3,
     pt.size = 0.2
-    )
-  d.filt <- BiocGenerics::subset(
+  )
+  d_filt <- BiocGenerics::subset(
     d,
-    subset = nFeature_RNA > 300 &
-      nFeature_RNA < 7000 &
-      percent.mt < 20
-    )
-  plot.pos.qc <- Seurat::VlnPlot(
-    object = d.filt,
+    subset = nFeature_RNA > 300 & # nolint
+      nFeature_RNA < 7000 &  # nolint
+      percent.mt < 20 # nolint
+  )
+  plot_pos_qc <- Seurat::VlnPlot(
+    object = d_filt,
     features = c("nFeature_RNA",
                  "nCount_RNA",
                  "percent.mt"),
-    ncol=3,
-    pt.size=0.2
-    )
+    ncol = 3,
+    pt.size = 0.2
+  )
   # Log normalize data
-  d.norm <- Seurat::NormalizeData(
-    object = d.filt,
+  d_norm <- Seurat::NormalizeData(
+    object = d_filt,
     normalization.method = "LogNormalize",
     scale.factor = 10000
-    )
-  d.norm <- Seurat::FindVariableFeatures(
-    object = d.norm,
+  )
+  d_norm <- Seurat::FindVariableFeatures(
+    object = d_norm,
     selection.method = "vst",
     nfeatures = 2000
-    )
-  d.norm.sum <- head(
-    Seurat::VariableFeatures(d.norm),
+  )
+  d_norm_sum <- head(
+    Seurat::VariableFeatures(d_norm),
     25
-    )
-  plot.var.feat <- Seurat::VariableFeaturePlot(
-    d.norm,
+  )
+  plot_var_feat <- Seurat::VariableFeaturePlot(
+    d_norm,
     assay = "RNA"
-    )
-  plot.var.feat.out <- Seurat::LabelPoints(
-    plot.var.feat,
-    points = d.norm.sum,
-    repel = T
-    )
-  df.p <- df.p[i,]
+  )
+  plot_var_feat_out <- Seurat::LabelPoints(
+    plot_var_feat,
+    points = d_norm_sum,
+    repel = TRUE
+  )
+  df_p <- df_p[i, ]
 
   return(
     list(
-      "Seurat.obj" = d.norm,
-      "Params" = df.p,
-      "QC.pre" = plot.pre.qc,
-      "QC.post" = plot.pos.qc,
-      "var.feat.sum" = d.norm.sum,
-      "var.feat.plot" = plot.var.feat.out
-      )
+      "Seurat.obj" = d_norm,
+      "Params" = df_p,
+      "QC.pre" = plot_pre_qc,
+      "QC.post" = plot_pos_qc,
+      "var.feat.sum" = d_norm_sum,
+      "var.feat.plot" = plot_var_feat_out
     )
+  )
 
-  }
+}
 
 
 
@@ -198,21 +203,27 @@ sc.process.file <- function(
 
 #' Batch Processing of CellRanger Files
 #'
-#' Processes a list of samples into separate Seurat objects for data integration.
+#' Processes a list of scRNA-Seq samples for data integration.
 #'
-#' @param df.par Data frame of parameters to use for data processing.
-#' @param rho.adj Numeric value indicating a proportion to scale rho values calculated during the ambient RNA removal step. 10% (0.1)
+#' @param df_par Data frame of parameters to use for data processing.
+#' @param rho_adj Numeric value indicating a proportion to scale
+#' rho values calculated during the ambient RNA removal step. 10% (0.1)
 #' is generally suitable for most data sets.
-#' @param m.cell Threshold for including features in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
-#' @param m.feat Threshold for including cells in a Seurat Object. Run ?Seurat::CreateSeuratObject() for more details.
-#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
-#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
-#' @return A processed list of sample files converted into Seurat objects with a summary list of QC and processing details.
+#' @param m_cell Threshold for including features in a Seurat Object.
+#' Run ?Seurat::CreateSeuratObject() for more details.
+#' @param m_feat Threshold for including cells in a Seurat Object.
+#' Run ?Seurat::CreateSeuratObject() for more details.
+#' @param parl Logical indicating whether processing should be run in
+#' parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core_perc Percentage of available cores to use if running
+#' in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @return A processed list of sample files converted into Seurat
+#' objects with a summary list of QC and processing details.
 #' @examples
 #'
-#' # list.data <- sc.process.batch(
+#' # list_data <- sc_process_batch(
 #' # # parameter list
-#' # list.params,
+#' # list_params,
 #' # # adj.rho proportion
 #' # 0.1,
 #' # # minimum cells per feature
@@ -222,185 +233,186 @@ sc.process.file <- function(
 #' # )
 #'
 #' @export
-sc.process.batch <- function(
-    df.par,
-    rho.adj,
-    m.cell,
-    m.feat,
-    parl,
-    core.perc
-    ){
-  if(Sys.info()[["sysname"]] != "Windows" &
-     parl == TRUE) {
-  list.data <- setNames(
-    parallel::mclapply(
-      mc.cores = ceiling(
-        parallel::detectCores()*
-          core.perc
+sc_process_batch <- function(
+  df_par,
+  rho_adj,
+  m_cell,
+  m_feat,
+  parl,
+  core_perc
+) {
+  if( # nolint
+    Sys.info()[["sysname"]] != "Windows" && parl == TRUE
+  ) {
+    list_data <- setNames(
+      parallel::mclapply(
+        mc.cores = ceiling(
+          parallel::detectCores() *
+            core_perc
         ),
-      seq.int(
-        1,
-        nrow(df.par),
-        1
+        seq.int(
+          1,
+          nrow(df_par),
+          1
         ),
-      function(x) {
-        sc.process.file(
-          # parameter list
-          list.params,
-          # sample ID
-          x,
-          # adj.rho proportion
-          rho.adj,
-          # minimum cells per feature
-          m.cell,
-          # minimum features per cell
-          m.feat
+        function(x) {
+          sc_process_file(
+            # parameter list
+            list_params, # nolint
+            # sample ID
+            x,
+            # adj.rho proportion
+            rho_adj,
+            # minimum cells per feature
+            m_cell,
+            # minimum features per cell
+            m_feat
           )
         }
       ),
-    df.par[["File.ID"]]
+      df_par[["File.ID"]]
     )
   }
-  if(Sys.info()[["sysname"]] != "Windows" &
-     parl == FALSE) {
-    list.data <- setNames(lapply(
+  if(Sys.info()[["sysname"]] != "Windows" && parl == FALSE) { # nolint
+    list_data <- setNames(lapply(
       seq.int(
         1,
-        nrow(df.par),
+        nrow(df_par),
         1
       ),
       function(x) {
-        sc.process.file(
+        sc_process_file(
           # parameter list
-          list.params,
+          list_params, # nolint
           # sample ID
           x,
           # adj.rho proportion
-          rho.adj,
+          rho_adj,
           # minimum cells per feature
-          m.cell,
+          m_cell,
           # minimum features per cell
-          m.feat
+          m_feat
         )
       }
     ),
-    df.par[["File.ID"]]
+    df_par[["File.ID"]]
     )
   }
-  if(Sys.info()[["sysname"]] == "Windows" &
-     parl == TRUE) {
-    print("Windows OS does not support parallel sample processing, defaulting to sequential processing...")
-    list.data <- setNames(lapply(
+  if(Sys.info()[["sysname"]] == "Windows" && parl == TRUE) { # nolint
+    print(
+      "Windows OS does not support parallel sample processing, 
+      defaulting to sequential processing..."
+    )
+    list_data <- setNames(lapply(
       seq.int(
         1,
-        nrow(df.par),
+        nrow(df_par),
         1
       ),
       function(x) {
-        sc.process.file(
+        sc_process_file(
           # parameter list
-          list.params,
+          list_params, # nolint
           # sample ID
           x,
           # adj.rho proportion
-          rho.adj,
+          rho_adj,
           # minimum cells per feature
-          m.cell,
+          m_cell,
           # minimum features per cell
-          m.feat
+          m_feat
         )
       }
     ),
-    df.par[["File.ID"]]
+    df_par[["File.ID"]]
     )
   }
-  if(Sys.info()[["sysname"]] == "Windows" &
-     parl == FALSE) {
-    list.data <- setNames(lapply(
+  if(Sys.info()[["sysname"]] == "Windows" && parl == FALSE) { # nolint
+    list_data <- setNames(lapply(
       seq.int(
         1,
-        nrow(df.par),
+        nrow(df_par),
         1
       ),
       function(x) {
-        sc.process.file(
+        sc_process_file(
           # parameter list
-          list.params,
+          list_params, # nolint
           # sample ID
           x,
           # adj.rho proportion
-          rho.adj,
+          rho_adj,
           # minimum cells per feature
-          m.cell,
+          m_cell,
           # minimum features per cell
-          m.feat
+          m_feat
         )
       }
     ),
-    df.par[["File.ID"]]
+    df_par[["File.ID"]]
     )
   }
-  return(list.data)
+  return(list_data)
 }
 
 #' Plot Sample Contamination Fraction
 #'
-#' Generates a scatter plot indicating the individual and average contamination fractions for all samples.
+#' Generates a scatter plot indicating the individual
+#' and average contamination fractions for all samples.
 #'
-#' @param df.par Data frame of updated parameters used for data processing.
-#' @return A scatter plot indicating the individual and average contamination fractions for all samples.
+#' @param df_par Data frame of updated parameters used for data processing.
+#' @return A scatter plot indicating the individual
+#' and average contamination fractions for all samples.
 #' @examples
 #'
-#' # sc.plot.rho(list.params)
+#' # sc_plot_rho(list_params)
 #'
 #' @export
-sc.plot.rho <- function(
-    df.par
-    ) {
-  p.rho <- ggplot2::ggplot() +
+sc_plot_rho <- function(
+  df_par
+) {
+  p_rho <- ggplot2::ggplot() +
     ggplot2::geom_point(
-      data = df.par,
+      data = df_par,
       ggplot2::aes(
-        x = .data[["File.ID"]],
-        y = .data[["rho"]]),
+        x = .data[["File.ID"]], # nolint
+        y = .data[["rho"]]
+      ),
       shape = 21,
       size = 3,
       alpha = 0.25,
-      fill = col.univ()[2]
-      ) +
+      fill = col_univ()[2] # nolint
+    ) +
     ggplot2::geom_point(
-      data = df.par,
+      data = df_par,
       ggplot2::aes(
         x = .data[["File.ID"]],
-        y = .data[["adj.rho"]]),
+        y = .data[["adj.rho"]]
+      ),
       shape = 21,
       size = 3,
       alpha = 1,
-      fill = col.univ()[1]
+      fill = col_univ()[1]
     ) +
     ggplot2::geom_hline(
       yintercept = mean(
-        df.par[["rho"]]
-        ),
+        df_par[["rho"]]
+      ),
       linetype = "dashed"
-      ) +
+    ) +
     ggplot2::geom_hline(
       yintercept = mean(
-        df.par[["adj.rho"]]
-        ),
+        df_par[["adj.rho"]]
+      ),
       linetype = "dashed",
       color = "firebrick2"
-      ) +
-    sc.theme1()
+    ) +
+    sc_theme1() # nolint
   ggplot2::ggsave(
     "processed/data.ambientRNA.cont.png",
-    p.rho,
+    p_rho,
     width = 10,
     height = 10,
     dpi = 600
-    )
-  }
-
-
-
-
+  )
+}
