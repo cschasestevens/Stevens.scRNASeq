@@ -32,35 +32,39 @@
 #' with errors.
 #' @examples
 #'
-#' # dgea.output <- sc.diff(
-#' # # Seurat object
-#' # d1,
-#' # # Assay
-#' # "RNA",
-#' # # metadata column list
-#' # c(list.p.cols,"CellType","nFeature_RNA"),
-#' # # Cell type column name
-#' # "CellType",
-#' # # MAST comparison name
-#' # "KnockoutKO",
-#' # # MAST name (user-provided)
-#' # "KO vs. NG ",
-#' # # Formula
-#' # as.formula(
-#' #   paste(
-#' #     "~","Knockout","+",
-#' #     "nFeature_RNA",
-#' #     sep = " "
+#' # diff.output <- sc_diff(
+#' #   # Seurat object
+#' #   d,
+#' #   # Assay
+#' #   "ATAC",
+#' #   # Slot
+#' #   "counts",
+#' #   # metadata column list
+#' #   c("Code","Airway","CellType","nFeature_ATAC"),
+#' #   # Cell type column name
+#' #   "CellType",
+#' #   # MAST comparison name
+#' #   "AirwaySAE",
+#' #   # MAST name (user-provided)
+#' #   "SAE vs. LAE",
+#' #   # Formula
+#' #   as.formula(
+#' #     paste(
+#' #       "~","Airway","+",
+#' #       "nFeature_ATAC",
+#' #       sep = " "
 #' #     )
 #' #   ),
-#' # # run in parallel? (Set to FALSE if on Windows)
-#' # TRUE,
-#' # # core percentage to use
-#' # 0.5
+#' #   # run in parallel? (Set to FALSE if on Windows)
+#' #   TRUE,
+#' #   # core percentage to use
+#' #   0.08,
+#' #   # (optional) CellType to use if assay is "ATAC"
+#' #   atac_type = x
 #' # )
 #'
 #' @export
-sc_diff <- function(
+sc_diff <- function( # nolint
   so,
   asy,
   slot1,
@@ -98,8 +102,8 @@ sc_diff <- function(
       # Cell type column
       c <- ct
 
-      ## Seurat
-      d <- SeuratObject:::subset.Seurat(d, subset = CellType == atac_type) # nolint
+      ## Subset
+      d <- d[, d@meta.data[[c]] == atac_type]
     }
 
     # MAST Comparison (combines column name and leading factor level for name)
@@ -181,114 +185,12 @@ sc_diff <- function(
                   dplyr::select(
                     dplyr::filter(
                       s1_res$datatable,
-                      contrast == comp1 &
-                        component != "S"
-                      ),
-                    -c("contrast")
-                    ),
-                  id.vars = c("primerid","component")
-                  )
-                s1_dt[["vars"]] <- paste(
-                  s1_dt$component,
-                  s1_dt$variable,
-                  sep = "."
-                  )
-                s1_dt <- dplyr::select(
-                  dplyr::mutate(
-                    reshape2::dcast(
-                      dplyr::select(
-                        dplyr::filter(
-                          s1_dt,
-                          vars != "logFC.Pr(>Chisq)" &
-                            vars != "H.ci.hi" &
-                            vars != "H.ci.lo" &
-                            vars != "H.coef" &
-                            vars != "H.z"
-                            ),
-                        -c(
-                          "component",
-                          "variable"
-                          )
-                        ),
-                      primerid ~ vars
-                      ),
-                    "CellType" = ct2,
-                    "Comparison" = comp1_name
-                    ),
-                  c(
-                    "CellType","Comparison","primerid",
-                    "logFC.coef","H.Pr(>Chisq)","C.Pr(>Chisq)",
-                    "D.Pr(>Chisq)",everything()
-                    )
-                  )
-                names(s1_dt) <- c(
-                  "CellType","Comparison","GENE",
-                  "logFC","H.pval","C.pval",
-                  "D.pval",
-                  names(
-                    s1_dt[8:ncol(
-                      s1_dt
-                    )]
-                  )
-                )
-                return(s1_dt)
-                }
-
-            d1 <- d_mast_sum_fun(
-              mc,
-              list_dgea[[2]][[x]],
-              mn
-              )
-
-              return(d1)
-              },
-          error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
-          )
-        }
-      ),as.character(list_dgea[[2]]))
-    }
-
-    if(Sys.info()[["sysname"]] != "Windows" &
-       parl == FALSE){
-      list_dgea_res <- setNames(lapply(
-        seq.int(1,length(list_dgea[[2]]),1),
-        function(x) {
-          tryCatch(
-            {
-              # Subset data
-              s1 <- list_dgea[[1]][,SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[x]]]
-              s1_sum <- rowSums(SummarizedExperiment::assay(s1)>0)
-              s1 <- s1[s1_sum/ncol(s1) >= 0.05,]
-              ### create glm (generalized linear model for each variable)
-              s1_fit <- MAST::zlm(
-                formula = form1,
-                s1,
-                method = "glm",
-                ebayes = F,
-                parallel = F
-                )
-              ### Output DFs
-              d_mast_sum_fun <- function(
-              comp1,
-              ct2,
-              comp1_name
-              ) {
-                s1_res <- MAST::summary(
-                  s1_fit,
-                  doLRT = comp1,
-                  logFC = T,
-                  parallel = F)
-                ### make dfs to display summary results by comp
-                s1_dt <- reshape2::melt(
-                  dplyr::select(
-                    dplyr::filter(
-                      s1_res$datatable,
-                      contrast == comp1 &
-                        component != "S"
+                      contrast == comp1 & # nolint
+                        component != "S" # nolint
                     ),
                     -c("contrast")
                   ),
-                  id.vars = c("primerid","component")
+                  id.vars = c("primerid", "component")
                 )
                 s1_dt[["vars"]] <- paste(
                   s1_dt$component,
@@ -301,7 +203,7 @@ sc_diff <- function(
                       dplyr::select(
                         dplyr::filter(
                           s1_dt,
-                          vars != "logFC.Pr(>Chisq)" &
+                          vars != "logFC.Pr(>Chisq)" & # nolint
                             vars != "H.ci.hi" &
                             vars != "H.ci.lo" &
                             vars != "H.coef" &
@@ -318,14 +220,14 @@ sc_diff <- function(
                     "Comparison" = comp1_name
                   ),
                   c(
-                    "CellType","Comparison","primerid",
-                    "logFC.coef","H.Pr(>Chisq)","C.Pr(>Chisq)",
-                    "D.Pr(>Chisq)",everything()
+                    "CellType", "Comparison", "primerid",
+                    "logFC.coef", "H.Pr(>Chisq)", "C.Pr(>Chisq)",
+                    "D.Pr(>Chisq)", everything() # nolint
                   )
                 )
                 names(s1_dt) <- c(
-                  "CellType","Comparison","GENE",
-                  "logFC","H.pval","C.pval",
+                  "CellType", "Comparison", "GENE",
+                  "logFC", "H.pval", "C.pval",
                   "D.pval",
                   names(
                     s1_dt[8:ncol(
@@ -344,53 +246,167 @@ sc_diff <- function(
 
               return(d1)
             },
-      error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
+            error = function(e) {
+              print("Differential analysis unsuccessful for cell type...")
+            }
           )
         }
-      ),as.character(list_dgea[[2]]))
+      ), as.character(list_dgea[[2]]))
     }
 
-    if(Sys.info()[["sysname"]] == "Windows"){
+    if(Sys.info()[["sysname"]] != "Windows" && # nolint
+         parl == FALSE) {
+      list_dgea_res <- setNames(lapply(
+        seq.int(1, length(list_dgea[[2]]), 1),
+        function(x) {
+          tryCatch(
+            {
+              # Subset data
+              s1 <- list_dgea[[1]][,
+              SingleCellExperiment::colData( # nolint
+                list_dgea[[1]]
+              )[[c]] == list_dgea[[2]][[x]]]
+              s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0)
+              s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
+              ### create glm (generalized linear model for each variable)
+              s1_fit <- MAST::zlm(
+                formula = form1,
+                s1,
+                method = "glm",
+                ebayes = FALSE,
+                parallel = FALSE
+              )
+              ### Output DFs
+              d_mast_sum_fun <- function(
+                comp1,
+                ct2,
+                comp1_name
+              ) {
+                s1_res <- MAST::summary(
+                  s1_fit,
+                  doLRT = comp1,
+                  logFC = TRUE,
+                  parallel = FALSE
+                )
+                ### make dfs to display summary results by comp
+                s1_dt <- reshape2::melt(
+                  dplyr::select(
+                    dplyr::filter(
+                      s1_res$datatable,
+                      contrast == comp1 & # nolint
+                        component != "S" # nolint
+                    ),
+                    -c("contrast")
+                  ),
+                  id.vars = c("primerid", "component")
+                )
+                s1_dt[["vars"]] <- paste(
+                  s1_dt$component,
+                  s1_dt$variable,
+                  sep = "."
+                )
+                s1_dt <- dplyr::select(
+                  dplyr::mutate(
+                    reshape2::dcast(
+                      dplyr::select(
+                        dplyr::filter(
+                          s1_dt,
+                          vars != "logFC.Pr(>Chisq)" & # nolint
+                            vars != "H.ci.hi" &
+                            vars != "H.ci.lo" &
+                            vars != "H.coef" &
+                            vars != "H.z"
+                        ),
+                        -c(
+                          "component",
+                          "variable"
+                        )
+                      ),
+                      primerid ~ vars
+                    ),
+                    "CellType" = ct2,
+                    "Comparison" = comp1_name
+                  ),
+                  c(
+                    "CellType", "Comparison", "primerid",
+                    "logFC.coef", "H.Pr(>Chisq)", "C.Pr(>Chisq)",
+                    "D.Pr(>Chisq)", everything() # nolint
+                  )
+                )
+                names(s1_dt) <- c(
+                  "CellType", "Comparison", "GENE",
+                  "logFC", "H.pval", "C.pval",
+                  "D.pval",
+                  names(
+                    s1_dt[8:ncol(
+                      s1_dt
+                    )]
+                  )
+                )
+                return(s1_dt)
+              }
+
+              d1 <- d_mast_sum_fun(
+                mc,
+                list_dgea[[2]][[x]],
+                mn
+              )
+
+              return(d1)
+            },
+            error = function(e) {
+              print("Differential analysis unsuccessful for cell type...")
+            }
+          )
+        }
+      ), as.character(list_dgea[[2]]))
+    }
+
+    if(Sys.info()[["sysname"]] == "Windows") { # nolint
       list_dgea_res <- setNames(
-        lapply(
-          seq.int(1,length(list_dgea[[2]]),1),
+        lapply( # nolint
+          seq.int(1, length(list_dgea[[2]]), 1),
           function(x) {
             tryCatch(
               {
                 # Subset data
-                s1 <- list_dgea[[1]][,SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[x]]]
-                s1_sum <- rowSums(SummarizedExperiment::assay(s1)>0)
-                s1 <- s1[s1_sum/ncol(s1) >= 0.05,]
+                s1 <- list_dgea[[1]][,
+                SingleCellExperiment::colData( # nolint
+                  list_dgea[[1]]
+                )[[c]] == list_dgea[[2]][[x]]]
+                s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0) # nolint
+                s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
                 ### create glm (generalized linear model for each variable)
                 s1_fit <- MAST::zlm(
                   formula = form1,
                   s1,
                   method = "glm",
-                  ebayes = F,
-                  parallel = F
-                  )
+                  ebayes = FALSE,
+                  parallel = FALSE
+                )
                 ### Output DFs
                 d_mast_sum_fun <- function(
-                comp1,
-                ct2,
-                comp1_name
+                  comp1,
+                  ct2,
+                  comp1_name
                 ) {
                   s1_res <- MAST::summary(
                     s1_fit,
                     doLRT = comp1,
-                    logFC = T,
-                    parallel = F)
+                    logFC = TRUE,
+                    parallel = FALSE
+                  )
                   ### make dfs to display summary results by comp
                   s1_dt <- reshape2::melt(
                     dplyr::select(
                       dplyr::filter(
                         s1_res$datatable,
-                        contrast == comp1 &
-                          component != "S"
+                        contrast == comp1 & # nolint
+                          component != "S" # nolint
                       ),
                       -c("contrast")
                     ),
-                    id.vars = c("primerid","component")
+                    id.vars = c("primerid", "component")
                   )
                   s1_dt[["vars"]] <- paste(
                     s1_dt$component,
@@ -403,7 +419,7 @@ sc_diff <- function(
                         dplyr::select(
                           dplyr::filter(
                             s1_dt,
-                            vars != "logFC.Pr(>Chisq)" &
+                            vars != "logFC.Pr(>Chisq)" & # nolint
                               vars != "H.ci.hi" &
                               vars != "H.ci.lo" &
                               vars != "H.coef" &
@@ -420,14 +436,14 @@ sc_diff <- function(
                       "Comparison" = comp1_name
                     ),
                     c(
-                      "CellType","Comparison","primerid",
-                      "logFC.coef","H.Pr(>Chisq)","C.Pr(>Chisq)",
-                      "D.Pr(>Chisq)",everything()
+                      "CellType", "Comparison", "primerid",
+                      "logFC.coef", "H.Pr(>Chisq)", "C.Pr(>Chisq)",
+                      "D.Pr(>Chisq)", everything() # nolint
                     )
                   )
                   names(s1_dt) <- c(
-                    "CellType","Comparison","GENE",
-                    "logFC","H.pval","C.pval",
+                    "CellType", "Comparison", "GENE",
+                    "logFC", "H.pval", "C.pval",
                     "D.pval",
                     names(
                       s1_dt[8:ncol(
@@ -438,18 +454,20 @@ sc_diff <- function(
                   return(s1_dt)
                 }
 
-                d1 <- d_mast_sum_fun(
+                d1 <- d_mast_sum_fun( # nolint
                   mc,
                   list_dgea[[2]][[x]],
                   mn
                 )
 
-                return(d1)
+                return(d1) # nolint
               },
-      error = function(e) {print("Differential analysis unsuccessful for selected cell type...")}
-          )
-        }
-      ),as.character(list_dgea[[2]]))
+              error = function(e) {
+                print("Differential analysis unsuccessful for cell type...")
+              }
+            )
+          }
+        ), as.character(list_dgea[[2]]))
     }
 
     # Combine results
@@ -459,61 +477,103 @@ sc_diff <- function(
     ## return genes for each result with missing logFC
     dgea_miss <- lapply(
       dgea_comb,
-      function(x) x[is.na(x[["logFC"]]),]
-      )
+      function(x) x[is.na(x[["logFC"]]), ]
+    )
     dgea_res <- lapply(
       dgea_comb,
-      function(x) x[!is.na(x[["logFC"]]),]
-      )
+      function(x) x[!is.na(x[["logFC"]]), ]
+    )
     dgea_sum <- list(
       "D.results" = dplyr::bind_rows(dgea_res),
       "D.missing" = dplyr::bind_rows(dgea_miss),
       "D.errors" = dplyr::bind_rows(dgea_error)
-      )
+    )
 
     dgea_sum[["D.results"]][["H.qval"]] <- p.adjust(
       dgea_sum[["D.results"]][["H.pval"]],
       method = "BH"
-      )
+    )
 
     dgea_sum[["D.results"]][["log2FC"]] <- log2(
       exp(dgea_sum[["D.results"]][["logFC"]])
-      )
+    )
 
     dgea_sum[["D.results"]] <- dplyr::select(
       dgea_sum[["D.results"]],
       1:4,
-      H.qval,
-      log2FC,
-      everything()
-      )
+      H.qval, # nolint
+      log2FC, # nolint
+      everything() # nolint
+    )
 
     ## Export list elements and save as RDS
-    write.table(
-      dgea_sum[[1]],
-      file = "analysis/table.diff.results.txt",
-      sep = "\t",
-      col.names = T,
-      row.names = F
+    if(asy == "RNA") { # nolint
+      write.table(
+        dgea_sum[[1]],
+        file = "analysis/table.diff.results.txt",
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
       )
-    write.table(
-      dgea_sum[[2]],
-      file = "analysis/table.diff.missFC.txt",
-      sep = "\t",
-      col.names = T,
-      row.names = F
+      write.table(
+        dgea_sum[[2]],
+        file = "analysis/table.diff.missFC.txt",
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
       )
-    write.table(
-      dgea_sum[[3]],
-      file = "analysis/table.diff.errors.txt",
-      sep = "\t",
-      col.names = T,
-      row.names = F
+      write.table(
+        dgea_sum[[3]],
+        file = "analysis/table.diff.errors.txt",
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
       )
-    saveRDS(dgea_sum,"analysis/object.diff.result.rds")
+      saveRDS(dgea_sum, "analysis/object.diff.result.rds")
     }
 
-    return(dgea_sum)
+    if(asy == "ATAC") { # nolint
+      write.table(
+        dgea_sum[[1]],
+        file = paste(
+          "analysis/table.diff.results.",
+          atac_type,
+          ".txt",
+          sep = ""
+        ),
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
+      )
+      write.table(
+        dgea_sum[[2]],
+        file = paste(
+          "analysis/table.diff.missFC.",
+          atac_type,
+          ".txt",
+          sep = ""
+        ),
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
+      )
+      write.table(
+        dgea_sum[[3]],
+        file = paste(
+          "analysis/table.diff.errors.",
+          atac_type,
+          ".txt",
+          sep = ""
+        ),
+        sep = "\t",
+        col.names = TRUE,
+        row.names = FALSE
+      )
+      saveRDS(dgea_sum,
+        paste("analysis/object.diff.result.", atac_type, ".rds", sep = "")
+      )
     }
+  }
 
-
+  return(dgea_sum)
+}

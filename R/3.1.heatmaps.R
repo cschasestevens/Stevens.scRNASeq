@@ -193,8 +193,9 @@
 #' # p.umap <- sc.top10.marker.heatmap(d.annotated,"seurat.clusters",18,24,6,8)
 #'
 #' @export
-sc.top10.marker.heatmap <- function(
+sc_top10_marker_heatmap <- function(
   so,
+  asy,
   cl.var,
   h.w,
   h.h,
@@ -202,8 +203,9 @@ sc.top10.marker.heatmap <- function(
   fs.r
   ) {
   d <- so
-  if(!file.exists("analysis/table.marker.genes.txt")) {
+  if(!file.exists("analysis/table.marker.genes.txt") && asy == "RNA") {
     print("No marker gene file has been created; calculating marker genes for each cluster...")
+    Seurat::DefaultAssay(d) <- "RNA"
     cl.mark <- Seurat::FindAllMarkers(d,verbose = T)
     write.table(
       cl.mark,
@@ -213,12 +215,41 @@ sc.top10.marker.heatmap <- function(
       sep = "\t"
       )
     }
-    ## Marker gene input matrix (top10 per cell type)
+
+  if(!file.exists("analysis/table.marker.motifs.txt") && asy == "ATAC") {
+    print("No marker motif file has been created; calculating marker motifs for each cluster...")
+    Seurat::DefaultAssay(d) <- "ATAC"
+    cl.mark <- Seurat::FindAllMarkers(d,min.pct = 0.05,verbose = T)
+    cl.mark <- dplyr::left_join(
+      cl.mark,
+      names_motif,
+      by = "gene"
+    )
+    write.table(
+      cl.mark,
+      "analysis/table.marker.motifs.txt",
+      col.names = T,
+      row.names = F,
+      sep = "\t"
+      )
+    }
+
+    if(asy == "RNA") {
     d.mark <- read.table(
       "analysis/table.marker.genes.txt",
       sep = "\t",
       header = T
       )
+    }
+
+    if(asy == "ATAC") {
+    d.mark <- read.table(
+      "analysis/table.marker.motifs.txt",
+      sep = "\t",
+      header = T
+      )
+    }
+    ## Marker gene input matrix (top10 per cell type)
     if(class(d.mark[["cluster"]]) == "character"){
       d.mark <- d.mark[gtools::mixedorder(d.mark[["cluster"]]),]
       }
@@ -251,11 +282,12 @@ sc.top10.marker.heatmap <- function(
       order_by = .data[["avg_log2FC"]],
       n = 10
       )[,c(
-      "gene",
+      "gene"
       "cluster"
       )]
 
     #### Save table
+    if(asy == "RNA") {
     write.table(
       d.mark,
       "analysis/table.marker.genes.top10.txt",
@@ -263,8 +295,19 @@ sc.top10.marker.heatmap <- function(
       col.names = T,
       sep = "\t"
       )
-    ### Subset seurat and scale
     SeuratObject::DefaultAssay(d) <- "RNA"
+    }
+    if(asy == "ATAC") {
+    write.table(
+      d.mark,
+      "analysis/table.marker.motifs.top10.txt",
+      row.names = F,
+      col.names = T,
+      sep = "\t"
+      )
+    SeuratObject::DefaultAssay(d) <- "ATAC"
+    }
+    ### Subset seurat and scale
     h <- SeuratObject::FetchData(
       d,
       vars = c(
@@ -286,7 +329,7 @@ sc.top10.marker.heatmap <- function(
       )
     
     h.anno <- h.anno[,h.anno[1,] > 0]
-    ### Scale and plot average expression per cell type
+    ### Scale and plot average expression/accessibility per cell type
     h.in <- scale(
       as.matrix(
         magrittr::set_rownames(
@@ -348,7 +391,7 @@ sc.top10.marker.heatmap <- function(
     h.out <- ComplexHeatmap::Heatmap(
       h.in,
       col = fun.hm.col,
-      name = "Scaled Expression",
+      name = "Scaled Expression/Accessibility",
       top_annotation = ComplexHeatmap::HeatmapAnnotation(
         `Average.Expression` = ComplexHeatmap::anno_barplot(
           as.vector(t(h.anno)),
@@ -362,7 +405,7 @@ sc.top10.marker.heatmap <- function(
       show_row_names = T,
       heatmap_width = ggplot2::unit(h.w,"cm"),
       heatmap_height = ggplot2::unit(h.h,"cm"),
-      column_title = "Marker Genes (Top 10)",
+      column_title = "Top 10 Markers",
       column_names_rot = 90,
       column_names_gp = grid::gpar(fontsize = fs.c),
       row_names_side = "left",
