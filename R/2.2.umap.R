@@ -611,235 +611,235 @@ sc.umap.standard <- function(
 
 
 
-
-sc.umap.panel.gene(
-  # Seurat Object
-  d,
-  # Group variable
-  "CellType",
-  # Gene name
-  "CFTR",
-  # Color scheme
-  col.univ()[1:length(levels(d@meta.data[["CellType"]]))],
-  # Color Names
-  c(levels(d@meta.data[["CellType"]])),
-  # legend x-position
-  0.95,
-  # legend y-position
-  0.95,
-  # reduction to plot
-  "umap_harmony"
-  )
-
-sc.umap.panel.gene <- function(
-    so,
-    md.var,
-    g.name,
-    col.scheme,
-    col.names,
-    leg.x,
-    leg.y,
-    slot1
-) {
-  # Format input data
-  cols <- setNames(col.univ()[1:length(levels(d@meta.data[["CellType"]]))],
-                   c(levels(d@meta.data[["CellType"]])))
-  d <- d
-  d2 <- data.frame(
-    Seurat::FetchData(
-      d,
-      vars = c(
-        diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]],
-        "CellType"
-      )
-    ),
-    `UMAP.1` = d@reductions[["wnn.umap.cor"]]@cell.embeddings[,1],
-    `UMAP.2` = d@reductions[["wnn.umap.cor"]]@cell.embeddings[,2]
-    )
-
-  # Generate plots
-  d2.plot <- ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x=`UMAP.1`,
-      y=`UMAP.2`,
-      color = .data[[diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]]]]
-    )
-  ) +
-
-    ggplot2::scale_color_gradientn(
-      name = "Motif Activity",
-      colors = col.grad()
-    ) +
-
-    # Add 3D points, axes, and axis-labels
-
-    ggplot2::geom_point(shape = 16,
-               size = 1,
-               alpha = 0.6) +
-
-    ggplot2::ggtitle("GRHL1") +
-
-    # Add general multivariate plot theme and adjust axis text
-    sc.theme1() +
-
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.title.x = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(),
-      axis.ticks = ggplot2::element_blank(),
-      plot.margin = ggplot2::unit(
-        c(
-          0.1,0.1,0.1,0.1
-        ),
-        "cm"
-      ),
-      legend.position = c(
-        0.95,
-        0.95
-      )
-    )
-
-
-  ## Metadata overlay
-
-  p.md <-  ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x=`UMAP.1`,
-      y=`UMAP.2`,
-      color = .data[["CellType"]],
-      label = .data[["CellType"]]
-    )
-  ) +
-
-    ggplot2::scale_color_manual(
-      paste(""),
-      values = cols
-    ) +
-
-    ggplot2::geom_point(shape = 16,
-               size = 1,
-               alpha = 0.6) +
-
-    ggrepel::geom_text_repel(data = setNames(
-      aggregate(
-        d2[,c(
-          "UMAP.1",
-          "UMAP.2"
-        )],
-        list(
-          d2[["CellType"]]
-        ),
-        FUN = median
-      ),
-      c(
-        "CellType",
-        names(
-          d2[,c(
-            "UMAP.1",
-            "UMAP.2"
-          )]
-        )
-      )
-    ),
-    size = 4,
-    bg.color = "white") +
-
-    ggplot2::ggtitle("CellType") +
-
-    # Add general multivariate plot theme and adjust axis text
-    sc.theme1() +
-
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.title.x = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(),
-      axis.ticks = ggplot2::element_blank(),
-      plot.margin = ggplot2::unit(
-        c(
-          0.1,0.1,0.1,0.1
-        ),
-        "cm"
-      ),
-      legend.position = "none"
-    )
-
-
-  ## Violin Plot
-
-  plot.v <- ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x = .data[["CellType"]],
-      y = .data[[diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]]]],
-      fill = .data[["CellType"]]
-    )
-  ) +
-
-    ggplot2::scale_fill_manual(
-      name = "CellType",
-      values = col.univ()[1:length(levels(d@meta.data[["CellType"]]))]
-    ) +
-
-    # Add violin plot and dotplot
-    ggplot2::geom_violin(
-      trim = T
-    ) +
-
-    ggplot2::geom_jitter(
-      ggplot2::aes(
-        alpha = 0.2
-      ),
-      shape = 16,
-      size = 0.2,
-      position = ggplot2::position_jitter(
-        width = 0.4
-      ),
-      show.legend = F
-    ) +
-
-    # Add Theme
-
-    sc.theme1() +
-    ggplot2::labs(
-      y = "Motif Activity"
-    ) +
-    ggplot2::theme(
-      plot.margin = ggplot2::unit(
-        c(
-          0.1,
-          0.1,
-          0.1,
-          0.1
-        ),
-        "cm"
-      ),
-      legend.position = "none"
-    )
-
-  # Combine output
-  d2.out <- ggpubr::ggarrange(
-    d2.plot,
-    p.md,
-    plot.v,
-    ncol = 3,
-    nrow = 1,
-    common.legend = F
-  )
-d2.out
-  return(d2.out)
-
-  }
-
-ggplot2::ggsave(
-          paste("analysis/","test.activity.plot",".png",sep = ""),
-          d2.out,
-          height = 12,
-          width = 36,
-          dpi = 700
-          )
+# 
+# sc.umap.panel.gene(
+#   # Seurat Object
+#   d,
+#   # Group variable
+#   "CellType",
+#   # Gene name
+#   "CFTR",
+#   # Color scheme
+#   col.univ()[1:length(levels(d@meta.data[["CellType"]]))],
+#   # Color Names
+#   c(levels(d@meta.data[["CellType"]])),
+#   # legend x-position
+#   0.95,
+#   # legend y-position
+#   0.95,
+#   # reduction to plot
+#   "umap_harmony"
+#   )
+# 
+# sc.umap.panel.gene <- function(
+#     so,
+#     md.var,
+#     g.name,
+#     col.scheme,
+#     col.names,
+#     leg.x,
+#     leg.y,
+#     slot1
+# ) {
+#   # Format input data
+#   cols <- setNames(col.univ()[1:length(levels(d@meta.data[["CellType"]]))],
+#                    c(levels(d@meta.data[["CellType"]])))
+#   d <- d
+#   d2 <- data.frame(
+#     Seurat::FetchData(
+#       d,
+#       vars = c(
+#         diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]],
+#         "CellType"
+#       )
+#     ),
+#     `UMAP.1` = d@reductions[["wnn.umap.cor"]]@cell.embeddings[,1],
+#     `UMAP.2` = d@reductions[["wnn.umap.cor"]]@cell.embeddings[,2]
+#     )
+# 
+#   # Generate plots
+#   d2.plot <- ggplot2::ggplot(
+#     d2,
+#     ggplot2::aes(
+#       x=`UMAP.1`,
+#       y=`UMAP.2`,
+#       color = .data[[diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]]]]
+#     )
+#   ) +
+# 
+#     ggplot2::scale_color_gradientn(
+#       name = "Motif Activity",
+#       colors = col.grad()
+#     ) +
+# 
+#     # Add 3D points, axes, and axis-labels
+# 
+#     ggplot2::geom_point(shape = 16,
+#                size = 1,
+#                alpha = 0.6) +
+# 
+#     ggplot2::ggtitle("GRHL1") +
+# 
+#     # Add general multivariate plot theme and adjust axis text
+#     sc.theme1() +
+# 
+#     ggplot2::theme(
+#       panel.grid.major.y = ggplot2::element_blank(),
+#       axis.text.x = ggplot2::element_blank(),
+#       axis.text.y = ggplot2::element_blank(),
+#       axis.title.x = ggplot2::element_blank(),
+#       axis.title.y = ggplot2::element_blank(),
+#       axis.ticks = ggplot2::element_blank(),
+#       plot.margin = ggplot2::unit(
+#         c(
+#           0.1,0.1,0.1,0.1
+#         ),
+#         "cm"
+#       ),
+#       legend.position = c(
+#         0.95,
+#         0.95
+#       )
+#     )
+# 
+# 
+#   ## Metadata overlay
+# 
+#   p.md <-  ggplot2::ggplot(
+#     d2,
+#     ggplot2::aes(
+#       x=`UMAP.1`,
+#       y=`UMAP.2`,
+#       color = .data[["CellType"]],
+#       label = .data[["CellType"]]
+#     )
+#   ) +
+# 
+#     ggplot2::scale_color_manual(
+#       paste(""),
+#       values = cols
+#     ) +
+# 
+#     ggplot2::geom_point(shape = 16,
+#                size = 1,
+#                alpha = 0.6) +
+# 
+#     ggrepel::geom_text_repel(data = setNames(
+#       aggregate(
+#         d2[,c(
+#           "UMAP.1",
+#           "UMAP.2"
+#         )],
+#         list(
+#           d2[["CellType"]]
+#         ),
+#         FUN = median
+#       ),
+#       c(
+#         "CellType",
+#         names(
+#           d2[,c(
+#             "UMAP.1",
+#             "UMAP.2"
+#           )]
+#         )
+#       )
+#     ),
+#     size = 4,
+#     bg.color = "white") +
+# 
+#     ggplot2::ggtitle("CellType") +
+# 
+#     # Add general multivariate plot theme and adjust axis text
+#     sc.theme1() +
+# 
+#     ggplot2::theme(
+#       panel.grid.major.y = ggplot2::element_blank(),
+#       axis.text.x = ggplot2::element_blank(),
+#       axis.text.y = ggplot2::element_blank(),
+#       axis.title.x = ggplot2::element_blank(),
+#       axis.title.y = ggplot2::element_blank(),
+#       axis.ticks = ggplot2::element_blank(),
+#       plot.margin = ggplot2::unit(
+#         c(
+#           0.1,0.1,0.1,0.1
+#         ),
+#         "cm"
+#       ),
+#       legend.position = "none"
+#     )
+# 
+# 
+#   ## Violin Plot
+# 
+#   plot.v <- ggplot2::ggplot(
+#     d2,
+#     ggplot2::aes(
+#       x = .data[["CellType"]],
+#       y = .data[[diff.output.activity[diff.output.activity[["gene"]] == "GRHL1","ID"][[1]]]],
+#       fill = .data[["CellType"]]
+#     )
+#   ) +
+# 
+#     ggplot2::scale_fill_manual(
+#       name = "CellType",
+#       values = col.univ()[1:length(levels(d@meta.data[["CellType"]]))]
+#     ) +
+# 
+#     # Add violin plot and dotplot
+#     ggplot2::geom_violin(
+#       trim = T
+#     ) +
+# 
+#     ggplot2::geom_jitter(
+#       ggplot2::aes(
+#         alpha = 0.2
+#       ),
+#       shape = 16,
+#       size = 0.2,
+#       position = ggplot2::position_jitter(
+#         width = 0.4
+#       ),
+#       show.legend = F
+#     ) +
+# 
+#     # Add Theme
+# 
+#     sc.theme1() +
+#     ggplot2::labs(
+#       y = "Motif Activity"
+#     ) +
+#     ggplot2::theme(
+#       plot.margin = ggplot2::unit(
+#         c(
+#           0.1,
+#           0.1,
+#           0.1,
+#           0.1
+#         ),
+#         "cm"
+#       ),
+#       legend.position = "none"
+#     )
+# 
+#   # Combine output
+#   d2.out <- ggpubr::ggarrange(
+#     d2.plot,
+#     p.md,
+#     plot.v,
+#     ncol = 3,
+#     nrow = 1,
+#     common.legend = F
+#   )
+# d2.out
+#   return(d2.out)
+# 
+#   }
+# 
+# ggplot2::ggsave(
+#           paste("analysis/","test.activity.plot",".png",sep = ""),
+#           d2.out,
+#           height = 12,
+#           width = 36,
+#           dpi = 700
+#           )
