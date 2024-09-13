@@ -1,74 +1,204 @@
 #' Volcano Plot
 #'
-#' Generates a volcano plot from a DEG results object for a chosen cell type and comparison.
+#' Generates a volcano plot from a DEG results object or data frame for
+#' a chosen comparison and/or cell type.
 #'
-#' @param l.deg A list of DGEA results returned by sc.DGEA().
-#' @param ct A pattern provided as a character string for matching a specific cell type.
-#' @param comp.name comparison name specified by the user and returned by sc.DGEA, provided as a character string.
-#' @param p.cut Numeric value for p-value cutoff to indicate significance.
-#' @param f.cut Numeric value for fold change cutoff to indicate a high effect size.
-#' @param f.lim Numeric value for fold change limits on the x-axis (given in multiples of 6).
-#' @param y.limit Numeric value for the upper-bound -log10 p-value to display on the y-axis.
+#' @param l_deg A list of DGEA results returned by sc.DGEA().
+#' @param ct A character string pattern for matching to specific cell types.
+#' @param comp_name Comparison name, provided as a character string.
+#' @param gene_name Column name containing gene or motif names.
+#' @param diff_col Column name containing effect size.
+#' @param p_col Column name containing adjust p-values.
+#' @param p_cut Numeric value for p-value cutoff to indicate significance.
+#' @param f_cut Fold change cutoff indicating high effect size.
+#' @param f_lim Numeric value for fold change limits on the x-axis.
+#' @param y_limit Upper-bound -log10 p-value to display on the y-axis.
+#' @param x_title X-axis legend title, provided as a character string.
 #' @return A volcano plot for the chosen cell type and treatment comparison.
 #' @examples
 #'
-#' # p.vol <- sc.volcano(dgea.output,"1.Secretory","KO vs. Control",0.005,0.25,6)
+#' # p_vol <- sc_volcano(
+#' #   l_deg = diff.output.activity,
+#' #   ct = "1.Secretory",
+#' #   comp_name = "KO vs. Control",
+#' #   gene_name = "gene",
+#' #   diff_col = "avg_diff",
+#' #   p_col = "p_val_adj",
+#' #   p_cut = 0.005,
+#' #   f_cut = 0.25,
+#' #   f_lim = 6,
+#' #   y_limit = 100,
+#' #   x_title = "x-axis title"
+#' # )
 #'
 #' @export
-sc.volcano <- function (
-    l.deg,
-    ct,
-    comp.name,
-    p.cut,
-    f.cut,
-    f.lim,
-    y.limit
-    ) {
+sc_volcano <- function(
+  l_deg,
+  ct,
+  comp_name,
+  gene_name,
+  diff_col,
+  p_col,
+  p_cut,
+  f_cut,
+  f_lim,
+  y_limit,
+  x_title
+) {
+  if(missing(ct) == TRUE && class(l_deg) == "data.frame") { # nolint
+    ld <- l_deg
+    # Plot function
+    v <- EnhancedVolcano::EnhancedVolcano(
+      ld,
+      lab = ld[[gene_name]],
+      subtitle = ggplot2::element_blank(),
+      caption = ggplot2::element_blank(),
+      x = diff_col,
+      y = p_col,
+      pCutoff = p_cut,
+      FCcutoff = f_cut,
+      cutoffLineType = "twodash",
+      legendLabels = c("NS", "Fold Change",
+                       "p-value", "FC+P"),
+      legendLabSize = 12,
+      labFace = "bold",
+      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+      colAlpha = 0.7,
+      legendIconSize = 4,
+      pointSize = 2,
+      border = "full",
+      borderWidth = 1.5,
+      legendPosition = "'right'",
+      labSize = 3,
+      drawConnectors = TRUE,
+      typeConnectors = "open",
+      min.segment.length = ggplot2::unit(
+        1,
+        "mm"
+      )
+    ) +
+      sc_theme1() +
+      ggplot2::labs(
+        color = "Key",
+        x = x_title,
+        y = paste("-log10 P-value (FDR)")
+      ) +
+      ggplot2::ggtitle(
+        paste(
+          comp_name,
+          sep = " "
+        )
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")
+      ) +
+      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                               ylim = c(0, y_limit)) +
+      ggplot2::scale_x_continuous(
+        breaks = seq(-f_lim, f_lim, (f_lim / 4))
+      )
+  }
+
+  if(missing(ct) == FALSE && class(l_deg) == "data.frame") { # nolint
     # Subset Input data
-    ld <- l.deg[[1]]
-    ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp.name,]
+    ld <- l_deg
+    ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
 
     # Plot function
     v <- EnhancedVolcano::EnhancedVolcano(
       ld,
-      lab = ld[["GENE"]],
+      lab = ld[[gene_name]],
       title = ggplot2::element_blank(),
       subtitle = ggplot2::element_blank(),
       caption = ggplot2::element_blank(),
-      x= "log2FC",
-      y= "H.qval",
-      pCutoff = p.cut,
-      FCcutoff = f.cut,
-      cutoffLineType = 'twodash',
-      legendLabels = c('NS','Fold Change',
-                       'p-value','FC+P'),
+      x = diff_col,
+      y = p_col,
+      pCutoff = p_cut,
+      FCcutoff = f_cut,
+      cutoffLineType = "twodash",
+      legendLabels = c("NS", "Fold Change",
+                       "p-value", "FC+P"),
       legendLabSize = 12,
-      labFace = 'bold',
-      col = ggsci::pal_npg("nrc")(10)[c(4,3,5,8)],
+      labFace = "bold",
+      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
       colAlpha = 0.7,
       legendIconSize = 4,
       pointSize = 2,
-      border = 'full',
+      border = "full",
       borderWidth = 1.5,
-      legendPosition = 'right',
+      legendPosition = "'right'",
       labSize = 3,
-      drawConnectors = T,
+      drawConnectors = TRUE,
       typeConnectors = "open",
-      min.segment.length = ggplot2::unit(1,
-                                "mm")
+      min.segment.length = ggplot2::unit(
+        1,
+        "mm"
+      )
+    ) +
+      sc_theme1() +
+      ggplot2::labs(color = "Key") +
+      ggplot2::labs(
+        color = "Key",
+        x = x_title,
+        y = paste("-log10 P-value (FDR)")
       ) +
-      sc.theme1() +
-      ggplot2::labs(color='Key') +
-      ggplot2::ggtitle(paste(comp.name,ct,sep = " ")) +
-      ggplot2::theme(plot.margin = ggplot2::unit(c(.2,.2,.2,.2),"cm")) +
-      ggplot2::coord_cartesian(xlim=c(-f.lim,f.lim),
-                               ylim = c(0,y.limit)) +
-      ggplot2::scale_x_continuous(breaks=seq(-f.lim,f.lim,(f.lim/6)))
+      ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                               ylim = c(0, y_limit)) +
+      ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
 
-    return(v)
+  }
 
-    }
+  if(missing(ct) == FALSE && class(l_deg) == "list") { # nolint
+    # Subset Input data
+    ld <- l_deg[[1]]
+    ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
 
+    # Plot function
+    v <- EnhancedVolcano::EnhancedVolcano(
+      ld,
+      lab = ld[[gene_name]],
+      title = ggplot2::element_blank(),
+      subtitle = ggplot2::element_blank(),
+      caption = ggplot2::element_blank(),
+      x = diff_col,
+      y = p_col,
+      pCutoff = p_cut,
+      FCcutoff = f_cut,
+      cutoffLineType = "twodash",
+      legendLabels = c("NS", "Fold Change",
+                       "p-value", "FC+P"),
+      legendLabSize = 12,
+      labFace = "bold",
+      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+      colAlpha = 0.7,
+      legendIconSize = 4,
+      pointSize = 2,
+      border = "full",
+      borderWidth = 1.5,
+      legendPosition = "'right'",
+      labSize = 3,
+      drawConnectors = TRUE,
+      typeConnectors = "open",
+      min.segment.length = ggplot2::unit(
+        1,
+        "mm"
+      )
+    ) +
+      sc_theme1() +
+      ggplot2::labs(color = "Key") +
+      ggplot2::labs(
+        color = "Key",
+        x = x_title,
+        y = paste("-log10 P-value (FDR)")
+      ) +
+      ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                               ylim = c(0, y_limit)) +
+      ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
 
+  }
 
+  return(v)
 
+}

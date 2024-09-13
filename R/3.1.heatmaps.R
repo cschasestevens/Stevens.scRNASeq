@@ -1027,28 +1027,268 @@ if(length(list.var) < 2) {
     )
   }
 
+#' Top Differentially Active Motif Heatmap
+#'
+#' Generates a heatmap from a Seurat Object and
+#' differential activity analysis result.
+#'
+#' @param so An object of class Seurat.
+#' @param mot_m Character string providing the name of the assay to use.
+#' @param filt_ct Logical indicating whether the data should
+#' be filtered based on cell type
+#' @param ct_name Character string containing the cell type name to filter.
+#' @param cl_var Character string containing the name
+#' of the clustering variable.
+#' @param top_n Character string containing the name of the clustering variable.
+#' @param hm.w Numeric value for heatmap width (passed to ComplexHeatmap).
+#' @param hm.h Numeric value for heatmap height (passed to ComplexHeatmap).
+#' @param fs.c Numeric value for column fontsize (passed to ComplexHeatmap).
+#' @param fs.r Numeric value for row fontsize (passed to ComplexHeatmap).
+#' @return A ComplexHeatmap object containing a top motif heatmap.
+#' @examples
+#'
+#' # tf_heatmap <- sc_top_motif_heatmap(
+#' #   # Seurat object
+#' #   so = d,
+#' #   # Differential activity results
+#' #   mot_m = diff_output_activity,
+#' #   # Filter based on CellType?
+#' #   filt_ct = TRUE,
+#' #   # Cell type name
+#' #   ct_name = "11.Secretory",
+#' #   # Clustering column
+#' #   cl_var = "CellType",
+#' #   # Number of motifs to use
+#' #   top_n = 50,
+#' #   # Heatmap width
+#' #   h_w = 36,
+#' #   # Heatmap height
+#' #   h_h = 12,
+#' #   # Column font size
+#' #   fs_c = 6,
+#' #   # Row font size
+#' #   fs_r = 8
+#' # )
+#'
+#' @export
+sc_top_motif_heatmap <- function(
+  so,
+  mot_m,
+  filt_ct,
+  ct_name,
+  cl_var,
+  top_n,
+  h_w,
+  h_h,
+  fs_c,
+  fs_r
+) {
+  d <- so
+  Seurat::DefaultAssay(d) <- "chromvar"
 
+  ## Motif input matrix (top motifs per cell type)
+  d_mark <- mot_m
+  if(class(d_mark[["cluster"]]) == "character") { # nolint
+    d_mark <- d_mark[gtools::mixedorder(d_mark[["cluster"]]), ]
+  }
+  d_mark[["CellType.no"]] <- d_mark[["cluster"]]
 
+  d_mark <- dplyr::group_by(
+    d_mark,
+    .data[["CellType.no"]] # nolint
+  )
 
+  ## Top motifs per cluster (by p value then by fold change)
+  d_mark <- dplyr::slice_max(
+    d_mark[d_mark[["avg_diff"]] > 0, ],
+    order_by = -.data[["p_val_adj"]], # nolint
+    n = top_n
+  )[, c(
+    "gene",
+    "ID",
+    "cluster",
+    "avg_diff",
+    "p_val_adj"
+  )
+  ]
 
+  d_mark <- dplyr::group_by(
+    d_mark,
+    .data[["cluster"]] # nolint
+  )
 
+  d_mark <- dplyr::slice_max(
+    d_mark,
+    order_by = .data[["avg_diff"]], # nolint
+    n = top_n
+  )[, c(
+    "gene",
+    "ID",
+    "cluster"
+  )
+  ]
+  d_mark[["ID"]] <- gsub(
+    "^([^.]*\\.)|\\..*",
+    "\\1",
+    d_mark[["ID"]]
+  )
 
+  if(filt_ct == TRUE) { # nolint
+    d_mark <- d_mark[d_mark[["cluster"]] == ct_name, ]
 
+    #### Save table
+    write.table(
+      d_mark,
+      paste(
+        "analysis/table.marker.motifs.Top",
+        paste(as.character(top_n)),
+        ".",
+        ct_name,
+        ".txt",
+        sep = ""
+      ),
+      row.names = FALSE,
+      col.names = TRUE,
+      sep = "\t"
+    )
+  }
 
+  if(filt_ct == FALSE) { # nolint
+    #### Save table
+    write.table(
+      d_mark,
+      paste(
+        "analysis/table.marker.motifs.Top",
+        paste(as.character(top_n)),
+        ".txt",
+        sep = ""
+      ),
+      row.names = FALSE,
+      col.names = TRUE,
+      sep = "\t"
+    )
+  }
 
+  ### Subset seurat and scale
+  h <- SeuratObject::FetchData(
+    d,
+    vars = c(
+      cl_var,
+      unique(
+        d_mark[["ID"]]
+      )
+    )
+  )
 
+  ### Scale and plot average expression/accessibility per cell type
+  h_in <- scale(
+    as.matrix(
+      magrittr::set_rownames(
+        setNames(
+          as.data.frame(
+            lapply(
+              h[, 2:ncol(
+                h
+              )
+              ],
+              function(x) {
+                dplyr::select(
+                  aggregate(
+                    x,
+                    list(
+                      h[, 1]
+                    ),
+                    FUN = mean
+                  ),
+                  c(2)
+                )
+              }
+            )
+          ),
+          names(h[, 2:ncol(h)])
+        ),
+        levels(h[, 1])
+      )
+    ),
+    center = TRUE
+  )
+  qs <- quantile(
+    h_in,
+    probs = c(
+      0.05,
+      0.95
+    ),
+    na.rm = TRUE
+  )
 
+  h_in <- as.matrix(
+    as.data.frame(h_in)[, unlist(
+      lapply(
+        seq.int(1, ncol(as.data.frame(h_in)), 1),
+        function(x) !anyNA(as.data.frame(h_in)[x])
+      )
+    )
+    ]
+  )
 
+  tf_names <- data.frame("ID" = colnames(h_in))
+  tf_names <- dplyr::left_join(
+    tf_names,
+    unique(d_mark[, c("ID", "gene")]),
+    by = "ID"
+  )
+  colnames(h_in) <- tf_names[["gene"]]
 
+  fun_hm_col <- circlize::colorRamp2(
+    c(
+      qs[[1]],
+      (qs[[1]]) / 2,
+      (qs[[2]]) / 2,
+      qs[[2]]
+    ),
+    colors = col_grad()[c(
+      1, 3,
+      6, 12
+    )
+    ]
+  )
+  # Create Plot
+  if(filt_ct == TRUE) { # nolint
+    h_out <- ComplexHeatmap::Heatmap(
+      h_in,
+      col = fun_hm_col,
+      name = "Scaled Activity Score",
+      show_column_names = TRUE,
+      show_row_names = TRUE,
+      heatmap_width = ggplot2::unit(h_w, "cm"),
+      heatmap_height = ggplot2::unit(h_h, "cm"),
+      column_title = paste("Top", top_n, "Motifs:", ct_name),
+      column_names_rot = 90,
+      column_names_gp = grid::gpar(fontsize = fs_c),
+      row_names_side = "left",
+      row_names_gp = grid::gpar(fontsize = fs_r),
+      cluster_columns = TRUE,
+      cluster_rows = FALSE
+    )
+  }
 
-
-
-
-
-
-
-
-
-
-
-
+  if(filt_ct == FALSE) { # nolint
+    h_out <- ComplexHeatmap::Heatmap(
+      h_in,
+      col = fun_hm_col,
+      name = "Scaled Activity Score",
+      show_column_names = TRUE,
+      show_row_names = TRUE,
+      heatmap_width = ggplot2::unit(h_w, "cm"),
+      heatmap_height = ggplot2::unit(h_h, "cm"),
+      column_title = paste("Top", top_n, "Motifs"),
+      column_names_rot = 90,
+      column_names_gp = grid::gpar(fontsize = fs_c),
+      row_names_side = "left",
+      row_names_gp = grid::gpar(fontsize = fs_r),
+      cluster_columns = FALSE,
+      cluster_rows = FALSE
+    )
+  }
+  return(h_out)
+}
