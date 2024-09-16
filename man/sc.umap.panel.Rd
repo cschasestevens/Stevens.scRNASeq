@@ -17,7 +17,8 @@ sc.umap.panel(so, md.list, slot1)
 A series of UMAPs with specified metadata overlays.
 }
 \description{
-Generates a panel of UMAPs given a Seurat object containing PCA and UMAP results.
+Generates a panel of UMAPs given a
+Seurat object containing PCA and UMAP results.
 }
 \examples{
 

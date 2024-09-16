@@ -1,6 +1,7 @@
 #' scRNA-Seq UMAP Plot
 #'
-#' Generates a panel of UMAPs given a Seurat object containing PCA and UMAP results.
+#' Generates a panel of UMAPs given a
+#' Seurat object containing PCA and UMAP results.
 #'
 #' @param so An object of class Seurat.
 #' @param md.list A vector of character strings indicating metadata columns for overlaying on a loadings plot.
