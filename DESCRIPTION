@@ -47,4 +47,5 @@ Imports:
   BSgenome.Hsapiens.UCSC.hg38,
   JASPAR2020,
   motifmatchr,
-  GenomicRanges
+  GenomicRanges,
+  Rsamtools

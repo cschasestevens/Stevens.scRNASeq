@@ -1,53 +1,255 @@
-#' Batch Integration of scRNA-Seq Datasets
+#' Batch Integration of scRNA-Seq and Multiome Datasets
 #'
 #' Integrates a list of samples processed as Seurat objects.
 #'
-#' @param l.so List of processed Seurat objects to be integrated.
-#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
-#' @param core.perc Proportion (as a numeric value) of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
-#' @return A Seurat object containing integrated data for all samples present in a scRNA-Seq experiment.
+#' @param l_so List of processed Seurat objects to be integrated.
+#' @param l_par List of processing parameters passed to function.
+#' For multiome data integration, must have a gene annotation and
+#' reference genome file.
+#' @param proc_mode Processing mode to be used
+#' (either "scRNA-Seq" or "multiome").
+#' @param parl Logical indicating whether processing should be run
+#' in parallel. Set to FALSE if running sequentially.
+#' @param core_perc Proportion (as a numeric value) of available cores
+#' to use if running in parallel. Set to 1 if running sequentially.
+#' @return A Seurat object containing integrated data for all samples
+#' present in a scRNA-Seq or multiome experiment.
 #' @examples
 #'
 #' # d.integrated <- sc.integrate.data(
-#' #    list.data,
-#' #    TRUE,
-#' #    0.5
-#' #    )
+#' #   list_data,
+#' #   l_params,
+#' #   "multiome",
+#' #   TRUE,
+#' #   0.5
+#' # )
 #'
 #' @export
-sc.integrate.data <- function(
-    l.so,
-    parl,
-    core.perc
-    ){
-  list.d <- l.so
-  
-  # if(as.numeric(paste(stringr::str_split(as.character(packageVersion("Seurat")),"\\.",simplify = T)[,c(1,2)],collapse = ".")) >= 5.1){
-  #   future::plan("multisession",workers = ceiling(parallel::detectCores()*0.5))
-  #   options(future.globals.maxSize = 10000 * 1024^2)
-  #   
-  #   layer.merge <- merge(
-  #     x = list.integrate[[1]],
-  #     y = c(list.integrate[2:length(list.integrate)]),
-  #     add.cell.ids = c(names(list.integrate))
-  #     )
-  #   
-  #   Seurat::DefaultAssay(
-  #     object = layer.merge
-  #   ) <- "RNA"
-  #   
-  #   layer.merge <- Seurat::RunPCA(
-  #     object = Seurat::ScaleData(
-  #       object = layer.merge,
-  #       verbose = T
-  #     ),
-  #     verbose = T
-  #   )
-  #   
-  #   d.merged <- Seurat::IntegrateLayers(object = layer.merge,method = RPCAIntegration,orig.reduction = "pca", new.reduction = "integrated.cca",verbose = T)
-  # 
-  # }
-  
+sc_integrate_data <- function(
+  l_so,
+  l_par,
+  proc_mode,
+  parl,
+  core_perc
+) {
+
+  if(proc_mode == "multiome") { # nolint
+    if(unlist(packageVersion("Seurat"))[1] == 5) { # nolint
+      if(file.exists(""))
+      ld_int <- l_so
+      # Extract Seurat objects for integration
+      ld_int <- setNames(
+        lapply(
+          seq.int(1, length(ld_int), 1),
+          function(x) {
+            d1 <- ld_int[[x]][[1]]
+            Seurat::DefaultAssay(d1) <- "SCT"
+            d1 <- Seurat::RunPCA(d1)
+            Seurat::DefaultAssay(d1) <- "peaks"
+            return(d1)
+          }
+        ),
+        names(ld_int)
+      )
+      # Unify ATAC peaks across data sets
+      ufy_peaks <- Signac::UnifyPeaks(
+        object.list = ld_int,
+        mode = "reduce"
+      )
+      ## Filter low quality peaks
+      ufy_width <- BSgenome::width(ufy_peaks)
+      range(ufy_width)
+      quantile(ufy_width)
+      median(ufy_width)
+      # Create new peak assays using unified list
+      ld_int <- setNames(
+        parallel::mclapply(
+          mc.cores = ceiling(
+            parallel::detectCores() *
+              core_perc
+          ),
+          seq.int(1, length(ld_int), 1),
+          function(x) {
+            d1 <- ld_int[[x]]
+            Seurat::DefaultAssay(d1) <- "peaks"
+            d1_cnts <- Signac::FeatureMatrix(
+              fragments = Signac::Fragments(d1),
+              features = ufy_peaks,
+              cells = colnames(d1)
+            )
+            d1[["ufy.peaks"]] <- Signac::CreateChromatinAssay(
+              counts = d1_cnts,
+              fragments = Signac::Fragments(d1),
+              annotation = l_par[["ref.gtf"]]
+            )
+            Seurat::DefaultAssay(d1) <- "ufy.peaks"
+            return(d1)
+          }
+        ),
+        names(ld_int)
+      )
+      saveRDS(ld_int, "processed/data.processed.unified.rds")
+
+      # Compute WNN for each sample, then integrate layers
+      ## Run Harmony to correct for batch effects introduced by Code
+      ### Remove previous objects prior to integration steps
+      remove(list = ls())
+      gc(reset = TRUE)
+
+      # Weighted nearest neighbors (Integrate RNA and unified ATAC peak assays)
+      ld_int <- readRDS("processed/data.processed.unified.rds")
+      ld_int <- setNames(
+        parallel::mclapply(
+          mc.cores = ceiling(
+            parallel::detectCores() *
+              0.1
+          ),
+          seq.int(1, length(ld_int), 1),
+          function(x) {
+            d1 <- ld_int[[x]]
+            d1 <- Seurat::FindMultiModalNeighbors(
+              d1,
+              reduction.list = list("pca", "lsi"),
+              dims.list = list(1:50, 2:50)
+            )
+            Seurat::DefaultAssay(d1) <- "ufy.peaks"
+            return(d1)
+          }
+        ),
+        names(ld_int)
+      )
+      gc(reset = TRUE)
+      library(Seurat)
+      d_int <- merge(
+        x = ld_int[[1]],
+        y = ld_int[2:length(ld_int)],
+        add.cell.ids = names(ld_int)
+      )
+      saveRDS(d_int, "processed/data.processed.merge.rds")
+      remove(list = ls())
+      gc(reset = TRUE)
+      d_int <- readRDS("processed/data.processed.merge.rds")
+        
+
+
+
+        # Normalization
+        ## GEX
+        Seurat::DefaultAssay(d_int) <- "RNA"
+        d_int <- Seurat::FindVariableFeatures(
+          d_int,
+          selection.method = "vst",
+          nfeatures = 3000
+        )
+        d_int <- Seurat::NormalizeData(d_int)
+        d_int <- Seurat::ScaleData(d_int)
+        d_int <- Seurat::RunPCA(d_int)
+        
+        ## ATAC Peaks
+        Seurat::DefaultAssay(d_int) <- "ufy.peaks"
+        d_int <- Signac::FindTopFeatures(d_int, min.cutoff = 5)
+        d_int <- Signac::RunTFIDF(d_int)
+        d_int <- Signac::RunSVD(d_int)
+        Signac::DepthCor(d_int)
+        
+        ## Integrate Layers
+        library(Seurat)
+        library(SeuratWrappers)
+        Seurat::DefaultAssay(d_int) <- "RNA"
+        
+        d_int <- Seurat::IntegrateLayers(
+          object = d_int,
+          method = CCAIntegration,
+          orig.reduction = "pca",
+          new.reduction = "int.SCT.CCA",
+          verbose = TRUE
+        )
+        d_int <- SeuratObject::JoinLayers(d_int)
+        
+        ## Harmony batch effect correction for GEX and ATAC
+        d_int <- harmony::RunHarmony(
+          d_int,
+          assay.use = "ufy.peaks",
+          group.by.vars = "Code",
+          reduction.use = "lsi",
+          reduction.save = "ufy.peaks.corrected",
+          project.dim = FALSE
+        )
+        
+        d_int <- harmony::RunHarmony(
+          d_int,
+          assay.use = "RNA",
+          group.by.vars = "Code",
+          reduction.use = "int.SCT.CCA",
+          reduction.save = "RNA.corrected",
+          project.dim = FALSE
+        )
+        
+        ## WNN
+        d_int <- Seurat::FindMultiModalNeighbors(
+          d_int,
+          reduction.list = list("RNA.corrected", "ufy.peaks.corrected"),
+          dims.list = list(1:50, 2:50)
+        )
+        
+        d_int <- Seurat::RunUMAP(
+          d_int,
+          nn.name = "weighted.nn",
+          reduction.name = "wnn.umap",
+          reduction.key = "wnnUMAP_"
+        )
+        
+        d_int <- Seurat::FindClusters(
+          d_int,
+          graph.name = "wsnn",
+          algorithm = 3,
+          verbose = TRUE,
+          resolution = 0.5
+        )
+        head(d_int@meta.data)
+        d_int
+        
+        ## Visualize Clusters
+        ggplot2::ggsave(
+          "analysis/plot.umap.panel.WNN.png",
+          sc_umap_panel(d_int,
+            c("Group", "Code", "seurat_clusters"),
+            "wnn.umap"
+          ),
+          height = 8,
+          width = 24,
+          dpi = 600
+        )
+        
+        ## Integration Performance
+        d1qc_pre <- Seurat::VlnPlot(
+          object = d_int,
+          features = c(
+            "nCount_RNA",
+            "nCount_ATAC",
+            "TSS.enrichment",
+            "nucleosome_signal"
+          ),
+          layer = "counts",
+          ncol = 4,
+          pt.size = 0.2
+        )
+        
+        ggplot2::ggsave(
+          "analysis/plot.integration.qc.png",
+          d1qc_pre,
+          width = 24,
+          height = 8,
+          dpi = 800
+        )
+        
+        
+        ## Save
+        saveRDS(d_int, "analysis/data.integrated.rds")
+    }
+  }
+
+  list_d <- l_so
   
   if(Sys.info()[["sysname"]] != "Windows" &
      parl == TRUE) {

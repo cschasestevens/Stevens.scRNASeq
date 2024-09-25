@@ -235,7 +235,7 @@ sc_top10_marker_heatmap <- function(
     }
 
     if(asy == "RNA") {
-    d.mark <- read.table(
+    cl.mark <- read.table(
       "analysis/table.marker.genes.txt",
       sep = "\t",
       header = T
@@ -243,26 +243,26 @@ sc_top10_marker_heatmap <- function(
     }
 
     if(asy == "ATAC") {
-    d.mark <- read.table(
+    cl.mark <- read.table(
       "analysis/table.marker.motifs.txt",
       sep = "\t",
       header = T
       )
     }
     ## Marker gene input matrix (top10 per cell type)
-    if(class(d.mark[["cluster"]]) == "character"){
+    if(class(cl.mark[["cluster"]]) == "character"){
       d.mark <- d.mark[gtools::mixedorder(d.mark[["cluster"]]),]
       }
-    d.mark[["CellType.no"]] <- d.mark[["cluster"]]
+    cl.mark[["CellType.no"]] <- cl.mark[["cluster"]]
     
-    d.mark <- dplyr::group_by(
-      d.mark,
+    cl.mark <- dplyr::group_by(
+      cl.mark,
       .data[["CellType.no"]]
       )
     
     ### Top 10 genes per cluster (by p value then by fold change)
-    d.mark <- dplyr::slice_max(
-      d.mark[d.mark[["avg_log2FC"]] > 0,],
+    cl.mark <- dplyr::slice_max(
+      cl.mark[cl.mark[["avg_log2FC"]] > 0,],
       order_by = -.data[["p_val_adj"]],
       n = 25
       )[,c(
@@ -272,13 +272,13 @@ sc_top10_marker_heatmap <- function(
       "p_val_adj"
       )]
     
-    d.mark <- dplyr::group_by(
-      d.mark,
+    cl.mark <- dplyr::group_by(
+      cl.mark,
       .data[["cluster"]]
       )
     
-    d.mark <- dplyr::slice_max(
-      d.mark,
+    cl.mark <- dplyr::slice_max(
+      cl.mark,
       order_by = .data[["avg_log2FC"]],
       n = 10
       )[,c(
@@ -289,7 +289,7 @@ sc_top10_marker_heatmap <- function(
     #### Save table
     if(asy == "RNA") {
     write.table(
-      d.mark,
+      cl.mark,
       "analysis/table.marker.genes.top10.txt",
       row.names = F,
       col.names = T,
@@ -299,7 +299,7 @@ sc_top10_marker_heatmap <- function(
     }
     if(asy == "ATAC") {
     write.table(
-      d.mark,
+      cl.mark,
       "analysis/table.marker.motifs.top10.txt",
       row.names = F,
       col.names = T,
@@ -313,7 +313,7 @@ sc_top10_marker_heatmap <- function(
       vars = c(
         cl.var,
         unique(
-          d.mark[["gene"]]
+          cl.mark[["gene"]]
           )
         )
       )
@@ -382,7 +382,7 @@ sc_top10_marker_heatmap <- function(
         (qs[[2]])/2,
         qs[[2]]
         ),
-      colors = col.grad()[c(
+      colors = col_grad()[c(
         1,3,
         6,12
         )]
@@ -395,7 +395,7 @@ sc_top10_marker_heatmap <- function(
       top_annotation = ComplexHeatmap::HeatmapAnnotation(
         `Average.Expression` = ComplexHeatmap::anno_barplot(
           as.vector(t(h.anno)),
-          gp = grid::gpar(fill = col.grad())
+          gp = grid::gpar(fill = col_grad())
           ),
         annotation_name_gp = grid::gpar(
           fontsize = 10

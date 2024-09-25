@@ -197,10 +197,6 @@ sc_process_file <- function(
 
 }
 
-
-
-
-
 #' Batch Processing of CellRanger Files
 #'
 #' Processes a list of scRNA-Seq samples for data integration.
@@ -415,4 +411,482 @@ sc_plot_rho <- function(
     height = 10,
     dpi = 600
   )
+}
+
+#' Process CellRanger Multiome Data Files
+#'
+#' Processes a single multiome sample for data integration.
+#'
+#' @param df_par Data frame of parameters to use for data processing.
+#' @param i Numeric value for sample ID.
+#' @param p_name Character string providing the project name.
+#' @param m_cell Minimum cells per feature.
+#' @param m_feat Minimum features per cell.
+#' @param atac_high Upper limit for per cell ATAC counts.
+#' @param rna_high Upper limit for per cell RNA counts.
+#' @param rna_low Lower limit for per cell RNA counts.
+#' @param perc_mt Upper limit for percentage of mitochondrial reads per cell.
+#' @param nsm_high Upper limit for nucleosome signal. Used to filter
+#' potential doublets, potential artifacts, etc.
+#' @param tss_low Lower limit for TSS enrichment score. Used to filter
+#' low quality cells.
+#' @return A list containing the processed multimodal Seurat object,
+#' processing parameters, and QC plots.
+#' @examples
+#'
+#' # proc_d_multiome <- sc_multiome_process(
+#' #   # parameter list
+#' #   l_params,
+#' #   # sample ID
+#' #   1,
+#' #   # Project name
+#' #   "Hiro.CF.multiome",
+#' #   # Minimum cells per feature
+#' #   5,
+#' #   # Minimum features per cell
+#' #   200,
+#' #   # ATAC counts upper limit
+#' #   100000,
+#' #   # RNA counts upper limit
+#' #   25000,
+#' #   # RNA counts lower limit
+#' #   1000,
+#' #   # Percentage mitochondrial reads upper limit
+#' #   20,
+#' #   # Nucleosome signal upper limit
+#' #   2.5,
+#' #   # TSS enrichment lower limit
+#' #   2
+#' # )
+#'
+#' @export
+sc_multiome_process <- function(
+  df_par,
+  i,
+  p_name,
+  m_cell,
+  m_feat,
+  atac_high,
+  rna_high,
+  rna_low,
+  perc_mt,
+  nsm_high,
+  tss_low
+) {
+  RNGkind("L'Ecuyer-CMRG")
+  set.seed(1234)
+  # Select file from chosen input parameter df
+  dfp <- df_par
+  df_p <- dfp[["param"]]
+  d <- df_p[i, ]
+  ## IMPORTANT: run "conda deactivate" in terminal then
+  ## install hdf5r package if not present on machine
+
+  # Process RNA
+  ## Ambient contamination removal
+  d_cnt <- Seurat::Read10X_h5(d[["Path.count"]])
+  d_raw <- Seurat::Read10X_h5(d[["Path.raw"]])
+  d_cnt <- decontX::decontX(
+    SingleCellExperiment::SingleCellExperiment(list(counts = d_cnt)),
+    background = SingleCellExperiment::SingleCellExperiment(
+      list(counts = d_raw)
+    )
+  )
+
+  ## Doublet removal/Create single cell experiment
+  dx_cnt <- scDblFinder::scDblFinder(d_cnt)
+  dx_cnt <- round(
+    SummarizedExperiment::assay(
+      dx_cnt[, dx_cnt$scDblFinder.class == "singlet"],
+      "decontXcounts"
+    ),
+    0
+  )
+
+  ## Create Seurat Object
+  d1 <- SeuratObject::CreateSeuratObject(
+    counts = dx_cnt,
+    assay = "RNA",
+    project = p_name,
+    min.cells = m_cell,
+    min.features = m_feat
+  )
+
+  # Process ATAC
+  d1[["ATAC"]] <- Signac::CreateChromatinAssay(
+    counts = d_cnt$`Peaks`,
+    sep = c(":", "-"),
+    fragments = d[["Path.frag"]],
+    annotation = dfp[["ref.gtf"]]
+  )
+
+  # Add metadata
+  Seurat::DefaultAssay(d1) <- "RNA"
+  d_md <- d[, 7:ncol(d)]
+  d_md <- setNames(
+    as.data.frame(
+      lapply(
+        seq.int(
+          1,
+          ncol(d_md),
+          1
+        ),
+        function(x) {
+          rep(
+            d_md[1, x],
+            nrow(d1@meta.data)
+          )
+        }
+      )
+    ),
+    names(d_md)
+  )
+  d1 <- Seurat::AddMetaData(
+    object = d1,
+    metadata = d_md
+  )
+
+  ## Percentage mitochondrial reads
+  d1[["percent.mt"]] <- Seurat::PercentageFeatureSet(
+    object = d1,
+    pattern = "^MT-"
+  )
+
+  # Add nucleosome signal and TSS enrichment values
+  Seurat::DefaultAssay(d1) <- "ATAC"
+  d1 <- Signac::NucleosomeSignal(d1)
+  d1 <- Signac::TSSEnrichment(d1)
+  # QC plot
+  names(d1@meta.data)
+  d1qc_pre <- Seurat::VlnPlot(
+    object = d1,
+    features = c(
+      "nFeature_RNA",
+      "nCount_RNA",
+      "percent.mt",
+      "nCount_ATAC",
+      "TSS.enrichment",
+      "nucleosome_signal"
+    ),
+    layer = "counts",
+    ncol = 3,
+    pt.size = 0.2
+  )
+
+  d1f <- d1[
+    ,
+    d1[["nCount_ATAC"]] < atac_high &
+      d1[["nCount_RNA"]] < rna_high &
+      d1[["percent.mt"]] < perc_mt &
+      d1[["nCount_RNA"]] > rna_low &
+      d1[["nucleosome_signal"]] < nsm_high &
+      d1[["TSS.enrichment"]] > tss_low
+  ]
+  remove(d1)
+  gc(reset = TRUE)
+  d1qc_pst <- Seurat::VlnPlot(
+    object = d1f,
+    features = c(
+      "nFeature_RNA",
+      "nCount_RNA",
+      "percent.mt",
+      "nCount_ATAC",
+      "TSS.enrichment",
+      "nucleosome_signal"
+    ),
+    layer = "counts",
+    ncol = 3,
+    pt.size = 0.2
+  )
+
+  # Call ATAC peaks using default parameters
+  ## NOTE: Ensure conda is activated otherwise MACS2
+  ## will not be found!!
+  d1pk <- Signac::CallPeaks(d1f)
+  d1pk2 <- GenomeInfoDb::keepStandardChromosomes(
+    d1pk,
+    pruning.mode = "coarse"
+  )
+
+  d1pk_cnts <- Signac::FeatureMatrix(
+    fragments = Signac::Fragments(d1f),
+    features = d1pk2,
+    cells = colnames(d1f)
+  )
+
+  d1f[["peaks"]] <- Signac::CreateChromatinAssay(
+    counts = d1pk_cnts,
+    fragments = d[["Path.frag"]],
+    annotation = dfp[["ref.gtf"]]
+  )
+
+  # Normalization
+  ## GEX
+  Seurat::DefaultAssay(d1f) <- "RNA"
+  d1f <- Seurat::SCTransform(d1f)
+  d1f <- Seurat::RunPCA(d1f)
+
+  ## ATAC Peaks
+  Seurat::DefaultAssay(d1f) <- "peaks"
+  d1f <- Signac::FindTopFeatures(d1f, min.cutoff = 5)
+  d1f <- Signac::RunTFIDF(d1f)
+  d1f <- Signac::RunSVD(d1f)
+
+  d1f_depth <- Signac::DepthCor(d1f)
+
+  Seurat::DefaultAssay(d1f) <- "SCT"
+  d1f_sum <- head(
+    Seurat::VariableFeatures(d1f),
+    25
+  )
+  plot_var_feat <- Seurat::VariableFeaturePlot(
+    d1f,
+    assay = "SCT"
+  )
+  plot_var_feat_out <- Seurat::LabelPoints(
+    plot_var_feat,
+    points = d1f_sum,
+    repel = TRUE
+  )
+
+  return(
+    list(
+      "Seurat.obj" = d1f,
+      "Params" = df_p,
+      "QC.pre" = d1qc_pre,
+      "QC.post" = d1qc_pst,
+      "var.feat.sum" = d1f_sum,
+      "var.feat.plot" = plot_var_feat_out,
+      "QC.depth" = d1f_depth
+    )
+  )
+}
+
+#' Batch Processing of CellRanger Multiome Files
+#'
+#' Processes a list of 10X multiome samples for downstream integration.
+#'
+#' @param df_par Data frame of parameters to use for data processing.
+#' @param p_name Character string providing the project name.
+#' @param m_cell Minimum cells per feature.
+#' @param m_feat Minimum features per cell.
+#' @param atac_high Upper limit for per cell ATAC counts.
+#' @param rna_high Upper limit for per cell RNA counts.
+#' @param rna_low Lower limit for per cell RNA counts.
+#' @param perc_mt Upper limit for percentage of mitochondrial reads per cell.
+#' @param nsm_high Upper limit for nucleosome signal. Used to filter
+#' potential doublets, potential artifacts, etc.
+#' @param tss_low Lower limit for TSS enrichment score. Used to filter
+#' low quality cells.
+#' @param parl Logical indicating whether processing should be run in
+#' parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
+#' @param core_perc Percentage of available cores to use if running
+#' in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
+#' @return A processed list of 10X multiome sample files converted
+#' into Seurat objects with a summary list of QC and processing details.
+#' @examples
+#'
+#' # list_data <- sc_process_batch_multiome(
+#' #  # parameter list
+#' #  l_params[["param"]],
+#' #  # Project name
+#' #  "Hiro.CF.multiome",
+#' #  # Minimum cells per feature
+#' #  5,
+#' #  # Minimum features per cell
+#' #  200,
+#' #  # ATAC counts upper limit
+#' #  100000,
+#' #  # RNA counts upper limit
+#' #  25000,
+#' #  # RNA counts lower limit
+#' #  1000,
+#' #  # Percentage mitochondrial reads upper limit
+#' #  20,
+#' #  # Nucleosome signal upper limit
+#' #  2.5,
+#' #  # TSS enrichment lower limit
+#' #  2,
+#' #  # Run in parallel?
+#' #  TRUE,
+#' #  # Core percentage
+#' #  0.1
+#' # )
+#'
+#' @export
+sc_process_batch_multiome <- function(
+  df_par,
+  p_name,
+  m_cell,
+  m_feat,
+  atac_high,
+  rna_high,
+  rna_low,
+  perc_mt,
+  nsm_high,
+  tss_low,
+  parl,
+  core_perc
+) {
+  dfp <- df_par
+  if( # nolint
+    Sys.info()[["sysname"]] != "Windows" && parl == TRUE
+  ) {
+    list_data <- setNames(
+      parallel::mclapply(
+        mc.cores = ceiling(
+          parallel::detectCores() *
+            core_perc
+        ),
+        seq.int(
+          1,
+          nrow(dfp[["param"]]),
+          1
+        ),
+        function(x) {
+          sc_multiome_process(
+            # parameter list
+            dfp,
+            # sample ID
+            x,
+            # Project name
+            p_name,
+            # Minimum cells per feature
+            m_cell,
+            # Minimum features per cell
+            m_feat,
+            # ATAC counts upper limit
+            atac_high,
+            # RNA feature counts upper limit
+            rna_high,
+            # RNA feature counts lower limit
+            rna_low,
+            # Percentage mitochondrial reads
+            perc_mt,
+            # Nucleosome signal upper limit
+            nsm_high,
+            # TSS enrichment lower limit
+            tss_low
+          )
+        }
+      ),
+      dfp[["param"]][["File.ID"]]
+    )
+  }
+  if(Sys.info()[["sysname"]] != "Windows" && parl == FALSE) { # nolint
+    list_data <- setNames(lapply(
+      seq.int(
+        1,
+        nrow(dfp[["param"]]),
+        1
+      ),
+      function(x) {
+        sc_multiome_process(
+          # parameter list
+          dfp,
+          # sample ID
+          x,
+          # Project name
+          p_name,
+          # Minimum cells per feature
+          m_cell,
+          # Minimum features per cell
+          m_feat,
+          # ATAC counts upper limit
+          atac_high,
+          # RNA feature counts upper limit
+          rna_high,
+          # RNA feature counts lower limit
+          rna_low,
+          # Percentage mitochondrial reads
+          perc_mt,
+          # Nucleosome signal upper limit
+          nsm_high,
+          # TSS enrichment lower limit
+          tss_low
+        )
+      }
+    ),
+    dfp[["param"]][["File.ID"]]
+    )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" && parl == TRUE) { # nolint
+    print(
+      "Windows OS does not support parallel sample processing, 
+      defaulting to sequential processing..."
+    )
+    list_data <- setNames(lapply(
+      seq.int(
+        1,
+        nrow(dfp[["param"]]),
+        1
+      ),
+      function(x) {
+        sc_multiome_process(
+          # parameter list
+          dfp,
+          # sample ID
+          x,
+          # Project name
+          p_name,
+          # Minimum cells per feature
+          m_cell,
+          # Minimum features per cell
+          m_feat,
+          # ATAC counts upper limit
+          atac_high,
+          # RNA feature counts upper limit
+          rna_high,
+          # RNA feature counts lower limit
+          rna_low,
+          # Percentage mitochondrial reads
+          perc_mt,
+          # Nucleosome signal upper limit
+          nsm_high,
+          # TSS enrichment lower limit
+          tss_low
+        )
+      }
+    ),
+    dfp[["param"]][["File.ID"]]
+    )
+  }
+  if(Sys.info()[["sysname"]] == "Windows" && parl == FALSE) { # nolint
+    list_data <- setNames(lapply(
+      seq.int(
+        1,
+        nrow(dfp[["param"]]),
+        1
+      ),
+      function(x) {
+        sc_multiome_process(
+          # parameter list
+          dfp,
+          # sample ID
+          x,
+          # Project name
+          p_name,
+          # Minimum cells per feature
+          m_cell,
+          # Minimum features per cell
+          m_feat,
+          # ATAC counts upper limit
+          atac_high,
+          # RNA feature counts upper limit
+          rna_high,
+          # RNA feature counts lower limit
+          rna_low,
+          # Percentage mitochondrial reads
+          perc_mt,
+          # Nucleosome signal upper limit
+          nsm_high,
+          # TSS enrichment lower limit
+          tss_low
+        )
+      }
+    ),
+    dfp[["param"]][["File.ID"]]
+    )
+  }
+  return(list_data)
 }
