@@ -552,16 +552,19 @@ sc_umap_panel_gene_list <- function(
 #' @param md_var A character string indicating the clustering
 #' column for overlaying on a UMAP plot.
 #' @param slot1 A character string corresponding to the umap slot name to plot.
+#' @param dims1 Should the data be plotted in 2 or 3 dimensions?
+#' (either "2D" or "3D").
 #' @return A UMAP plot with points grouped by a specific metadata column.
 #' @examples
 #'
-#' # p_umap <- sc_umap_standard(d_integrated,"col1","wnn.umap")
+#' # p_umap <- sc_umap_standard(d_integrated,"col1","wnn.umap", "2D")
 #'
 #' @export
 sc_umap_standard <- function(
   so,
   md_var,
-  slot1
+  slot1,
+  dims1
 ) {
   # Format input data
   d <- so
@@ -583,53 +586,140 @@ sc_umap_standard <- function(
     )
   }
 
-  # Generate plot
-  d2_plot <- ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x=`UMAP.1`, # nolint
-      y=`UMAP.2`, # nolint
-      color = .data[[md_var]], # nolint
-      label = .data[[md_var]] # nolint
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "3D") { # nolint
+    # Generate plot
+    d2_plot <- plotly::plot_ly(
+      d2,
+      x = ~`UMAP.1`, # nolint
+      y = ~`UMAP.2`, # nolint
+      z = ~`UMAP.3`, # nolint
+      color = ~.data[[md_var]], # nolint
+      colors = col_univ() # nolint
+    ) %>% # nolint
+      plotly::add_markers() %>%
+      plotly::layout(
+        autosize = FALSE,
+        width = 800,
+        height = 600,
+        margin = list(
+          l = 50,
+          r = 50,
+          b = 25,
+          t = 25,
+          pad = 1
+        )
+      )
+    htmlwidgets::saveWidget(
+      d2_plot,
+      file = paste("analysis/plot.3D.umap.", md_var, ".html", sep = "")
     )
-  ) +
-    ggplot2::geom_point(
-      shape = 16,
-      size = 1,
-      alpha = 0.6
+  }
+
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2 && dims1 == "3D") { # nolint
+    print(
+      "Error: Only 2 components are present
+      in the selected dimension reduction!"
+    )
+  }
+
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2 && dims1 == "2D") { # nolint
+    # Generate plot
+    d2_plot <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[md_var]], # nolint
+        label = .data[[md_var]] # nolint
+      )
     ) +
-    ggrepel::geom_text_repel(
-      data = setNames(
-        aggregate(
-          d2[, c("UMAP.1", "UMAP.2")],
-          list(d2[[md_var]]),
-          FUN = median
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggrepel::geom_text_repel(
+        data = setNames(
+          aggregate(
+            d2[, c("UMAP.1", "UMAP.2")],
+            list(d2[[md_var]]),
+            FUN = median
+          ),
+          c(md_var, names(
+            d2[, c("UMAP.1", "UMAP.2")]
+          )
+          )
         ),
-        c(md_var, names(
-          d2[, c("UMAP.1", "UMAP.2")]
-        )
-        )
-      ),
-      size = 4,
-      bg.color = "white"
+        size = 4,
+        bg.color = "white"
+      ) +
+      ggplot2::scale_color_manual(
+        paste(""),
+        values = col_univ()
+      ) +
+      sc_theme1() +
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(0.1, 0.1, 0.1, 0.1), "cm"
+        ),
+        legend.position = "none"
+      )
+  }
+  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "2D") { # nolint
+    # Generate plot
+    d2_plot <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[md_var]], # nolint
+        label = .data[[md_var]] # nolint
+      )
     ) +
-    ggplot2::scale_color_manual(
-      paste(""),
-      values = col_univ()
-    ) +
-    sc_theme1() +
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.title.x = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(),
-      axis.ticks = ggplot2::element_blank(),
-      plot.margin = ggplot2::unit(
-        c(0.1, 0.1, 0.1, 0.1), "cm"
-      ),
-      legend.position = "none"
-    )
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggrepel::geom_text_repel(
+        data = setNames(
+          aggregate(
+            d2[, c("UMAP.1", "UMAP.2")],
+            list(d2[[md_var]]),
+            FUN = median
+          ),
+          c(md_var, names(
+            d2[, c("UMAP.1", "UMAP.2")]
+          )
+          )
+        ),
+        size = 4,
+        bg.color = "white"
+      ) +
+      ggplot2::scale_color_manual(
+        paste(""),
+        values = col_univ()
+      ) +
+      sc_theme1() +
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(0.1, 0.1, 0.1, 0.1), "cm"
+        ),
+        legend.position = "none"
+      )
+  }
   return(d2_plot)
 }
 

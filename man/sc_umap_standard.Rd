@@ -4,7 +4,7 @@
 \alias{sc_umap_standard}
 \title{Standard UMAP Plot}
 \usage{
-sc_umap_standard(so, md_var, slot1)
+sc_umap_standard(so, md_var, slot1, dims1)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
@@ -13,6 +13,9 @@ sc_umap_standard(so, md_var, slot1)
 column for overlaying on a UMAP plot.}
 
 \item{slot1}{A character string corresponding to the umap slot name to plot.}
+
+\item{dims1}{Should the data be plotted in 2 or 3 dimensions?
+(either "2D" or "3D").}
 }
 \value{
 A UMAP plot with points grouped by a specific metadata column.
@@ -23,6 +26,6 @@ metadata overlay for a Seurat object.
 }
 \examples{
 
-# p_umap <- sc_umap_standard(d_integrated,"col1","wnn.umap")
+# p_umap <- sc_umap_standard(d_integrated,"col1","wnn.umap", "2D")
 
 }

@@ -172,7 +172,8 @@ sc_multiome_params <- function(study_md, gtf_path, fa_path) {
       Path.raw = paste(
         "data/",
         list.files("data/"),
-        "/raw_feature_bc_matrix.h5"
+        "/raw_feature_bc_matrix.h5",
+        sep = ""
       ),
       # Path to fragment files
       Path.frag = paste(

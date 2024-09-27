@@ -486,15 +486,21 @@ sc_multiome_process <- function(
   ## Ambient contamination removal
   d_cnt <- Seurat::Read10X_h5(d[["Path.count"]])
   d_raw <- Seurat::Read10X_h5(d[["Path.raw"]])
-  d_cnt <- decontX::decontX(
-    SingleCellExperiment::SingleCellExperiment(list(counts = d_cnt)),
+  d_cnt2 <- decontX::decontX(
+    SingleCellExperiment::SingleCellExperiment(
+      list(
+        counts = d_cnt$`Gene Expression`
+      )
+    ),
     background = SingleCellExperiment::SingleCellExperiment(
-      list(counts = d_raw)
+      list(
+        counts = d_raw$`Gene Expression`
+      )
     )
   )
 
   ## Doublet removal/Create single cell experiment
-  dx_cnt <- scDblFinder::scDblFinder(d_cnt)
+  dx_cnt <- scDblFinder::scDblFinder(d_cnt2, clusters = TRUE)
   dx_cnt <- round(
     SummarizedExperiment::assay(
       dx_cnt[, dx_cnt$scDblFinder.class == "singlet"],
@@ -507,22 +513,32 @@ sc_multiome_process <- function(
   d1 <- SeuratObject::CreateSeuratObject(
     counts = dx_cnt,
     assay = "RNA",
-    project = p_name,
-    min.cells = m_cell,
-    min.features = m_feat
+    project = "samp1",
+    min.cells = 5,
+    min.features = 200
   )
 
   # Process ATAC
-  d1[["ATAC"]] <- Signac::CreateChromatinAssay(
+  d1_atac <- SeuratObject::CreateSeuratObject(
     counts = d_cnt$`Peaks`,
+    assay = "ATAC"
+  )
+  d1_atac <- d1_atac[, colnames(d1_atac) %in% colnames(d1)]
+  d1_atac <- Signac::CreateChromatinAssay(
+    counts = SeuratObject::LayerData(
+      d1_atac,
+      layer = "counts"
+    ),
     sep = c(":", "-"),
     fragments = d[["Path.frag"]],
     annotation = dfp[["ref.gtf"]]
   )
+  d1[["ATAC"]] <- d1_atac
+  remove(d1_atac)
 
   # Add metadata
   Seurat::DefaultAssay(d1) <- "RNA"
-  d_md <- d[, 7:ncol(d)]
+  d_md <- d[, 8:ncol(d)]
   d_md <- setNames(
     as.data.frame(
       lapply(

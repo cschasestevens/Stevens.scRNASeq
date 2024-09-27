@@ -7,10 +7,10 @@
 create_proc_params(d_path, study_md)
 }
 \arguments{
-\item{d.path}{Character string indicating the path
+\item{d_path}{Character string indicating the path
 to a set of CellRanger files for data processing.}
 
-\item{study.md}{A data frame containing sample
+\item{study_md}{A data frame containing sample
 metadata variables specific to an individual study.}
 }
 \value{
