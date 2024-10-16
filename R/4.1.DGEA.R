@@ -15,10 +15,10 @@
 #' 2 cell type groups present in the CellGroup column.
 #' The provided Seurat object is then subsetted to include
 #' only clusters from the provided group names.
-#' @param MAST_comp Character string indicating the name of the MAST
+#' @param mast_comp Character string indicating the name of the MAST
 #' group comparison for conducting DGEA. MAST names are comprised of the chosen
 #' variable name and the leading factor level within that variable.
-#' @param MAST_name User-defined name of a DGEA comparison,
+#' @param mast_name User-defined name of a DGEA comparison,
 #' given as a character string.
 #' @param form1 Formula to use for MAST generalized linear model.
 #' @param parl Logical indicating whether processing should be run in parallel

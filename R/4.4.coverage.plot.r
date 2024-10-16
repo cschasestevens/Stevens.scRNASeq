@@ -1,45 +1,45 @@
-#' scATAC-Seq Coverage Plot
+#' scATAC-Seq Gene Track
 #'
-#' Generates a coverage plot from a Signac ChromatinAssay.
+#' Generates a gene track from a Signac ChromatinAssay.
 #' Requires scATAC-Seq peak information and a reference GRanges object
 #' for plotting gene positions.
 #'
 #' @param so An object of class Seurat. Must contain an ATAC assay.
 #' @param dref Path to a .gtf file containing reference gene annotations.
-#' @param g_name Gene to plot, provided as a character string.
+#' @param g_name1 Gene to plot, provided as a character string.
 #' @param bp_window Numeric value indicating the number of base pairs to
 #' extend the plotting window on each end of the selected gene's location.
 #' Useful for visualizing peaks corresponding to neighboring genes.
-#' @param md_list Character vector of up to 2 metadata variables for
-#' stratifying peak data.
-#' @return A coverage plot including the specified gene track and all other
+#' @return A sequence plot including the specified gene track and all other
 #' genes present within the specified window.
 #' @examples
 #'
-#' # p_cov <- sc_coverage_plot(
-#' #   readRDS("analysis/data.annotated.withTFs.rds"),rtracklayer::import(
+#' # p_cov <- sc_seqanno_plot(
+#' #   d,
+#' #   rtracklayer::import(
 #' #    "ref/gencode.v45.primary_assembly.annotation.gtf"
-#' # ),"TMEM45A", 20000, c("CellType", "Airway"))
+#' #   ),
+#' #   "TMEM45A",
+#' #   20000
+#' # )
 #'
 #' @export
-sc_coverage_plot <- function(
+sc_seqanno_plot <- function(
   so,
   dref,
-  g_name,
-  bp_window,
-  md_list
+  g_name1,
+  bp_window
 ) {
-  d <- so
+  d <- d
   ref_gene <- dref
+  g_name <- "SFTPB"
 
   # Format reference gene annotation file
   ref_gene <- dplyr::as_tibble(ref_gene)
   # Extract detected genes from reference gene list
-  head(d@assays$RNA$counts)
   g_data <- ref_gene[
     ref_gene[["gene_name"]] %in% rownames(d@assays$RNA$counts),
   ]
-  head(g_data)
 
   # Extract individual gene location from Seurat object and map
   # against reference
@@ -48,460 +48,17 @@ sc_coverage_plot <- function(
       g_data$type == "gene",
     c("start", "end", "width", "seqnames")
   ]
-  p <- d@assays$ATAC@meta.features
-  p[["ID"]] <- seq.int(1, nrow(p), 1)
-  g_range <- p[
-    p$start >= g_loc$start - bp_window &
-      p$end <= g_loc$end + bp_window,
-  ]
-  g_range <- g_range[g_range$seqnames == as.character(g_loc$seqnames), ]
-  g_range[["p.ID"]] <- paste(
-    g_range$ID,
-    ".",
-    g_range$nearestGene,
-    sep = ""
-  )
-  g_range <- g_range[
-    as.character(g_range[["seqnames"]]) == g_loc[["seqnames"]],
-  ]
-  nrow(g_range)
-  head(g_range)
-
-  # Extract raw peak counts from ATAC assay
-  if(length(md_list) == 1) { # nolint
-    p2 <- setNames(data.frame(
-      "col1" = d@meta.data[[md_list[[1]]]],
-      setNames(
-        as.data.frame(t(as.matrix(d@assays$ATAC$counts[g_range$ID, ]))),
-        c(g_range$p.ID)
-      )
-    ), c(md_list[[1]], g_range[["p.ID"]]))
-  }
-  if(length(md_list) == 2) { # nolint
-    p2 <- setNames(data.frame(
-      "col1" = d@meta.data[[md_list[[1]]]],
-      "col2" = d@meta.data[[md_list[[2]]]],
-      setNames(
-        as.data.frame(t(as.matrix(d@assays$ATAC$counts[g_range$ID, ]))),
-        c(g_range$p.ID)
-      )
-    ), c(md_list[[1]], md_list[[2]], g_range[["p.ID"]]))
-  }
-  head(p2)
-  nrow(p2)
-
-  ## Calculate sum of reads per fragment per cell type
-  ## Normalize reads using the following: (f.raw/n.cells)*mean(n.reads)
-  if(length(md_list) == 1) { # nolint
-    p2 <- dplyr::group_by(
-      p2,
-      .data[[md_list[[1]]]] # nolint
-    )
-    # raw signal
-    d_raw <- data.frame(
-      "col1" = levels(p2[[md_list[[1]]]]),
-      as.data.frame(
-        lapply(
-          p2[3:ncol(p2)],
-          function(y) {
-            aggregate(
-              y,
-              list(p2[[md_list[[1]]]]),
-              function(x) sum(x)
-            )[[2]]
-          }
-        )
-      )
-    )
-    head(d_raw)
-
-    ## group scaling factor
-    sc_norm_atac <- function(
-      # raw data frame
-      df_raw,
-      # raw data frame (sum frequency per group)
-      df_sum,
-      # raw signal
-      f_raw,
-      # number of metadata columns
-      md
-    ) {
-      (
-        # raw signal
-        f_raw /
-          (
-            # total cells per group
-            aggregate(
-              df_raw[[(md + 1)]],
-              list(df_raw[[md_list[[1]]]]),
-              function(x) length(x)
-            )[[2]]
-          )
-      ) *
-        (
-          # average sequencing depth per group
-          rowMeans(
-            df_sum[2:ncol(df_sum)]
-          )
-        )
-    }
-
-    # normalized signal
-    d_norm <- setNames(
-      data.frame(
-        "col1" = d_raw[["col1"]],
-        as.data.frame(
-          lapply(
-            seq.int(2, ncol(d_raw), 1),
-            function(y) {
-              sc_norm_atac(
-                p2,
-                d_raw,
-                d_raw[[y]],
-                2
-              )
-            }
-          )
-        )
-      ),
-      c(md_list[[1]], names(p2[3:ncol(p2)]))
-    )
-    head(d_norm)
-
-    # format for plotting
-    d_norm <- setNames(
-      reshape2::melt(
-        d_norm,
-        id.vars = 1
-      ),
-      c(md_list[[1]], "p.ID", "freq.norm")
-    )
-    head(d_norm)
-
-    d_norm <- dplyr::left_join(
-      d_norm,
-      g_range[, c("p.ID", "start", "end")],
-      by = "p.ID"
-    )
-    head(d_norm)
-
-    ## 1.Split by CellType;
-    ## 2.Merge each with bp interval
-    ## (in steps of 500 bp [this is the fragment length]);
-    ## 3.Smooth each track
-    ## 4.Bind rows and plot
-    d_norm <- dplyr::bind_rows(
-      setNames(
-        lapply(
-          unique(d_norm[[md_list[[1]]]]),
-          function(x) {
-            d <- d_norm[d_norm[[md_list[[1]]]] == x, ]
-            p2_int <- data.frame(
-              "start" = seq.int(
-                min(d[["start"]]) - 5000,
-                max(d[["start"]] + 5000),
-                by = 501
-              )
-            )
-            d <- dplyr::full_join(
-              p2_int,
-              d,
-              by = "start"
-            )
-            d <- d[order(d[["start"]]), ]
-            d[is.na(d[["freq.norm"]]), "freq.norm"] <- 0
-            d[is.na(d[[md_list[[1]]]]), md_list[[1]]] <- x
-            ## Perform loess smoothing of tracks
-            d[["freq.loess"]] <- lowess(
-              x = d[["start"]],
-              y = d[["freq.norm"]],
-              f = 0.05,
-              iter = 5,
-              delta = 0
-            )[[2]]
-            d[d[["freq.loess"]] < 0, "freq.loess"] <- 0
-            return(d)
-          }
-        ),
-        unique(d_norm[[md_list[[1]]]])
-      )
-    )
-    head(d_norm)
-    nrow(d_norm)
-
-    d_norm[[md_list[[1]]]] <- factor(
-      d_norm[[md_list[[1]]]],
-      levels = c(
-        gtools::mixedsort(
-          unique(d_norm[[md_list[[1]]]])
-        )
-      )
-    )
-  }
-
-  if(length(md_list) == 2) { # nolint
-    p2 <- dplyr::group_by(
-      p2,
-      .data[[md_list[[1]]]], # nolint
-      .data[[md_list[[2]]]]
-    )
-    # raw signal
-    d_raw <- data.frame(
-      "col1" = levels(p2[[md_list[[1]]]]),
-      "col2" = levels(p2[[md_list[[2]]]]),
-      as.data.frame(
-        lapply(
-          p2[3:ncol(p2)],
-          function(y) {
-            aggregate(
-              y,
-              list(
-                p2[[md_list[[1]]]],
-                p2[md_list[[2]]]
-              ),
-              function(x) sum(x)
-            )[[2]]
-          }
-        )
-      )
-    )
-    head(d_raw)
-
-    ## group scaling factor
-    sc_norm_atac <- function(
-      # raw data frame
-      df_raw,
-      # raw data frame (sum frequency per group)
-      df_sum,
-      # raw signal
-      f_raw,
-      # number of metadata columns
-      md
-    ) {
-      (
-        # raw signal
-        f_raw /
-          (
-            # total cells per group
-            aggregate(
-              df_raw[[(md + 1)]],
-              list(
-                df_raw[[md_list[[1]]]],
-                df_raw[[md_list[[2]]]]
-              ),
-              function(x) length(x)
-            )[[2]]
-          )
-      ) *
-        (
-          # average sequencing depth per group
-          rowMeans(
-            df_sum[3:ncol(df_sum)]
-          )
-        )
-    }
-
-    # normalized signal
-    d_norm <- setNames(
-      data.frame(
-        "col1" = d_raw[["col1"]],
-        "col2" = d_raw[["col2"]],
-        as.data.frame(
-          lapply(
-            seq.int(3, ncol(d_raw), 1),
-            function(y) {
-              sc_norm_atac(
-                p2,
-                d_raw,
-                d_raw[[y]],
-                3
-              )
-            }
-          )
-        )
-      ),
-      c(md_list[[1]], md_list[[2]], names(p2[3:ncol(p2)]))
-    )
-    head(d_norm)
-
-    # format for plotting
-    d_norm <- setNames(
-      reshape2::melt(
-        d_norm,
-        id.vars = 1
-      ),
-      c(md_list[[1]], md_list[[2]], "p.ID", "freq.norm")
-    )
-    head(d_norm)
-
-    d_norm <- dplyr::left_join(
-      d_norm,
-      g_range[, c("p.ID", "start", "end")],
-      by = "p.ID"
-    )
-    head(d_norm)
-
-    ## 1.Split by CellType;
-    ## 2.Merge each with bp interval
-    ## (in steps of 500 bp [this is the fragment length]);
-    ## 3.Smooth each track
-    ## 4.Bind rows and plot
-    d_norm <- dplyr::bind_rows(
-      setNames(
-        lapply(
-          seq.int(1, unique(d_norm[, md_list]), 1),
-          function(x) {
-            d1 <- unique(d_norm[, md_list])
-            d <- d_norm[
-              d_norm[[md_list[[1]]]] == d1[x, md_list[[1]]] &
-                d_norm[[md_list[[2]]]] == d1[x, md_list[[2]]],
-            ]
-            p2_int <- data.frame(
-              "start" = seq.int(
-                min(d[["start"]]) - 5000,
-                max(d[["start"]] + 5000),
-                by = 501
-              )
-            )
-            d <- dplyr::full_join(
-              p2_int,
-              d,
-              by = "start"
-            )
-            d <- d[order(d[["start"]]), ]
-            d[is.na(d[["freq.norm"]]), "freq.norm"] <- 0
-            d[is.na(d[[md_list[[1]]]]), md_list[[1]]] <- d1[x, md_list[[1]]]
-            d[is.na(d[[md_list[[2]]]]), md_list[[2]]] <- d1[x, md_list[[2]]]
-
-            ## Perform loess smoothing of tracks
-            d[["freq.loess"]] <- lowess(
-              x = d[["start"]],
-              y = d[["freq.norm"]],
-              f = 0.05,
-              iter = 5,
-              delta = 0
-            )[[2]]
-            d[d[["freq.loess"]] < 0, "freq.loess"] <- 0
-            return(d)
-          }
-        ),
-        paste(
-          unique(d_norm[, md_list])[[1]],
-          unique(d_norm[, md_list])[[2]],
-          sep = "."
-        )
-      )
-    )
-    head(d_norm)
-    nrow(d_norm)
-
-    d_norm[[md_list[[1]]]] <- factor(
-      d_norm[[md_list[[1]]]],
-      levels = c(
-        gtools::mixedsort(
-          unique(d_norm[[md_list[[1]]]])
-        )
-      )
-    )
-
-    d_norm[[md_list[[2]]]] <- factor(
-      d_norm[[md_list[[2]]]],
-      levels = c(
-        gtools::mixedsort(
-          unique(d_norm[[md_list[[2]]]])
-        )
-      )
-    )
-
-  }
-
-  # Plot
-  p_cov <- ggplot2::ggplot(
-    data = d_norm
-  ) +
-    ggplot2::geom_area(
-      ggplot2::aes(
-        x = .data[["start"]], # nolint
-        y = .data[["freq.loess"]],
-        fill = .data[[md_list[[1]]]]
-      ),
-      alpha = 0.7,
-      show.legend = FALSE
-    ) +
-    sc_theme1() +
-    ggplot2::scale_fill_manual(
-      values = col_univ()
-    ) +
-    ggplot2::scale_x_continuous(
-      name = "Position (bp)",
-      limits = c(
-        (min(d_norm[["start"]]) - 5000),
-        max(d_norm[["start"]] + 5000)
-      )
-    ) +
-    ggplot2::facet_wrap(
-      ~ .data[[md_list[[1]]]],
-      ncol = 1,
-      strip.position = "top"
-    ) +
-    ggplot2::theme(
-      axis.text.x = ggplot2::element_blank(),
-      strip.text.x.top = ggplot2::element_text(
-        angle = 0,
-        margin = ggplot2::margin(0, 0, 0, 0, "cm"),
-        size = 10
-      ),
-      strip.background.x = ggplot2::element_rect(fill = "grey95"),
-      panel.spacing.y = grid::unit(0, "cm"),
-      axis.text.y = ggplot2::element_blank(),
-      axis.line.x.bottom = ggplot2::element_line(color = "black"),
-      plot.margin = ggplot2::margin(0.1, 0.1, 0.1, 0.1, "cm"),
-      axis.title.x.bottom = ggplot2::element_blank(),
-      axis.ticks.x = ggplot2::element_blank()
-    ) +
-    ggplot2::labs(
-      y = paste(
-        "LOESS-smoothed Normalized Signal",
-        paste(
-          "(Range ",
-          round(min(d_norm[["freq.loess"]]), digits = 2),
-          " - ",
-          round(max(d_norm[["freq.loess"]]), digits = 2), ")", sep = ""
-        ),
-        sep = " "
-      )
-    ) +
-    ggplot2::ggtitle(
-      paste(
-        g_loc[["seqnames"]], ":",
-        min(d_norm[["start"]] - 5000),
-        "-",
-        max(d_norm[["start"]] + 5000),
-        " (",
-        g_name,
-        ")",
-        sep = ""
-      )
-    )
-
 
   p_pos <- g_data[
-    g_data$start >= g_loc$start - bp_window &
-      g_data$end <= g_loc$end + bp_window,
+    g_data$start >= g_loc$start - 60000 &
+      g_data$end <= g_loc$end + 60000,
   ]
-  p_pos
+
   p_pos <- p_pos[p_pos[["seqnames"]] == as.character(g_loc[["seqnames"]]), ]
-  head(p_pos)
   p_pos <- p_pos[p_pos[["type"]] == "exon", ]
-  head(p_pos)
   p_pos <- p_pos[p_pos[["seqnames"]] == g_loc[["seqnames"]], ]
-  nrow(p_pos)
-  names(p_pos)
-  unique(p_pos[["gene_name"]])
-  p_peak <- p[p[["nearestGene"]] %in% unique(p_pos[["gene_name"]]), ]
+  p_peak <- p_pos[p_pos[["nearestGene"]] %in% unique(p_pos[["gene_name"]]), ]
   p_peak <- p_peak[!is.na(p_peak[["seqnames"]]), ]
-  head(p_peak)
-  unique(p_pos[, c("gene_name", "gene_id")])
   p_g_rng <- dplyr::bind_rows(
     setNames(
       lapply(
@@ -599,6 +156,610 @@ sc_coverage_plot <- function(
       axis.text.y = ggplot2::element_blank(),
       panel.background = ggplot2::element_blank()
     ) +
+    ggplot2::labs(x = "Position (bp)", y = "Seq")
+  return(p_seq)
+}
+
+#' scATAC-Seq Coverage Plot
+#'
+#' Generates a coverage plot from a Signac ChromatinAssay.
+#' Requires scATAC-Seq peak information and a reference GRanges object
+#' for plotting gene positions.
+#'
+#' @param so An object of class Seurat. Must contain an ATAC assay.
+#' @param dref Path to a .gtf file containing reference gene annotations.
+#' @param asy1 ATAC peaks assay to use.
+#' @param g_name Gene to plot, provided as a character string.
+#' @param bp_window Numeric value indicating the number of base pairs to
+#' extend the plotting window on each end of the selected gene's location.
+#' Useful for visualizing peaks corresponding to neighboring genes.
+#' @param md_list1 Character vector of up to 2 metadata variables for
+#' stratifying peak data.
+#' @return A coverage plot including the specified gene track and all other
+#' genes present within the specified window.
+#' @examples
+#'
+#' # p_cov <- sc_coverage_plot(
+#' #   readRDS("analysis/data.annotated.withTFs.rds"),
+#' #   rtracklayer::import(
+#' #    "ref/gencode.v45.primary_assembly.annotation.gtf"
+#' #   ),
+#' #   "TMEM45A",
+#' #   20000,
+#' #   c("CellType", "Airway")
+#' # )
+#'
+#' @export
+sc_coverage_plot <- function(
+  so,
+  dref,
+  asy1,
+  g_name,
+  bp_window,
+  md_list1
+) {
+  d <- d
+  ref_gene <- dref
+  md_list <- c("CellType")
+
+  # Format reference gene annotation file
+  ref_gene <- dplyr::as_tibble(ref_gene)
+  # Extract detected genes from reference gene list
+  g_data <- ref_gene[
+    ref_gene[["gene_name"]] %in% rownames(d@assays$RNA$counts),
+  ]
+  head(g_data)
+
+  # Extract individual gene location from Seurat object and map
+  # against reference
+  g_loc <- g_data[
+    g_data$gene_name == "SFTPB" &
+      g_data$type == "gene",
+    c("start", "end", "width", "seqnames")
+  ]
+  g_loc
+  p <- d@assays[["ufy.peaks"]]@meta.features
+  p[["ID"]] <- seq.int(1, nrow(p), 1)
+  head(p)
+  pos1 <- setNames(
+    as.data.frame(
+      stringr::str_split_fixed(rownames(p), "-", 3)
+    ),
+    c("seqnames", "start", "end")
+  )
+  p <- cbind(p, pos1)
+  g_range <- p[
+    p$start >= g_loc$start - 20000 &
+      p$end <= g_loc$end + 20000,
+  ]
+  g_range <- g_range[g_range$seqnames == as.character(g_loc$seqnames), ]
+  g_range <- g_range[
+    as.character(g_range[["seqnames"]]) == g_loc[["seqnames"]],
+  ]
+
+  # Extract unified peak counts from ATAC peaks assay
+  if(length(md_list) == 1) { # nolint
+    p2 <- setNames(data.frame(
+      "col1" = d@meta.data[[md_list[[1]]]],
+      setNames(
+        as.data.frame(
+          t(
+            as.matrix(d@assays[["ufy.peaks"]]$counts[g_range$ID, ])
+          )
+        ),
+        c(g_range$ID)
+      )
+    ), c(md_list[[1]], g_range[["ID"]]))
+  }
+  if(length(md_list) == 2) { # nolint
+    p2 <- setNames(data.frame(
+      "col1" = d@meta.data[[md_list[[1]]]],
+      "col2" = d@meta.data[[md_list[[2]]]],
+      setNames(
+        as.data.frame(t(as.matrix(d@assays[[asy1]]$counts[g_range$ID, ]))),
+        c(g_range$ID)
+      )
+    ), c(md_list[[1]], md_list[[2]], g_range[["ID"]]))
+  }
+
+  ## Calculate sum of reads per fragment per cell type
+  ## Normalize reads using the following: (f.raw/n.cells)*mean(n.reads)
+  if(length(md_list) == 1) { # nolint
+    p2 <- dplyr::group_by(
+      p2,
+      .data[[md_list[[1]]]] # nolint
+    )
+    # raw signal
+    d_raw <- data.frame(
+      "col1" = levels(p2[[md_list[[1]]]]),
+      as.data.frame(
+        lapply(
+          p2[3:ncol(p2)],
+          function(y) {
+            aggregate(
+              y,
+              list(p2[[md_list[[1]]]]),
+              function(x) sum(x)
+            )[[2]]
+          }
+        )
+      )
+    )
+    head(d_raw)
+
+    ## group scaling factor
+    sc_norm_atac <- function(
+      # raw data frame
+      df_raw,
+      # raw data frame (sum frequency per group)
+      df_sum,
+      # raw signal
+      f_raw,
+      # number of metadata columns
+      md
+    ) {
+      (
+        # raw signal
+        f_raw /
+          (
+            # total cells per group
+            aggregate(
+              df_raw[[(md + 1)]],
+              list(df_raw[[md_list[[1]]]]),
+              function(x) length(x)
+            )[[2]]
+          )
+      ) *
+        (
+          # average sequencing depth per group
+          rowMeans(
+            df_sum[2:ncol(df_sum)]
+          )
+        )
+    }
+
+    # normalized signal
+    d_norm <- setNames(
+      data.frame(
+        "col1" = d_raw[["col1"]],
+        as.data.frame(
+          lapply(
+            seq.int(2, ncol(d_raw), 1),
+            function(y) {
+              sc_norm_atac(
+                p2,
+                d_raw,
+                d_raw[[y]],
+                2
+              )
+            }
+          )
+        )
+      ),
+      c(md_list[[1]], names(p2[3:ncol(p2)]))
+    )
+
+    # format for plotting
+    d_norm <- setNames(
+      reshape2::melt(
+        d_norm,
+        id.vars = 1
+      ),
+      c(md_list[[1]], "ID", "freq.norm")
+    )
+    g_range[["ID"]] <- as.factor(g_range[["ID"]])
+    g_range[["start"]] <- as.numeric(g_range[["start"]])
+    g_range[["end"]] <- as.numeric(g_range[["end"]])
+
+    d_norm <- dplyr::left_join(
+      d_norm,
+      g_range[, c("ID", "start", "end")],
+      by = "ID"
+    )
+
+    ## 1.Split by CellType;
+    ## 2.Merge each with bp interval
+    ## (in steps of 500 bp [this is the fragment length]);
+    ## 3.Smooth each track
+    ## 4.Bind rows and plot
+    d_norm <- dplyr::bind_rows(
+      setNames(
+        lapply(
+          unique(d_norm[[md_list[[1]]]]),
+          function(x) {
+            d <- d_norm[d_norm[[md_list[[1]]]] == x, ]
+            p2_int <- data.frame(
+              "start" = seq.int(
+                min(d[["start"]]) - 5000,
+                max(d[["start"]] + 5000),
+                by = 501
+              )
+            )
+            d <- dplyr::full_join(
+              p2_int,
+              d,
+              by = "start"
+            )
+            d <- d[order(d[["start"]]), ]
+            d[is.na(d[["freq.norm"]]), "freq.norm"] <- 0
+            d[is.na(d[[md_list[[1]]]]), md_list[[1]]] <- x
+            ## Perform loess smoothing of tracks
+            d[["freq.loess"]] <- lowess(
+              x = d[["start"]],
+              y = d[["freq.norm"]],
+              f = 0.05,
+              iter = 5,
+              delta = 0
+            )[[2]]
+            d[d[["freq.loess"]] < 0, "freq.loess"] <- 0
+            return(d)
+          }
+        ),
+        unique(d_norm[[md_list[[1]]]])
+      )
+    )
+
+    d_norm[[md_list[[1]]]] <- factor(
+      d_norm[[md_list[[1]]]],
+      levels = c(
+        gtools::mixedsort(
+          unique(d_norm[[md_list[[1]]]])
+        )
+      )
+    )
+  }
+
+  if(length(md_list) == 2) { # nolint
+    p2 <- dplyr::group_by(
+      p2,
+      .data[[md_list[[1]]]], # nolint
+      .data[[md_list[[2]]]]
+    )
+    # raw signal
+    d_raw <- data.frame(
+      "col1" = levels(p2[[md_list[[1]]]]),
+      "col2" = levels(p2[[md_list[[2]]]]),
+      as.data.frame(
+        lapply(
+          p2[3:ncol(p2)],
+          function(y) {
+            aggregate(
+              y,
+              list(
+                p2[[md_list[[1]]]],
+                p2[md_list[[2]]]
+              ),
+              function(x) sum(x)
+            )[[2]]
+          }
+        )
+      )
+    )
+
+    ## group scaling factor
+    sc_norm_atac <- function(
+      # raw data frame
+      df_raw,
+      # raw data frame (sum frequency per group)
+      df_sum,
+      # raw signal
+      f_raw,
+      # number of metadata columns
+      md
+    ) {
+      (
+        # raw signal
+        f_raw /
+          (
+            # total cells per group
+            aggregate(
+              df_raw[[(md + 1)]],
+              list(
+                df_raw[[md_list[[1]]]],
+                df_raw[[md_list[[2]]]]
+              ),
+              function(x) length(x)
+            )[[2]]
+          )
+      ) *
+        (
+          # average sequencing depth per group
+          rowMeans(
+            df_sum[3:ncol(df_sum)]
+          )
+        )
+    }
+
+    # normalized signal
+    d_norm <- setNames(
+      data.frame(
+        "col1" = d_raw[["col1"]],
+        "col2" = d_raw[["col2"]],
+        as.data.frame(
+          lapply(
+            seq.int(3, ncol(d_raw), 1),
+            function(y) {
+              sc_norm_atac(
+                p2,
+                d_raw,
+                d_raw[[y]],
+                3
+              )
+            }
+          )
+        )
+      ),
+      c(md_list[[1]], md_list[[2]], names(p2[3:ncol(p2)]))
+    )
+
+    # format for plotting
+    d_norm <- setNames(
+      reshape2::melt(
+        d_norm,
+        id.vars = 1
+      ),
+      c(md_list[[1]], md_list[[2]], "p.ID", "freq.norm")
+    )
+    g_range[["ID"]] <- as.factor(g_range[["ID"]])
+    g_range[["start"]] <- as.numeric(g_range[["start"]])
+    g_range[["end"]] <- as.numeric(g_range[["end"]])
+
+    d_norm <- dplyr::left_join(
+      d_norm,
+      g_range[, c("p.ID", "start", "end")],
+      by = "p.ID"
+    )
+
+    ## 1.Split by CellType;
+    ## 2.Merge each with bp interval
+    ## (in steps of 500 bp [this is the fragment length]);
+    ## 3.Smooth each track
+    ## 4.Bind rows and plot
+    d_norm <- dplyr::bind_rows(
+      setNames(
+        lapply(
+          seq.int(1, unique(d_norm[, md_list]), 1),
+          function(x) {
+            d1 <- unique(d_norm[, md_list])
+            d <- d_norm[
+              d_norm[[md_list[[1]]]] == d1[x, md_list[[1]]] &
+                d_norm[[md_list[[2]]]] == d1[x, md_list[[2]]],
+            ]
+            p2_int <- data.frame(
+              "start" = seq.int(
+                min(d[["start"]]) - 5000,
+                max(d[["start"]] + 5000),
+                by = 501
+              )
+            )
+            d <- dplyr::full_join(
+              p2_int,
+              d,
+              by = "start"
+            )
+            d <- d[order(d[["start"]]), ]
+            d[is.na(d[["freq.norm"]]), "freq.norm"] <- 0
+            d[is.na(d[[md_list[[1]]]]), md_list[[1]]] <- d1[x, md_list[[1]]]
+            d[is.na(d[[md_list[[2]]]]), md_list[[2]]] <- d1[x, md_list[[2]]]
+
+            ## Perform loess smoothing of tracks
+            d[["freq.loess"]] <- lowess(
+              x = d[["start"]],
+              y = d[["freq.norm"]],
+              f = 0.05,
+              iter = 5,
+              delta = 0
+            )[[2]]
+            d[d[["freq.loess"]] < 0, "freq.loess"] <- 0
+            return(d)
+          }
+        ),
+        paste(
+          unique(d_norm[, md_list])[[1]],
+          unique(d_norm[, md_list])[[2]],
+          sep = "."
+        )
+      )
+    )
+
+    d_norm[[md_list[[1]]]] <- factor(
+      d_norm[[md_list[[1]]]],
+      levels = c(
+        gtools::mixedsort(
+          unique(d_norm[[md_list[[1]]]])
+        )
+      )
+    )
+
+    d_norm[[md_list[[2]]]] <- factor(
+      d_norm[[md_list[[2]]]],
+      levels = c(
+        gtools::mixedsort(
+          unique(d_norm[[md_list[[2]]]])
+        )
+      )
+    )
+  }
+
+  # Plot
+  p_cov <- ggplot2::ggplot(
+    data = d_norm
+  ) +
+    ggplot2::geom_area(
+      ggplot2::aes(
+        x = .data[["start"]], # nolint
+        y = .data[["freq.loess"]],
+        fill = .data[[md_list[[1]]]]
+      ),
+      alpha = 0.7,
+      show.legend = FALSE
+    ) +
+    sc_theme1() +
+    ggplot2::scale_fill_manual(
+      values = col_univ()
+    ) +
+    ggplot2::scale_x_continuous(
+      name = "Position (bp)",
+      limits = c(
+        (min(d_norm[["start"]]) - 5000),
+        max(d_norm[["start"]] + 5000)
+      )
+    ) +
+    ggplot2::facet_wrap(
+      ~ .data[[md_list[[1]]]],
+      ncol = 1,
+      strip.position = "top"
+    ) +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_blank(),
+      strip.text.x.top = ggplot2::element_text(
+        angle = 0,
+        margin = ggplot2::margin(0, 0, 0, 0, "cm"),
+        size = 10
+      ),
+      strip.background.x = ggplot2::element_rect(fill = "grey95"),
+      panel.spacing.y = grid::unit(0, "cm"),
+      axis.text.y = ggplot2::element_blank(),
+      axis.line.x.bottom = ggplot2::element_line(color = "black"),
+      plot.margin = ggplot2::margin(0.1, 0.1, 0.1, 0.1, "cm"),
+      axis.title.x.bottom = ggplot2::element_blank(),
+      axis.ticks.x = ggplot2::element_blank()
+    ) +
+    ggplot2::labs(
+      y = paste(
+        "LOESS-smoothed Normalized Signal",
+        paste(
+          "(Range ",
+          round(min(d_norm[["freq.loess"]]), digits = 2),
+          " - ",
+          round(max(d_norm[["freq.loess"]]), digits = 2), ")", sep = ""
+        ),
+        sep = " "
+      )
+    ) +
+    ggplot2::ggtitle(
+      paste(
+        g_loc[["seqnames"]], ":",
+        min(d_norm[["start"]] - 5000),
+        "-",
+        max(d_norm[["start"]] + 5000),
+        " (",
+        "SFTPB",
+        ")",
+        sep = ""
+      )
+    )
+
+  p_cov
+  p_pos <- g_data[
+    g_data$start >= g_loc$start - 20000 &
+      g_data$end <= g_loc$end + 20000,
+  ]
+
+  p_pos <- p_pos[p_pos[["seqnames"]] == as.character(g_loc[["seqnames"]]), ]
+
+  p_pos <- p_pos[p_pos[["type"]] == "exon", ]
+
+  p_pos <- p_pos[p_pos[["seqnames"]] == g_loc[["seqnames"]], ]
+  p_peak <- p[p[["nearestGene"]] %in% unique(p_pos[["gene_name"]]), ]
+  p_peak <- p_peak[!is.na(p_peak[["seqnames"]]), ]
+  p_g_rng <- dplyr::bind_rows(
+    setNames(
+      lapply(
+        seq.int(
+          1,
+          nrow(unique(p_pos[, c("gene_name", "gene_id")])),
+          1
+        ),
+        function(x) {
+          r <- unique(p_pos[, c("gene_name", "gene_id")])
+          d <- p_pos[
+            p_pos[["gene_name"]] == r[x, ][["gene_name"]] &
+              p_pos[["gene_id"]] == r[x, ][["gene_id"]],
+          ]
+          d <- data.frame(
+            "gene_name" = unique(d[["gene_name"]]),
+            "gene_id" = unique(d[["gene_id"]]),
+            "start" = min(d[["start"]]),
+            "end" = max(d[["end"]])
+          )
+          return(d)
+        }
+      ),
+      unique(p_pos[, c("gene_name", "gene_id")][["gene_id"]])
+    )
+  )
+  # Plot
+  p_seq <- ggplot2::ggplot() +
+    ggplot2::geom_segment(
+      data = p_peak,
+      ggplot2::aes(
+        x = .data[["start"]], # nolint
+        xend = .data[["end"]],
+        y = 0
+      ),
+      linewidth = 12,
+      alpha = 0.6,
+      color = col_univ()[[20]]
+    ) +
+    ggplot2::geom_segment(
+      data = p_pos[
+        p_pos[["type"]] == "exon",
+      ],
+      ggplot2::aes(
+        x = start,
+        xend = end,
+        color = "SFTPB",
+        y = 0
+      ),
+      linewidth = 8,
+      show.legend = FALSE
+    ) +
+    ggplot2::geom_segment(
+      data = p_g_rng,
+      ggplot2::aes(
+        x = start,
+        xend = end,
+        y = 0
+      ),
+      show.legend = FALSE
+    ) +
+    ggrepel::geom_text_repel(
+      data = p_g_rng,
+      ggplot2::aes(
+        x = start,
+        y = -0.1,
+        label = "SFTPB",
+        color = "SFTPB"
+      ),
+      bg.color = "white",
+      show.legend = FALSE,
+      size = 5
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(-0.2, 0.2)
+    ) +
+    ggplot2::scale_color_manual(values = col_univ()) +
+    ggplot2::theme(
+      axis.title.x = ggplot2::element_text(face = "bold", size = 14),
+      axis.title.y = ggplot2::element_text(
+        size = 14,
+        angle = 90,
+        color = "white"
+      ),
+      axis.line.x.bottom = ggplot2::element_line(color = "black"),
+      axis.text.x = ggplot2::element_text(
+        color = "grey40",
+        size = 14,
+        face = "bold"
+      ),
+      plot.margin = ggplot2::margin(0.1, 0.1, 0.1, 0.1, "cm"),
+      axis.ticks.length.x = grid::unit(0.2, "cm"),
+      axis.ticks.x = ggplot2::element_line(color = "black"),
+      axis.ticks.y = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      panel.background = ggplot2::element_blank()
+    ) +
     ggplot2::labs(x = "Position (bp)", y = "Seq") +
     ggplot2::scale_x_continuous(
       limits = c(
@@ -606,6 +767,8 @@ sc_coverage_plot <- function(
         max(d_norm[["start"]] + 5000)
       )
     )
+
+  p_seq
 
   p_cov_comb <- ggpubr::ggarrange(
     p_cov,
@@ -628,12 +791,14 @@ sc_coverage_plot <- function(
 #' the JASPAR database.
 #'
 #' @param so An object of class Seurat. Must contain an ATAC assay.
+#' @param asy1 Assay to use for annotating transcription factors.
 #' @param dref Path to a .gtf file containing reference gene annotations.
 #' @return An annotated ChromatinAssay object.
 #' @examples
 #'
 #' # d_chrmasy <- sc_atac_motifs(
 #' #   d,
+#' #   "ufy.peaks",
 #' #   rtracklayer::import(
 #' #    "ref/gencode.v45.primary_assembly.annotation.gtf"
 #' #    )
@@ -642,6 +807,7 @@ sc_coverage_plot <- function(
 #' @export
 sc_atac_motifs <- function(
   so,
+  asy1,
   dref
 ) {
   library(TFBSTools)
@@ -649,17 +815,8 @@ sc_atac_motifs <- function(
   library(BSgenome.Hsapiens.UCSC.hg38)
   ## Extract counts from Seurat ATAC assay
   d <- so
-  Seurat::DefaultAssay(d) <- "ATAC"
+  Seurat::DefaultAssay(d) <- asy1
   dc <- SeuratObject::GetAssayData(d, slot = "counts")
-  rownames(dc) <-  paste(
-    d@assays$ATAC@meta.features[["seqnames"]],
-    paste(
-      d@assays$ATAC@meta.features[["start"]],
-      d@assays$ATAC@meta.features[["end"]],
-      sep = "-"
-    ),
-    sep = ":"
-  )
   ## Format gene locations and create ChromatinAssay
   ref1 <- dref
   gene_coords <- ref1[ref1$type == "gene"]
@@ -672,7 +829,7 @@ sc_atac_motifs <- function(
 
   d1 <- Signac::CreateChromatinAssay(
     counts = dc,
-    sep = c(":", "-"),
+    sep = c("-", "-"),
     verbose = TRUE,
     meta.data = d@meta.data
   )
@@ -738,7 +895,7 @@ sc_atac_motifs <- function(
       lapply(
         colnames(tf_list),
         function(x) {
-          name(TFBSTools::getMatrixByID(JASPAR2020, ID = x))
+          name(TFBSTools::getMatrixByID(JASPAR2020, ID = x)) # nolint
         }
       )
     )

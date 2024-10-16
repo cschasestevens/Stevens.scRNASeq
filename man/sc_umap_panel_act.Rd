@@ -26,6 +26,14 @@ column for overlaying on a UMAP plot.}
 
 \item{tf_name}{Transcription factor name, provided as a character string.}
 
+\item{col_scheme}{Colors to use for overlaying metadata variables.}
+
+\item{col_names}{Names for assigning colors from col_scheme.}
+
+\item{leg_x}{Legend x-axis position.}
+
+\item{leg_y}{Legend y-axis position.}
+
 \item{slot1}{A character string corresponding to the umap slot name to plot.}
 }
 \value{

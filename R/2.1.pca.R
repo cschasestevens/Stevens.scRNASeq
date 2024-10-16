@@ -7,7 +7,7 @@
 #' @return A Seurat object containing PCA results.
 #' @examples
 #'
-#' # d_integrated <- sc_pca(d_integrated)
+#' # d_integrated <- sc_pca(d_integrated, "RNA")
 #'
 #' @export
 sc_pca <- function(

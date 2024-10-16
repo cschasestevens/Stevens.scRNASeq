@@ -59,8 +59,8 @@ sc.recluster.data <- function(
     }
 
   # Run PCA/UMAP
-  d <- sc.pca(d,"RNA")
-  d.pca <- sc.pca.plot(
+  d <- sc_pca(d,"RNA")
+  d.pca <- sc_pca_plot(
     d,
     c(md.list,"seurat_clusters")
     )
@@ -107,7 +107,7 @@ sc.recluster.data <- function(
   if(run.qc == T){
     ggplot2::ggsave(
       "analysis/recluster/plot.recluster.qc.png",
-      sc.integration.qc(d,"recluster"),
+      sc_integration_qc(d,"recluster"),
       width = 24,
       height = 8,
       dpi = 700)
@@ -117,7 +117,7 @@ sc.recluster.data <- function(
   ### Cell Type
   ggplot2::ggsave(
     "analysis/recluster/plot.umap.CellType.png",
-    sc.umap.standard(
+    sc_umap_standard(
       # Seurat object
       d,
       # metadata column
@@ -131,7 +131,7 @@ sc.recluster.data <- function(
   ### Cell Group
   ggplot2::ggsave(
     "analysis/recluster/plot.umap.reclustering.png",
-    sc.umap.standard(
+    sc_umap_standard(
       # Seurat object
       d,
       # metadata column
@@ -252,7 +252,7 @@ sc.recluster.data <- function(
         ),
         lg,
         function(x) {
-          pg <- sc.umap.panel.gene(
+          pg <- sc_umap_panel_gene(
             d,
             md.var,
             x,
@@ -278,7 +278,7 @@ sc.recluster.data <- function(
       lapply(
         lg,
         function(x) {
-          pg <- sc.umap.panel.gene(
+          pg <- sc_umap_panel_gene(
             d,
             md.var,
             x,
@@ -304,7 +304,7 @@ sc.recluster.data <- function(
       lapply(
         lg,
         function(x) {
-          pg <- sc.umap.panel.gene(
+          pg <- sc_umap_panel_gene(
             d,
             md.var,
             x,
@@ -345,7 +345,7 @@ sc.recluster.data <- function(
     # Group variable
     "recluster",
     # Color scheme
-    col.univ()[1:length(levels(d@meta.data[["recluster"]]))],
+    col_univ()[1:length(levels(d@meta.data[["recluster"]]))],
     # Color Names
     c(levels(d@meta.data[["recluster"]])),
     # legend x-position
@@ -361,28 +361,4 @@ sc.recluster.data <- function(
     )
 
   return(d)
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

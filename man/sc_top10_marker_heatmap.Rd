@@ -4,10 +4,12 @@
 \alias{sc_top10_marker_heatmap}
 \title{Top-10 Marker Gene Heatmap}
 \usage{
-sc_top10_marker_heatmap(so, asy, cl_var, h_w, h_h, fs_c, fs_r)
+sc_top10_marker_heatmap(so, asy, cl_var, h_w, h_h, fs_c, fs_r, cl_c, cl_r)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
+
+\item{asy}{Assay to use (ex. "RNA").}
 
 \item{cl_var}{Character string containing the name
 of the cluster variable for cell type predictions.}
@@ -19,6 +21,10 @@ of the cluster variable for cell type predictions.}
 \item{fs_c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
 \item{fs_r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
+
+\item{cl_c}{Cluster columns?}
+
+\item{cl_r}{Cluster rows?}
 }
 \value{
 A ComplexHeatmap object containing a top-10 marker gene heatmap.
@@ -29,6 +35,16 @@ marker gene list based on the top-10 marker genes for each cluster.
 }
 \examples{
 
-# p_umap <- sc_top10_marker_heatmap(d_annotated,"seurat_clusters",18,24,6,8)
+# p_umap <- sc_top10_marker_heatmap(
+#   d_annotated,
+#   "RNA",
+#   "seurat_clusters",
+#   18,
+#   24,
+#   6,
+#   8,
+#   TRUE,
+#   TRUE
+# )
 
 }

@@ -63,7 +63,7 @@ sc_volcano <- function(
       legendLabSize = 12,
       labFace = "bold",
       col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
-      colAlpha = 0.7,
+      colAlpha = 0.6,
       legendIconSize = 4,
       pointSize = 2,
       border = "full",
@@ -72,12 +72,15 @@ sc_volcano <- function(
       labSize = 3,
       drawConnectors = TRUE,
       typeConnectors = "open",
+      widthConnectors = 0.35,
+      colConnectors = "grey75",
+      max.overlaps = 18,
       min.segment.length = ggplot2::unit(
         1,
         "mm"
       )
     ) +
-      sc_theme1() +
+      sc_theme1() + # nolint
       ggplot2::labs(
         color = "Key",
         x = x_title,
@@ -135,7 +138,7 @@ sc_volcano <- function(
         "mm"
       )
     ) +
-      sc_theme1() +
+      sc_theme1() + # nolint
       ggplot2::labs(color = "Key") +
       ggplot2::labs(
         color = "Key",
@@ -180,12 +183,13 @@ sc_volcano <- function(
       labSize = 3,
       drawConnectors = TRUE,
       typeConnectors = "open",
+      max.overlaps = 18,
       min.segment.length = ggplot2::unit(
         1,
         "mm"
       )
     ) +
-      sc_theme1() +
+      sc_theme1() + # nolint
       ggplot2::labs(color = "Key") +
       ggplot2::labs(
         color = "Key",

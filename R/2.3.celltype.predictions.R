@@ -340,14 +340,14 @@ sc.predict.clusters <- function(
       ) +
       ggplot2::geom_density(
         color = "black",
-        fill = col.univ()[[2]]
+        fill = col_univ()[[2]]
         ) +
       ggplot2::labs(
         x = "Prediction Score",
         y = "Density",
         title = "Prediction Score Distribution"
       ) +
-      sc.theme1()
+      sc_theme1()
     }
   ggplot2::ggsave(
     "analysis/plot.predicted.scores.dist.png",
@@ -476,7 +476,7 @@ sc.predict.clusters <- function(
     levels = c(gtools::mixedsort(list.d[["cluster.assignments"]][["predicted.id"]]))
     )
   list.d[["cluster.assignments"]][["CellGroup"]] <- factor(
-    list.d[["cluster.assignments"]][["CellGroup"]],levels = c(list.ct))
+    list.d[["cluster.assignments"]][["CellGroup"]],levels = c(list_ct))
   if("CellGroup" %in% names(list.d[["Predicted Clusters"]]@meta.data) == TRUE){
   list.d[["cluster.assignments"]] <- dplyr::select(
     dplyr::left_join(
@@ -516,8 +516,4 @@ sc.predict.clusters <- function(
     )
 
   return(list.d)
-  }
-
-
-
-
+}

@@ -374,6 +374,237 @@ sc_umap_panel_gene <- function(
   return(d2_out)
 }
 
+#' Visualize Individual Gene Expression
+#'
+#' Generates a series of plots to visualize
+#' individual gene expression per cluster.
+#'
+#' @param so An object of class Seurat.
+#' @param md_var A character string indicating
+#' the clustering column for overlaying on a UMAP plot.
+#' @param g_name A character string indicating the gene name.
+#' @param col_scheme The color scheme to be used for
+#' distinguishing between groups, provided as a vector.
+#' @param col_names A vector of the same length as the
+#' provided color scheme for assigning colors to each group.
+#' @param leg_x A numeric value indicating the placement
+#' of the figure legend on the x-axis.
+#' @param leg_y A numeric value indicating the placement
+#' of the figure legend on the y-axis.
+#' @param slot1 A character string corresponding to the umap slot name to plot.
+#' @return A series of plots stored as a ggplot2 object
+#' for visualizing cluster gene expression.
+#' @examples
+#'
+#' # p_umap <- sc_umap_panel_gene(
+#' #  d_integrated,
+#' #  c("col1","col2","col3"),
+#' #  "CFTR",
+#' #  col_univ,
+#' #  c("group1","group2"),
+#' #  0.95,
+#' #  0.95,
+#' #  "wnn.umap"
+#' # )
+#'
+#' @export
+sc_vio_panel_gene <- function(
+  so,
+  md_var,
+  g_name,
+  col_scheme,
+  col_names,
+  leg_x,
+  leg_y,
+  slot1
+) {
+  # Format input data
+  cols <- setNames(col_scheme,
+                   col_names)
+  d <- so
+  d2 <- data.frame(
+    Seurat::FetchData(
+      d,
+      vars = c(
+        gsub(
+          "-",
+          "-",
+          g_name
+        ),
+        md_var
+      )
+    ),
+    `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
+    `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2]
+  )
+
+  # Generate plots
+  d2_plot <- ggplot2::ggplot(
+    d2,
+    ggplot2::aes(
+      x=`UMAP.1`, # nolint
+      y=`UMAP.2`, # nolint
+      color = .data[[gsub( # nolint
+        "-",
+        ".",
+        g_name
+      )]]
+    )
+  ) +
+    ggplot2::scale_color_gradientn(
+      name = "Relative Expression",
+      colors = col_grad()
+    ) +
+    # Add 3D points, axes, and axis-labels
+    ggplot2::geom_point(
+      shape = 16,
+      size = 1,
+      alpha = 0.6
+    ) +
+    ggplot2::ggtitle(g_name) +
+    # Add general multivariate plot theme and adjust axis text
+    sc_theme1() +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      plot.margin = ggplot2::unit(
+        c(
+          0.1, 0.1, 0.1, 0.1
+        ),
+        "cm"
+      ),
+      legend.position = c(
+        leg_x,
+        leg_y
+      )
+    )
+  ## Metadata overlay
+  p_md <-  ggplot2::ggplot(
+    d2,
+    ggplot2::aes(
+      x=`UMAP.1`, # nolint
+      y=`UMAP.2`, # nolint
+      color = .data[[md_var]], # nolint
+      label = .data[[md_var]] # nolint
+    )
+  ) +
+    ggplot2::scale_color_manual(
+      paste(""),
+      values = cols
+    ) +
+    ggplot2::geom_point(
+      shape = 16,
+      size = 1,
+      alpha = 0.6
+    ) +
+    ggrepel::geom_text_repel(data = setNames(
+      aggregate(
+        d2[, c(
+          "UMAP.1",
+          "UMAP.2"
+        )],
+        list(
+          d2[[md_var]]
+        ),
+        FUN = median
+      ),
+      c(
+        md_var,
+        names(
+          d2[, c(
+            "UMAP.1",
+            "UMAP.2"
+          )]
+        )
+      )
+    ),
+    size = 4,
+    bg.color = "white") +
+    ggplot2::ggtitle(md_var) +
+    # Add general multivariate plot theme and adjust axis text
+    sc_theme1() +
+    ggplot2::theme(
+      panel.grid.major.y = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      plot.margin = ggplot2::unit(
+        c(
+          0.1, 0.1, 0.1, 0.1
+        ),
+        "cm"
+      ),
+      legend.position = "none"
+    )
+  ## Violin Plot
+  plot_v <- ggplot2::ggplot(
+    d2,
+    ggplot2::aes(
+      x = .data[[md_var]], # nolint
+      y = .data[[gsub(
+        "-",
+        ".",
+        g_name
+      )]],
+      fill = .data[[md_var]]
+    )
+  ) +
+    ggplot2::scale_fill_manual(
+      name = md_var,
+      values = col_scheme
+    ) +
+    # Add violin plot and dotplot
+    ggplot2::geom_violin(
+      trim = TRUE
+    ) +
+    ggplot2::geom_jitter(
+      ggplot2::aes(
+        alpha = 0.2
+      ),
+      shape = 16,
+      size = 0.2,
+      position = ggplot2::position_jitter(
+        width = 0.4
+      ),
+      show.legend = FALSE
+    ) +
+    # Add Theme
+    sc_theme1() +
+    ggplot2::labs(
+      y = "Relative Expression",
+      x = "Cell Type"
+    ) +
+    ggplot2::ggtitle(g_name) +
+    ggplot2::theme(
+      plot.margin = ggplot2::unit(
+        c(
+          0.1,
+          0.1,
+          0.1,
+          0.1
+        ),
+        "cm"
+      ),
+      legend.position = "none"
+    )
+  # Combine output
+  d2_out <- ggpubr::ggarrange(
+    d2_plot,
+    p_md,
+    plot_v,
+    ncol = 3,
+    nrow = 1,
+    common.legend = FALSE
+  )
+  return(d2_out)
+}
+
 #' Visualize Gene List Expression
 #'
 #' Generates a series of plots to visualize
@@ -596,7 +827,7 @@ sc_umap_standard <- function(
       color = ~.data[[md_var]], # nolint
       colors = col_univ() # nolint
     ) %>% # nolint
-      plotly::add_markers() %>%
+      plotly::add_markers(marker = list(size = 2)) %>%
       plotly::layout(
         autosize = FALSE,
         width = 800,
@@ -732,6 +963,10 @@ sc_umap_standard <- function(
 #' column for overlaying on a UMAP plot.
 #' @param da_df Differential activity results data frame.
 #' @param tf_name Transcription factor name, provided as a character string.
+#' @param col_scheme Colors to use for overlaying metadata variables.
+#' @param col_names Names for assigning colors from col_scheme.
+#' @param leg_x Legend x-axis position.
+#' @param leg_y Legend y-axis position.
 #' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @return A UMAP plot with points indicating the activity of a specific
 #' transcription factor motif.

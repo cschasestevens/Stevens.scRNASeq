@@ -19,6 +19,6 @@ Performs PCA on a Seurat object.
 }
 \examples{
 
-# d_integrated <- sc_pca(d_integrated)
+# d_integrated <- sc_pca(d_integrated, "RNA")
 
 }

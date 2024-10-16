@@ -128,7 +128,6 @@ sc_multiome_params <- function(study_md, gtf_path, fa_path) {
     ## Format gene annotation .gtf
     ref1 <- gtf_path
     ref_gene1 <- rtracklayer::import(ref1)
-    ref_gene1 <- ref_gene1[ref_gene1$type == "gene"]
     ref_gene1$gene_biotype <- ref_gene1$gene_type
     GenomeInfoDb::seqlevelsStyle(ref_gene1) <- "UCSC"
     rformat <- GenomeInfoDb::keepStandardChromosomes(

@@ -10,10 +10,27 @@
 #' @export
 sc_check_lib <- function() {
   list_pkg_cran <- c(
-    "ggplot2", "dplyr", "ggsci", "ggrepel", "gtools",
-    "viridis", "parallel", "reshape2", "ggpubr", "Seurat",
-    "SeuratObject", "future", "circlize", "magrittr", "lazyeval",
-    "shadowtext", "SeuratData"
+    "ggplot2",
+    "viridis",
+    "ggsci",
+    "Seurat",
+    "SeuratObject",
+    "harmony",
+    "future",
+    "ggpubr",
+    "plotly",
+    "htmlwidgets",
+    "ggrepel",
+    "dplyr",
+    "reshape2",
+    "lazyeval",
+    "magrittr",
+    "circlize",
+    "grid",
+    "gtools",
+    "patchwork",
+    "shadowtext",
+    "stringr"
   )
 
   list_pkg_bioc <- c(
@@ -21,7 +38,10 @@ sc_check_lib <- function() {
     "SummarizedExperiment", "MAST",
     "BiocGenerics", "parallel", "ComplexHeatmap",
     "biomaRt", "topGO",
-    "org.Hs.eg.db", "EnhancedVolcano"
+    "org.Hs.eg.db", "EnhancedVolcano", "TFBSTools",
+    "JASPAR2020", "chromVAR", "BSgenome.Hsapiens.UCSC.hg38",
+    "decontX", "BSgenome", "Rsamtools", "GenomeInfoDb",
+    "rtracklayer"
   )
 
   if(length(list_pkg_cran) > 0) { # nolint

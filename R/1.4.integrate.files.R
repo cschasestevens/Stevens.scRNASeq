@@ -16,7 +16,7 @@
 #' present in a scRNA-Seq or multiome experiment.
 #' @examples
 #'
-#' # d.integrated <- sc.integrate.data(
+#' # d_integrated <- sc_integrate_data(
 #' #   l_so = list_data,
 #' #   l_par = l_params,
 #' #   proc_mode = "multiome",

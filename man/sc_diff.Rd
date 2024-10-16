@@ -37,6 +37,13 @@ metadata columns for overlaying on a loadings plot.}
 The provided Seurat object is then subsetted to include
 only clusters from the provided group names.}
 
+\item{mast_comp}{Character string indicating the name of the MAST
+group comparison for conducting DGEA. MAST names are comprised of the chosen
+variable name and the leading factor level within that variable.}
+
+\item{mast_name}{User-defined name of a DGEA comparison,
+given as a character string.}
+
 \item{form1}{Formula to use for MAST generalized linear model.}
 
 \item{parl}{Logical indicating whether processing should be run in parallel
@@ -47,13 +54,6 @@ in parallel (Linux and WSL2 only). Set to 1 if running sequentially.}
 
 \item{atac_type}{(optional) Character string providing the name of a cell
 type for performing differential analysis. Only used for scATAC-Seq data.}
-
-\item{MAST_comp}{Character string indicating the name of the MAST
-group comparison for conducting DGEA. MAST names are comprised of the chosen
-variable name and the leading factor level within that variable.}
-
-\item{MAST_name}{User-defined name of a DGEA comparison,
-given as a character string.}
 }
 \value{
 A list of DGEA results per cell type for the chosen group comparison,

@@ -1,8 +1,8 @@
 Package: Stevens.scRNASeq
-Date: 2024-09-27
+Date: 2024-10-16
 Type: Package
-Title: Streamlined Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
-Version: 1.6
+Title: Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
+Version: 2.0
 Author: Nathanial C. Stevens
 Maintainer: Nathanial C. Stevens <cschasestevens@gmail.com>
 Description: Utilizes Seurat and Signac in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) and single-cell ATAC-Sequencing (scATAC-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat and Signac functions, statistical methods, and visualization.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
@@ -13,41 +13,50 @@ RoxygenNote: 7.3.2
 VignetteBuilder: knitr
 Suggests: 
   knitr,
-  rmarkdown
+  rmarkdown,
+  reticulate
 Imports: 
-  Signac,
   ggplot2,
-  dplyr,
+  viridis,
   ggsci,
-  ggrepel,
-  gtools,
+  rtracklayer,
+  GenomeInfoDb,
+  Rsamtools,
   SoupX,
   scDblFinder,
   SingleCellExperiment,
   SummarizedExperiment,
-  MAST,
-  viridis,
-  BiocGenerics,
-  parallel,
-  reshape2,
-  ggpubr,
   Seurat,
   SeuratObject,
+  BiocGenerics,
+  parallel,
+  decontX,
+  Signac,
+  BSgenome,
+  harmony,
   future,
+  ggpubr,
+  plotly,
+  htmlwidgets,
+  ggrepel,
+  dplyr,
+  reshape2,
+  lazyeval,
+  magrittr,
   circlize,
   ComplexHeatmap,
-  magrittr,
+  grid,
+  gtools,
+  patchwork,
+  Azimuth,
+  BSgenome.Hsapiens.UCSC.hg38,
+  chromVAR,
+  JASPAR2020,
+  TFBSTools,
+  MAST,
   EnhancedVolcano,
-  lazyeval,
   biomaRt,
   topGO,
-  org.Hs.eg.db,
   shadowtext,
-  TFBSTools,
-  BSgenome.Hsapiens.UCSC.hg38,
-  JASPAR2020,
-  motifmatchr,
-  GenomicRanges,
-  Rsamtools,
-  plotly,
-  htmlwidgets
+  stringr,
+  org.Hs.eg.db

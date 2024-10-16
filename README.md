@@ -1,51 +1,69 @@
-# Stevens.scRNASeq v1.2
+# Stevens.scRNASeq v2.0
 
-Streamlined Processing and Analysis of Single-cell RNA-Sequencing Datasets
+Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
 ## Description
 
-Utilizes Seurat in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) datasets. The methods included in this package provide a seamless workflow for commonly used Seurat functions, statistical methods, and visualization of scRNA-Seq data. Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis. The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
+Utilizes Seurat and Signac in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) and single-cell ATAC-Sequencing (scATAC-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat and Signac functions, statistical methods, and visualization.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
 
-* Important: Seurat objects created in Seurat v5 may not integrate counts data properly. A forthcoming update will address this issue while retaining backwards compatibility with Seurat v4 objects.
+* Important: Integration using layer-based methods from Seurat v5.0 and higher are now default for processing both scRNA-Seq and multiome data. Additionally, updated methods run in Linux or WSL2 may require installation of additional dependencies within a conda environment.
 
 ## Getting Started
 
 ### Dependencies
 * Windows 10-11, WSL Ubuntu 22.04 or higher, Linux Ubuntu 22.04 or higher, or macOS 12.7.1 or higher
-* R version 4.3.1 or higher (https://cran.r-project.org/)
+* R version 4.4.1 or higher (https://cran.r-project.org/)
 * (Optional) RStudio version 2023.06.2 or higher (https://posit.co/download/rstudio-desktop/)
 * R-packages (downloaded from CRAN unless otherwise specified):
     * Suggests: 
         * knitr,
-        * rmarkdown
+        * rmarkdown,
+        * reticulate
     * Imports: 
         * ggplot2,
-        * dplyr,
+        * viridis,
         * ggsci,
-        * ggrepel,
-        * gtools,
+        * rtracklayer,
+        * GenomeInfoDb,
+        * Rsamtools,
         * SoupX,
         * scDblFinder,
         * SingleCellExperiment,
         * SummarizedExperiment,
-        * MAST,
-        * viridis,
-        * BiocGenerics,
-        * parallel,
-        * reshape2,
-        * ggpubr,
         * Seurat,
         * SeuratObject,
+        * BiocGenerics,
+        * parallel,
+        * decontX,
+        * Signac,
+        * BSgenome,
+        * harmony,
         * future,
+        * ggpubr,
+        * plotly,
+        * htmlwidgets,
+        * ggrepel,
+        * dplyr,
+        * reshape2,
+        * lazyeval,
+        * magrittr,
         * circlize,
         * ComplexHeatmap,
-        * magrittr,
+        * grid,
+        * gtools,
+        * patchwork,
+        * Azimuth,
+        * BSgenome.Hsapiens.UCSC.hg38,
+        * chromVAR,
+        * JASPAR2020,
+        * TFBSTools,
+        * MAST,
         * EnhancedVolcano,
-        * lazyeval,
-        * topGO,
-        * org.Hs.eg.db,
         * biomaRt,
-        * shadowtext
+        * topGO,
+        * shadowtext,
+        * stringr,
+        * org.Hs.eg.db
 
 ### Installation
 * Run the following in a new R session on the command line or within R-Studio:
@@ -54,7 +72,7 @@ Utilizes Seurat in tandem with various R packages to perform processing and anal
 devtools::install_github(
   "cschasestevens/Stevens.scRNASeq", 
   ref = "master", 
-  build_vignettes = T
+  build_vignettes = TRUE
   )
 ```
 
@@ -69,7 +87,7 @@ browseVignettes("Stevens.scRNASeq")
 
 ```
 # Type function name after package name
-?Stevens.scRNASeq::sc.predict.clusters
+?Stevens.scRNASeq::sc_top10_marker_heatmap
 ```
 
 ## Authors
@@ -80,6 +98,11 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 2.0
+    * Added functions for processing 10X multiome data sets
+    * Updated v1.2 functions for compatibility with Seurat v5.0 and higher
+    * Provided additional flexibility for plot parameters
+    * Added common multiome plot types, including coverage plots and gene track plots
 * 1.2
     * Added functions for enrichment analysis (both Gene Ontology and custom gene sets)
 * 1.0

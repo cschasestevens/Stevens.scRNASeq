@@ -32,13 +32,13 @@ of the clustering variable.}
 
 \item{top_n}{Character string containing the name of the clustering variable.}
 
-\item{hm.w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
+\item{h_w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
 
-\item{hm.h}{Numeric value for heatmap height (passed to ComplexHeatmap).}
+\item{h_h}{Numeric value for heatmap height (passed to ComplexHeatmap).}
 
-\item{fs.c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
+\item{fs_c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
-\item{fs.r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
+\item{fs_r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
 }
 \value{
 A ComplexHeatmap object containing a top motif heatmap.
