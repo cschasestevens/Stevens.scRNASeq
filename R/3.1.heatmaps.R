@@ -706,8 +706,11 @@ sc_top10_de_da_heatmap <- function(
 #' matching a specific cell type or types.
 #' @param cl_var Character string indicating the name of the
 #' cluster/cell type variable.
-#' @param list_var A vector of character strings indicating the
-#' name(s) of up to two group variables for stratifying plot points.
+#' @param split_var Logical indicating whether the cluster variable
+#' should be stratified by additional group variables.
+#' @param list_var (Optional) A vector of character strings 
+#' indicating the name(s) of up to two group variables 
+#' for stratifying plot points.
 #' @return An input data frame and corresponding dot plot displaying
 #' the expression of the top-10 DEGs for a specific cell type.
 #' @examples
@@ -723,6 +726,7 @@ sc_top10_de_da_heatmap <- function(
 #' #   "3.Se|6.Se",
 #' #   # Name of clustering variable
 #' #   "CellType",
+#' #   TRUE,
 #' #   # Vector of up to 2 variables for stratifying clustering variables
 #' #   c("Knockout","Airway")
 #' # )
@@ -734,6 +738,7 @@ sc_top10_deg_dotplot <- function(
   so,
   ct,
   cl_var,
+  split_var,
   list_var
 ) {
   # Load Seurat and change default assay to RNA
@@ -785,26 +790,32 @@ sc_top10_deg_dotplot <- function(
     top10_abs <- subset(top10, !(top10 %in% SeuratObject::Features(d)))
   }
   ## select genes from Seurat object
-  d1 <- cbind(
-    SeuratObject::FetchData(
-      d,
-      vars = c(
-        cl_var,
-        list_var,
-        top10_pres
+  if(split_var == TRUE) {
+    d1 <- cbind(
+      SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          top10_pres
+        )
       )
     )
-  )
+  }
+  if(split_var == FALSE) {
+    d1 <- cbind(
+      SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          top10_pres
+        )
+      )
+    )
+  }
   ## Subset based on cell type
   d1 <- d1[grepl(c, d1[[cl_var]]), ]
-  d1[["CellType"]] <- factor(
-    as.character(d1[[cl_var]]),
-    levels = gtools::mixedsort(
-      unique(
-        as.character(d1[[cl_var]])
-      )
-    )
-  )
+  d1[["CellType"]] <- d1[[cl_var]]
   ## Count/ratio table for creating dot plots
   d1_prc <- dplyr::bind_rows(
     setNames(
@@ -813,7 +824,7 @@ sc_top10_deg_dotplot <- function(
         function(x) {
           # Determine average expression of each gene
           ## for 2 variables:
-          if(length(list_var) == 2) { # nolint
+          if(split_var == TRUE && length(list_var) == 2) { # nolint
             ### average expression
             d_avg <- setNames(
               aggregate(
@@ -891,7 +902,7 @@ sc_top10_deg_dotplot <- function(
               )
             )
           }
-          if(length(list_var) < 2) { # nolint
+          if(split_var == TRUE && length(list_var) < 2) { # nolint
             ### average expression
             d_avg <- setNames(
               aggregate(
@@ -966,6 +977,77 @@ sc_top10_deg_dotplot <- function(
               )
             )
           }
+          if(split_var == FALSE) { # nolint
+            ### average expression
+            d_avg <- setNames(
+              aggregate(
+                d1[[x]],
+                by = list(
+                  d1[, c("CellType")]
+                ),
+                function(y) mean(y)
+              ),
+              c(
+                "CellType",
+                "avg.exp"
+              )
+            )
+            d_avg[["avg.exp"]] <- round(
+              d_avg[["avg.exp"]],
+              digits = 2
+            )
+            ### percent expressed
+            d_prc <- dplyr::count(
+              d1,.data[["CellType"]], # nolint
+              .data[[x]] > 0
+            )
+            d_prc <- setNames(
+              dplyr::filter(
+                d_prc, d_prc[2] == TRUE
+              ),
+              c(
+                "CellType",
+                "pres", "n"
+              )
+            )
+            d_cnt <- setNames(
+              dplyr::count(
+                d1, .data[["CellType"]] # nolint
+              ),
+              c(
+                "CellType",
+                "n"
+              )
+            )
+            d_comb <- dplyr::left_join(
+              d_cnt,
+              d_prc,
+              by = c(
+                "CellType"
+              )
+            )
+            d_comb[is.na(d_comb)] <- 0
+            d_comb <- dplyr::mutate(
+              d_comb,
+              "perc.exp" = round(
+                d_comb[["n.y"]] /
+                  d_comb[["n.x"]],
+                digits = 2
+              )
+            )
+            ### combined
+            d_comb_out <- dplyr::left_join(
+              d_avg,
+              d_comb[,
+                     c(
+                       "CellType",
+                       "perc.exp"
+                     )],
+              by = c(
+                "CellType"
+              )
+            )
+          }
           return(d_comb_out)
         }
       ),
@@ -974,7 +1056,7 @@ sc_top10_deg_dotplot <- function(
     .id = "GENE"
   )
   ## Add row name labels and convert GENE column to factor
-  if(length(list_var) == 2) { # nolint
+  if(split_var == TRUE && length(list_var) == 2) { # nolint
 
     d1_prc <- data.frame(
       d1_prc,
@@ -1005,7 +1087,7 @@ sc_top10_deg_dotplot <- function(
     )
   }
   ## Add row name labels and convert GENE column to factor
-  if(length(list_var) < 2) { # nolint
+  if(split_var == TRUE && length(list_var) < 2) { # nolint
     d1_prc <- data.frame(
       d1_prc,
       "labs" = factor(
@@ -1024,6 +1106,18 @@ sc_top10_deg_dotplot <- function(
           )
         )
       )
+    )
+    d1_prc[["GENE"]] <- factor(
+      d1_prc[["GENE"]],
+      levels = unique(
+        d1_prc[["GENE"]]
+      )
+    )
+  }
+  if(split_var == FALSE) { # nolint
+    d1_prc <- data.frame(
+      d1_prc,
+      "labs" = d1_prc[["CellType"]]
     )
     d1_prc[["GENE"]] <- factor(
       d1_prc[["GENE"]],
@@ -1105,7 +1199,8 @@ sc_top10_deg_dotplot <- function(
 #' @param ct_name Character string containing the cell type name to filter.
 #' @param cl_var Character string containing the name
 #' of the clustering variable.
-#' @param top_n Character string containing the name of the clustering variable.
+#' @param top_n Number of motifs to use (filters top-100 motifs per assay or
+#' specified cell type and subsequently filters by scaled activity score).
 #' @param h_w Numeric value for heatmap width (passed to ComplexHeatmap).
 #' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
@@ -1153,62 +1248,40 @@ sc_top_motif_heatmap <- function(
   Seurat::DefaultAssay(d) <- "chromvar"
 
   ## Motif input matrix (top motifs per cell type)
-  d_mark <- mot_m
+  d_mark <- da2
   if(class(d_mark[["cluster"]]) == "character") { # nolint
     d_mark <- d_mark[gtools::mixedorder(d_mark[["cluster"]]), ]
   }
-  d_mark[["CellType.no"]] <- d_mark[["cluster"]]
-
-  d_mark <- dplyr::group_by(
-    d_mark,
-    .data[["CellType.no"]] # nolint
-  )
-
-  ## Top motifs per cluster (by p value then by fold change)
-  d_mark <- dplyr::slice_max(
-    d_mark[d_mark[["avg_diff"]] > 0, ],
-    order_by = -.data[["p_val_adj"]], # nolint
-    n = top_n
-  )[, c(
-    "gene",
-    "ID",
-    "cluster",
-    "avg_diff",
-    "p_val_adj"
-  )
-  ]
-
-  d_mark <- dplyr::group_by(
-    d_mark,
-    .data[["cluster"]] # nolint
-  )
-
-  d_mark <- dplyr::slice_max(
-    d_mark,
-    order_by = .data[["avg_diff"]], # nolint
-    n = top_n
-  )[, c(
-    "gene",
-    "ID",
-    "cluster"
-  )
-  ]
-  d_mark[["ID"]] <- gsub(
-    "^([^.]*\\.)|\\..*",
-    "\\1",
-    d_mark[["ID"]]
-  )
-
   if(filt_ct == TRUE) { # nolint
-    d_mark <- d_mark[d_mark[["cluster"]] == ct_name, ]
-
+    d_mark <- dplyr::bind_rows(setNames(
+      lapply(
+        seq.int(1, length(unique(d_mark[["gene"]])), 1),
+        function(x) {
+          d1 <- d_mark[
+            d_mark[["gene"]] == unique(d_mark[["gene"]])[[x]] &
+              d_mark[["avg_diff"]] > 0,
+          ]
+          d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
+          d1 <- d1[1, ]
+          return(d1)
+        }
+      ),
+      c(unique(d_mark[["gene"]]))
+    ))
+    d_mark <- d_mark[
+      d_mark[["cluster"]] == ct_name &
+        !is.na(d_mark[["cluster"]]),
+    ]
+    d_mark[["ID"]] <- gsub(
+      "^([^.]*\\.)|\\..*",
+      "\\1",
+      d_mark[["ID"]]
+    )
     #### Save table
     write.table(
       d_mark,
       paste(
-        "analysis/table.marker.motifs.Top",
-        paste(as.character(top_n)),
-        ".",
+        "analysis/table.diff.active.motifs.",
         ct_name,
         ".txt",
         sep = ""
@@ -1220,6 +1293,46 @@ sc_top_motif_heatmap <- function(
   }
 
   if(filt_ct == FALSE) { # nolint
+    d_mark <- dplyr::group_by(
+      d_mark,
+      .data[["CellType.no"]] # nolint
+    )
+
+    ## Top motifs per cluster (by p value then by fold change)
+    d_mark <- dplyr::slice_max(
+      d_mark[d_mark[["avg_diff"]] > 0, ],
+      order_by = -.data[["p_val_adj"]], # nolint
+      n = 100
+    )[, c(
+      "gene",
+      "ID",
+      "cluster",
+      "avg_diff",
+      "p_val_adj"
+    )
+    ]
+
+    d_mark <- dplyr::group_by(
+      d_mark,
+      .data[["cluster"]] # nolint
+    )
+
+    d_mark <- dplyr::slice_max(
+      d_mark,
+      order_by = .data[["avg_diff"]], # nolint
+      n = top_n
+    )[, c(
+      "gene",
+      "ID",
+      "cluster"
+    )
+    ]
+    d_mark[["ID"]] <- gsub(
+      "^([^.]*\\.)|\\..*",
+      "\\1",
+      d_mark[["ID"]]
+    )
+
     #### Save table
     write.table(
       d_mark,
@@ -1320,6 +1433,7 @@ sc_top_motif_heatmap <- function(
   )
   # Create Plot
   if(filt_ct == TRUE) { # nolint
+    # Plot
     h_out <- ComplexHeatmap::Heatmap(
       h_in,
       col = fun_hm_col,
@@ -1328,7 +1442,7 @@ sc_top_motif_heatmap <- function(
       show_row_names = TRUE,
       heatmap_width = ggplot2::unit(h_w, "cm"),
       heatmap_height = ggplot2::unit(h_h, "cm"),
-      column_title = paste("Top", top_n, "Motifs:", ct_name),
+      column_title = paste("Top Motifs:", ct_name),
       column_names_rot = 90,
       column_names_gp = grid::gpar(fontsize = fs_c),
       row_names_side = "left",

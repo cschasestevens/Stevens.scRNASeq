@@ -4,7 +4,7 @@
 \alias{sc_top10_deg_dotplot}
 \title{Top-10 DEG Dot Plot}
 \usage{
-sc_top10_deg_dotplot(p_type, l_deg, so, ct, cl_var, list_var)
+sc_top10_deg_dotplot(p_type, l_deg, so, ct, cl_var, split_var, list_var)
 }
 \arguments{
 \item{p_type}{Should a custom gene list or DGEA results object
@@ -23,8 +23,12 @@ matching a specific cell type or types.}
 \item{cl_var}{Character string indicating the name of the
 cluster/cell type variable.}
 
-\item{list_var}{A vector of character strings indicating the
-name(s) of up to two group variables for stratifying plot points.}
+\item{split_var}{Logical indicating whether the cluster variable
+should be stratified by additional group variables.}
+
+\item{list_var}{(Optional) A vector of character strings 
+indicating the name(s) of up to two group variables 
+for stratifying plot points.}
 }
 \value{
 An input data frame and corresponding dot plot displaying
@@ -47,6 +51,7 @@ the top-10 DEGs for a specific cell type and comparison.
 #   "3.Se|6.Se",
 #   # Name of clustering variable
 #   "CellType",
+#   TRUE,
 #   # Vector of up to 2 variables for stratifying clustering variables
 #   c("Knockout","Airway")
 # )

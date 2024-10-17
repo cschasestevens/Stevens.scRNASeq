@@ -30,7 +30,8 @@ be filtered based on cell type}
 \item{cl_var}{Character string containing the name
 of the clustering variable.}
 
-\item{top_n}{Character string containing the name of the clustering variable.}
+\item{top_n}{Number of motifs to use (filters top-100 motifs per assay or
+specified cell type and subsequently filters by scaled activity score).}
 
 \item{h_w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
 
