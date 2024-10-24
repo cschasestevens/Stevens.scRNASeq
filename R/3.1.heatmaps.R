@@ -708,8 +708,8 @@ sc_top10_de_da_heatmap <- function(
 #' cluster/cell type variable.
 #' @param split_var Logical indicating whether the cluster variable
 #' should be stratified by additional group variables.
-#' @param list_var (Optional) A vector of character strings 
-#' indicating the name(s) of up to two group variables 
+#' @param list_var (Optional) A vector of character strings
+#' indicating the name(s) of up to two group variables
 #' for stratifying plot points.
 #' @return An input data frame and corresponding dot plot displaying
 #' the expression of the top-10 DEGs for a specific cell type.
@@ -732,7 +732,7 @@ sc_top10_de_da_heatmap <- function(
 #' # )
 #'
 #' @export
-sc_top10_deg_dotplot <- function(
+sc_top10_deg_dotplot <- function( # nolint
   p_type,
   l_deg,
   so,
@@ -790,7 +790,7 @@ sc_top10_deg_dotplot <- function(
     top10_abs <- subset(top10, !(top10 %in% SeuratObject::Features(d)))
   }
   ## select genes from Seurat object
-  if(split_var == TRUE) {
+  if(split_var == TRUE) { # nolint
     d1 <- cbind(
       SeuratObject::FetchData(
         d,
@@ -802,7 +802,7 @@ sc_top10_deg_dotplot <- function(
       )
     )
   }
-  if(split_var == FALSE) {
+  if(split_var == FALSE) { # nolint
     d1 <- cbind(
       SeuratObject::FetchData(
         d,
@@ -1199,6 +1199,11 @@ sc_top10_deg_dotplot <- function(
 #' @param ct_name Character string containing the cell type name to filter.
 #' @param cl_var Character string containing the name
 #' of the clustering variable.
+#' @param split_var Logical indicating whether the cluster variable
+#' should be stratified by additional group variables.
+#' @param list_var (Optional) A vector of character strings
+#' indicating the name(s) of up to two group variables
+#' for stratifying plot points.
 #' @param top_n Number of motifs to use (filters top-100 motifs per assay or
 #' specified cell type and subsequently filters by scaled activity score).
 #' @param h_w Numeric value for heatmap width (passed to ComplexHeatmap).
@@ -1219,6 +1224,10 @@ sc_top10_deg_dotplot <- function(
 #' #   ct_name = "11.Secretory",
 #' #   # Clustering column
 #' #   cl_var = "CellType",
+#' #   # Split by additional variable(s)?
+#' #   split_var = TRUE,
+#' #   # Additional variable(s) to split plot (if split_var = TRUE)
+#' #   list_var = c("Airway"),
 #' #   # Number of motifs to use
 #' #   top_n = 50,
 #' #   # Heatmap width
@@ -1232,12 +1241,14 @@ sc_top10_deg_dotplot <- function(
 #' # )
 #'
 #' @export
-sc_top_motif_heatmap <- function(
+sc_top_motif_heatmap <- function( # nolint
   so,
   mot_m,
   filt_ct,
   ct_name,
   cl_var,
+  split_var,
+  list_var,
   top_n,
   h_w,
   h_h,
@@ -1248,7 +1259,7 @@ sc_top_motif_heatmap <- function(
   Seurat::DefaultAssay(d) <- "chromvar"
 
   ## Motif input matrix (top motifs per cell type)
-  d_mark <- da2
+  d_mark <- mot_m
   if(class(d_mark[["cluster"]]) == "character") { # nolint
     d_mark <- d_mark[gtools::mixedorder(d_mark[["cluster"]]), ]
   }
@@ -1295,7 +1306,7 @@ sc_top_motif_heatmap <- function(
   if(filt_ct == FALSE) { # nolint
     d_mark <- dplyr::group_by(
       d_mark,
-      .data[["CellType.no"]] # nolint
+      .data[["cluster"]] # nolint
     )
 
     ## Top motifs per cluster (by p value then by fold change)
@@ -1349,48 +1360,181 @@ sc_top_motif_heatmap <- function(
   }
 
   ### Subset seurat and scale
-  h <- SeuratObject::FetchData(
-    d,
-    vars = c(
-      cl_var,
-      unique(
-        d_mark[["ID"]]
+  ## select genes from Seurat object
+  if(split_var == TRUE) { # nolint
+    h <- SeuratObject::FetchData(
+      d,
+      vars = c(
+        cl_var,
+        list_var,
+        unique(
+          d_mark[["ID"]]
+        )
       )
     )
-  )
-
-  ### Scale and plot average expression/accessibility per cell type
-  h_in <- scale(
-    as.matrix(
-      magrittr::set_rownames(
-        setNames(
-          as.data.frame(
-            lapply(
-              h[, 2:ncol(
-                h
-              )
-              ],
-              function(x) {
-                dplyr::select(
-                  aggregate(
-                    x,
-                    list(
-                      h[, 1]
-                    ),
-                    FUN = mean
-                  ),
-                  c(2)
-                )
-              }
-            )
-          ),
-          names(h[, 2:ncol(h)])
-        ),
-        levels(h[, 1])
+  }
+  if(split_var == FALSE) { # nolint
+    h <- SeuratObject::FetchData(
+      d,
+      vars = c(
+        cl_var,
+        unique(
+          d_mark[["ID"]]
+        )
       )
-    ),
-    center = TRUE
-  )
+    )
+  }
+  if(split_var == TRUE && length(list_var) == 2) { # nolint
+    h_in <- scale(
+      as.matrix(
+        magrittr::set_rownames(
+          setNames(
+            as.data.frame(
+              lapply(
+                h[, 4:ncol(
+                  h
+                )
+                ],
+                function(x) {
+                  dplyr::select(
+                    aggregate(
+                      x,
+                      list(
+                        h[, 1],
+                        h[, 2],
+                        h[, 3]
+                      ),
+                      FUN = mean
+                    ),
+                    c(4)
+                  )
+                }
+              )
+            ),
+            names(h[, 4:ncol(h)])
+          ),
+          paste(
+            aggregate(
+              h[, 4],
+              list(
+                h[, 1],
+                h[, 2],
+                h[, 3]
+              ),
+              FUN = mean
+            )[[1]],
+            aggregate(
+              h[, 4],
+              list(
+                h[, 1],
+                h[, 2],
+                h[, 3]
+              ),
+              FUN = mean
+            )[[2]],
+            aggregate(
+              h[, 4],
+              list(
+                h[, 1],
+                h[, 2],
+                h[, 3]
+              ),
+              FUN = mean
+            )[[3]],
+            sep = "."
+          )
+        )
+      ),
+      center = TRUE
+    )
+  }
+  if(split_var == TRUE && length(list_var) < 2) { # nolint
+    h_in <- scale(
+      as.matrix(
+        magrittr::set_rownames(
+          setNames(
+            as.data.frame(
+              lapply(
+                h[, 3:ncol(
+                  h
+                )
+                ],
+                function(x) {
+                  dplyr::select(
+                    aggregate(
+                      x,
+                      list(
+                        h[, 1],
+                        h[, 2]
+                      ),
+                      FUN = mean
+                    ),
+                    c(3)
+                  )
+                }
+              )
+            ),
+            names(h[, 3:ncol(h)])
+          ),
+          paste(
+            aggregate(
+              h[, 3],
+              list(
+                h[, 1],
+                h[, 2]
+              ),
+              FUN = mean
+            )[[1]],
+            aggregate(
+              h[, 3],
+              list(
+                h[, 1],
+                h[, 2]
+              ),
+              FUN = mean
+            )[[2]],
+            sep = "."
+          )
+        )
+      ),
+      center = TRUE
+    )
+  }
+  if(split_var == FALSE) { # nolint
+    h_in <- scale(
+      as.matrix(
+        magrittr::set_rownames(
+          setNames(
+            as.data.frame(
+              lapply(
+                h[, 2:ncol(
+                  h
+                )
+                ],
+                function(x) {
+                  dplyr::select(
+                    aggregate(
+                      x,
+                      list(
+                        h[, 1]
+                      ),
+                      FUN = mean
+                    ),
+                    c(2)
+                  )
+                }
+              )
+            ),
+            names(h[, 2:ncol(h)])
+          ),
+          levels(h[, 1])
+        )
+      ),
+      center = TRUE
+    )
+  }
+
+
   qs <- quantile(
     h_in,
     probs = c(
@@ -1409,6 +1553,34 @@ sc_top_motif_heatmap <- function(
     )
     ]
   )
+
+  if(split_var == TRUE && length(list_var) == 2) { # nolint
+    h_in <- h_in[
+      gtools::mixedsort(
+        unique(
+          paste(
+            h[["CellType"]],
+            h[[list_var[[1]]]], # nolint
+            h[[list_var[[2]]]],
+            sep = "."
+          )
+        )
+      ),
+    ]
+  }
+  if(split_var == TRUE && length(list_var) < 2) { # nolint
+    h_in <- h_in[
+      gtools::mixedsort(
+        unique(
+          paste(
+            h[["CellType"]],
+            h[[list_var[[1]]]], # nolint
+            sep = "."
+          )
+        )
+      ),
+    ]
+  }
 
   tf_names <- data.frame("ID" = colnames(h_in))
   tf_names <- dplyr::left_join(
@@ -1461,7 +1633,7 @@ sc_top_motif_heatmap <- function(
       show_row_names = TRUE,
       heatmap_width = ggplot2::unit(h_w, "cm"),
       heatmap_height = ggplot2::unit(h_h, "cm"),
-      column_title = paste("Top", top_n, "Motifs"),
+      column_title = paste("Top", 10, "Motifs"),
       column_names_rot = 90,
       column_names_gp = grid::gpar(fontsize = fs_c),
       row_names_side = "left",
