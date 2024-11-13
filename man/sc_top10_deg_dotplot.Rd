@@ -4,7 +4,17 @@
 \alias{sc_top10_deg_dotplot}
 \title{Top-10 DEG Dot Plot}
 \usage{
-sc_top10_deg_dotplot(p_type, l_deg, so, ct, cl_var, split_var, list_var)
+sc_top10_deg_dotplot(
+  p_type,
+  l_deg,
+  so,
+  ct,
+  cl_var,
+  split_var,
+  list_var,
+  col1,
+  vline1
+)
 }
 \arguments{
 \item{p_type}{Should a custom gene list or DGEA results object
@@ -26,9 +36,13 @@ cluster/cell type variable.}
 \item{split_var}{Logical indicating whether the cluster variable
 should be stratified by additional group variables.}
 
-\item{list_var}{(Optional) A vector of character strings 
-indicating the name(s) of up to two group variables 
+\item{list_var}{(Optional) A vector of character strings
+indicating the name(s) of up to two group variables
 for stratifying plot points.}
+
+\item{col1}{Gradient color scheme to use.}
+
+\item{vline1}{Add a vertical line to plot?}
 }
 \value{
 An input data frame and corresponding dot plot displaying

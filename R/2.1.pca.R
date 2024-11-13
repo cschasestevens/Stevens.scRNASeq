@@ -102,9 +102,9 @@ sc_pca_plot <- function(so, md_list) { # nolint
         ) +
         ggplot2::scale_color_manual(
           paste(""),
-          values = col_univ()
+          values = col_univ() # nolint
         ) +
-        sc_theme1()
+        sc_theme1() # nolint
     }
   )
   # Combine output

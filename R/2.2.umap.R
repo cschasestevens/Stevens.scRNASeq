@@ -79,7 +79,7 @@ sc_umap_panel <- function(
       ) +
         ggplot2::scale_color_manual(
           paste(""),
-          values = col_univ()
+          values = col_univ() # nolint
         ) +
         # Add points
         ggplot2::geom_point(
@@ -87,7 +87,7 @@ sc_umap_panel <- function(
           size = 1,
           alpha = 0.6
         ) +
-        sc_theme1() +
+        sc_theme1() + # nolint
         ggplot2::theme(
           panel.grid.major.y = ggplot2::element_blank(),
           axis.text.x = ggplot2::element_blank(),
@@ -163,6 +163,10 @@ sc_umap_panel <- function(
 #' @param leg_y A numeric value indicating the placement
 #' of the figure legend on the y-axis.
 #' @param slot1 A character string corresponding to the umap slot name to plot.
+#' @param col1 Color scheme to use for expression gradient.
+#' @param plot_comb Should all panels be displayed? (TRUE/FALSE)
+#' @param out1 Panel to return if plot_comb is FALSE
+#' (either "umap_gex" or "vio_gex").
 #' @return A series of plots stored as a ggplot2 object
 #' for visualizing cluster gene expression.
 #' @examples
@@ -171,11 +175,14 @@ sc_umap_panel <- function(
 #' #  d_integrated,
 #' #  c("col1","col2","col3"),
 #' #  "CFTR",
-#' #  col_univ,
+#' #  col_univ(),
 #' #  c("group1","group2"),
 #' #  0.95,
 #' #  0.95,
-#' #  "wnn.umap"
+#' #  "wnn.umap",
+#' #  col_grad(),
+#' #  FALSE,
+#' #  "umap_gex"
 #' # )
 #'
 #' @export
@@ -187,7 +194,10 @@ sc_umap_panel_gene <- function(
   col_names,
   leg_x,
   leg_y,
-  slot1
+  slot1,
+  col1,
+  plot_comb,
+  out1
 ) {
   # Format input data
   cols <- setNames(col_scheme,
@@ -223,8 +233,8 @@ sc_umap_panel_gene <- function(
     )
   ) +
     ggplot2::scale_color_gradientn(
-      name = "Relative Expression",
-      colors = col_grad()
+      name = "Relative Exp.",
+      colors = col1
     ) +
     # Add 3D points, axes, and axis-labels
     ggplot2::geom_point(
@@ -234,7 +244,7 @@ sc_umap_panel_gene <- function(
     ) +
     ggplot2::ggtitle(g_name) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -297,7 +307,7 @@ sc_umap_panel_gene <- function(
     bg.color = "white") +
     ggplot2::ggtitle(md_var) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -346,7 +356,7 @@ sc_umap_panel_gene <- function(
       show.legend = FALSE
     ) +
     # Add Theme
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::labs(
       y = "Relative Expression"
     ) +
@@ -362,15 +372,23 @@ sc_umap_panel_gene <- function(
       ),
       legend.position = "none"
     )
-  # Combine output
-  d2_out <- ggpubr::ggarrange(
-    d2_plot,
-    p_md,
-    plot_v,
-    ncol = 3,
-    nrow = 1,
-    common.legend = FALSE
-  )
+  # Combine output or choose slot
+  if(plot_comb == TRUE) { # nolint
+    d2_out <- ggpubr::ggarrange(
+      d2_plot,
+      p_md,
+      plot_v,
+      ncol = 3,
+      nrow = 1,
+      common.legend = FALSE
+    )
+  }
+  if(plot_comb == FALSE && out1 == "umap_gex") { # nolint
+    d2_out <- d2_plot
+  }
+  if(plot_comb == FALSE && out1 == "vio_gex") { # nolint
+    d2_out <- plot_v
+  }
   return(d2_out)
 }
 
@@ -453,7 +471,7 @@ sc_vio_panel_gene <- function(
   ) +
     ggplot2::scale_color_gradientn(
       name = "Relative Expression",
-      colors = col_grad()
+      colors = col1 # nolint
     ) +
     # Add 3D points, axes, and axis-labels
     ggplot2::geom_point(
@@ -463,7 +481,7 @@ sc_vio_panel_gene <- function(
     ) +
     ggplot2::ggtitle(g_name) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -526,7 +544,7 @@ sc_vio_panel_gene <- function(
     bg.color = "white") +
     ggplot2::ggtitle(md_var) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -575,7 +593,7 @@ sc_vio_panel_gene <- function(
       show.legend = FALSE
     ) +
     # Add Theme
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::labs(
       y = "Relative Expression",
       x = "Cell Type"
@@ -784,18 +802,24 @@ sc_umap_panel_gene_list <- function(
 #' column for overlaying on a UMAP plot.
 #' @param slot1 A character string corresponding to the umap slot name to plot.
 #' @param dims1 Should the data be plotted in 2 or 3 dimensions?
+#' @param col1 Color scheme to use for plot overlay.
+#' @param pos_leg Legend position (specify x and y coordinates or type "none")
 #' (either "2D" or "3D").
 #' @return A UMAP plot with points grouped by a specific metadata column.
 #' @examples
 #'
-#' # p_umap <- sc_umap_standard(d_integrated,"col1","wnn.umap", "2D")
+#' # p_umap <- sc_umap_standard(
+#' #   d_integrated,"col1","wnn.umap", "2D", col_univ(), "none"
+#' # )
 #'
 #' @export
 sc_umap_standard <- function(
   so,
   md_var,
   slot1,
-  dims1
+  dims1,
+  col1,
+  pos_leg
 ) {
   # Format input data
   d <- so
@@ -827,7 +851,7 @@ sc_umap_standard <- function(
       color = ~.data[[md_var]], # nolint
       colors = col_univ() # nolint
     ) %>% # nolint
-      plotly::add_markers(marker = list(size = 2)) %>%
+      plotly::add_markers(marker = list(size = 3)) %>%
       plotly::layout(
         autosize = FALSE,
         width = 800,
@@ -882,13 +906,15 @@ sc_umap_standard <- function(
           )
         ),
         size = 4,
-        bg.color = "white"
+        bg.color = "grey15",
+        color = "grey85",
+        bg.r = 0.05
       ) +
       ggplot2::scale_color_manual(
         paste(""),
-        values = col_univ()
+        values = col1
       ) +
-      sc_theme1() +
+      sc_theme1() + # nolint
       ggplot2::theme(
         panel.grid.major.y = ggplot2::element_blank(),
         axis.text.x = ggplot2::element_blank(),
@@ -899,7 +925,7 @@ sc_umap_standard <- function(
         plot.margin = ggplot2::unit(
           c(0.1, 0.1, 0.1, 0.1), "cm"
         ),
-        legend.position = "none"
+        legend.position = pos_leg
       )
   }
   if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "2D") { # nolint
@@ -931,13 +957,15 @@ sc_umap_standard <- function(
           )
         ),
         size = 4,
-        bg.color = "white"
+        bg.color = "grey15",
+        color = "grey85",
+        bg.r = 0.05
       ) +
       ggplot2::scale_color_manual(
         paste(""),
-        values = col_univ()
+        values = col1
       ) +
-      sc_theme1() +
+      sc_theme1() + # nolint
       ggplot2::theme(
         panel.grid.major.y = ggplot2::element_blank(),
         axis.text.x = ggplot2::element_blank(),
@@ -948,7 +976,7 @@ sc_umap_standard <- function(
         plot.margin = ggplot2::unit(
           c(0.1, 0.1, 0.1, 0.1), "cm"
         ),
-        legend.position = "none"
+        legend.position = pos_leg
       )
   }
   return(d2_plot)
@@ -1023,7 +1051,7 @@ sc_umap_panel_act <- function(
   ) +
     ggplot2::scale_color_gradientn(
       name = "Motif Activity",
-      colors = col_grad()
+      colors = col_grad() # nolint
     ) +
     # Add 3D points, axes, and axis-labels
     ggplot2::geom_point(
@@ -1033,7 +1061,7 @@ sc_umap_panel_act <- function(
     ) +
     ggplot2::ggtitle(tf_name) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -1097,7 +1125,7 @@ sc_umap_panel_act <- function(
     bg.color = "white") +
     ggplot2::ggtitle(md_var) +
     # Add general multivariate plot theme and adjust axis text
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::theme(
       panel.grid.major.y = ggplot2::element_blank(),
       axis.text.x = ggplot2::element_blank(),
@@ -1145,7 +1173,7 @@ sc_umap_panel_act <- function(
       show.legend = FALSE
     ) +
     # Add Theme
-    sc_theme1() +
+    sc_theme1() + # nolint
     ggplot2::labs(
       y = "Motif Activity"
     ) +

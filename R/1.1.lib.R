@@ -98,8 +98,8 @@ sc_theme1 <- function() {
       size = 14,
       face = "bold"
     ),
-    legend.text = ggplot2::element_text(size = 12),
-    legend.key.size = ggplot2::unit(0.4, "cm"),
+    legend.text = ggplot2::element_text(size = 10),
+    legend.key.size = ggplot2::unit(0.2, "cm"),
     legend.key = ggplot2::element_blank(),
     legend.position.inside = c(0.95, 0.95)
   )

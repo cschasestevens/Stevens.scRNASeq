@@ -4,13 +4,30 @@
 \alias{sc_top10_marker_heatmap_rc}
 \title{Top-10 Marker Gene Heatmap (Reclustered)}
 \usage{
-sc_top10_marker_heatmap_rc(so, cl_var, h_w, h_h, fs_c, fs_r)
+sc_top10_marker_heatmap_rc(
+  sorc,
+  asy,
+  slot1,
+  cl_var,
+  h_w,
+  h_h,
+  fs_c,
+  fs_r,
+  cl_c,
+  cl_r,
+  rot_c,
+  col1
+)
 }
 \arguments{
-\item{so}{An object of class Seurat.}
+\item{sorc}{An object of class Seurat.}
 
-\item{cl_var}{Character string containing the name of
-the cluster variable for cell type predictions.}
+\item{asy}{Assay type (either "GEX" or "Mult").}
+
+\item{slot1}{Assay to use from Seurat object subset.}
+
+\item{cl_var}{Character string containing the name
+of the cluster variable for cell type predictions.}
 
 \item{h_w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
 
@@ -19,18 +36,37 @@ the cluster variable for cell type predictions.}
 \item{fs_c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
 \item{fs_r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
+
+\item{cl_c}{Cluster columns?}
+
+\item{cl_r}{Cluster rows?}
+
+\item{rot_c}{Rotation of column names.}
+
+\item{col1}{Gradient color scheme to use
+(must be exactly 4 colors in length).}
 }
 \value{
-A ComplexHeatmap object containing a reclustered
-top-10 marker gene heatmap.
+A ComplexHeatmap object containing a top-10 marker gene heatmap.
 }
 \description{
-Generates a heatmap from a reclustered Seurat Object
-and marker gene list based on the top-10 marker genes
-for each cluster.
+Generates a heatmap from a reclustered Seurat Object and
+marker gene list based on the top-10 marker genes for each cluster.
 }
 \examples{
 
-# p_umap <- sc_top10_marker_heatmap(d_annotated,"seurat_clusters",18,24,6,8)
+# p_umap <- sc_top10_marker_heatmap_rc(
+#   d_annotated,
+#   "GEX",
+#   "sct",
+#   "seurat_clusters",
+#   18,
+#   24,
+#   6,
+#   8,
+#   TRUE,
+#   TRUE,
+#   col_grad()[c(3, 6, 9, 12)]
+# )
 
 }

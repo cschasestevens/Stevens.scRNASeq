@@ -12,7 +12,10 @@ sc_umap_panel_gene(
   col_names,
   leg_x,
   leg_y,
-  slot1
+  slot1,
+  col1,
+  plot_comb,
+  out1
 )
 }
 \arguments{
@@ -36,6 +39,13 @@ of the figure legend on the x-axis.}
 of the figure legend on the y-axis.}
 
 \item{slot1}{A character string corresponding to the umap slot name to plot.}
+
+\item{col1}{Color scheme to use for expression gradient.}
+
+\item{plot_comb}{Should all panels be displayed? (TRUE/FALSE)}
+
+\item{out1}{Panel to return if plot_comb is FALSE
+(either "umap_gex" or "vio_gex").}
 }
 \value{
 A series of plots stored as a ggplot2 object
@@ -51,11 +61,14 @@ individual gene expression per cluster.
 #  d_integrated,
 #  c("col1","col2","col3"),
 #  "CFTR",
-#  col_univ,
+#  col_univ(),
 #  c("group1","group2"),
 #  0.95,
 #  0.95,
-#  "wnn.umap"
+#  "wnn.umap",
+#  col_grad(),
+#  FALSE,
+#  "umap_gex"
 # )
 
 }

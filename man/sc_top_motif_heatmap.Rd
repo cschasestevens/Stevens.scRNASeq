@@ -10,11 +10,14 @@ sc_top_motif_heatmap(
   filt_ct,
   ct_name,
   cl_var,
+  split_var,
+  list_var,
   top_n,
   h_w,
   h_h,
   fs_c,
-  fs_r
+  fs_r,
+  col1
 )
 }
 \arguments{
@@ -30,6 +33,13 @@ be filtered based on cell type}
 \item{cl_var}{Character string containing the name
 of the clustering variable.}
 
+\item{split_var}{Logical indicating whether the cluster variable
+should be stratified by additional group variables.}
+
+\item{list_var}{(Optional) A vector of character strings
+indicating the name(s) of up to two group variables
+for stratifying plot points.}
+
 \item{top_n}{Number of motifs to use (filters top-100 motifs per assay or
 specified cell type and subsequently filters by scaled activity score).}
 
@@ -40,6 +50,8 @@ specified cell type and subsequently filters by scaled activity score).}
 \item{fs_c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
 \item{fs_r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
+
+\item{col1}{Gradient color scheme to use.}
 }
 \value{
 A ComplexHeatmap object containing a top motif heatmap.
@@ -61,6 +73,10 @@ differential activity analysis result.
 #   ct_name = "11.Secretory",
 #   # Clustering column
 #   cl_var = "CellType",
+#   # Split by additional variable(s)?
+#   split_var = TRUE,
+#   # Additional variable(s) to split plot (if split_var = TRUE)
+#   list_var = c("Airway"),
 #   # Number of motifs to use
 #   top_n = 50,
 #   # Heatmap width
@@ -70,7 +86,9 @@ differential activity analysis result.
 #   # Column font size
 #   fs_c = 6,
 #   # Row font size
-#   fs_r = 8
+#   fs_r = 8,
+#   # Gradient color scheme
+#   col_grad()[c(3, 6, 9, 12)]
 # )
 
 }

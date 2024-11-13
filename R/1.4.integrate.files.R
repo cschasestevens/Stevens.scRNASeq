@@ -222,7 +222,7 @@ sc_integrate_data <- function( # nolint
         ## Visualize Clusters
         ggplot2::ggsave(
           "analysis/plot.umap.panel.WNN.png",
-          sc_umap_panel(
+          sc_umap_panel( # nolint
             d_int,
             c("Group", "Code", "seurat_clusters"),
             "wnn.umap"
@@ -335,7 +335,7 @@ sc_integrate_data <- function( # nolint
         ## Visualize Clusters
         ggplot2::ggsave(
           "analysis/plot.umap.panel.WNN.png",
-          sc_umap_panel(
+          sc_umap_panel( # nolint
             d_int,
             c("Group", "Code", "seurat_clusters"),
             "int.umap"
@@ -779,7 +779,7 @@ sc_integration_qc <- function(
         ) +
           ggplot2::scale_fill_manual(
             name = "Cluster",
-            values = col_univ()
+            values = col_univ() # nolint
           ) +
           # Add violin plot and dotplot
           ggplot2::geom_violin(
@@ -797,7 +797,7 @@ sc_integration_qc <- function(
             show.legend = FALSE
           ) +
           # Add Theme
-          sc_theme1() +
+          sc_theme1() + # nolint
           ggplot2::labs(y = x) +
           ggplot2::theme(
             plot.margin = ggplot2::unit(

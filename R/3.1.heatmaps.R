@@ -1,37 +1,61 @@
 #' Top-10 Marker Gene Heatmap (Reclustered)
 #'
-#' Generates a heatmap from a reclustered Seurat Object
-#' and marker gene list based on the top-10 marker genes
-#' for each cluster.
+#' Generates a heatmap from a reclustered Seurat Object and
+#' marker gene list based on the top-10 marker genes for each cluster.
 #'
-#' @param so An object of class Seurat.
-#' @param cl_var Character string containing the name of
-#' the cluster variable for cell type predictions.
+#' @param sorc An object of class Seurat.
+#' @param asy Assay type (either "GEX" or "Mult").
+#' @param slot1 Assay to use from Seurat object subset.
+#' @param cl_var Character string containing the name
+#' of the cluster variable for cell type predictions.
 #' @param h_w Numeric value for heatmap width (passed to ComplexHeatmap).
 #' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
 #' @param fs_r Numeric value for row fontsize (passed to ComplexHeatmap).
-#' @return A ComplexHeatmap object containing a reclustered
-#' top-10 marker gene heatmap.
+#' @param cl_c Cluster columns?
+#' @param cl_r Cluster rows?
+#' @param rot_c Rotation of column names.
+#' @param col1 Gradient color scheme to use
+#' (must be exactly 4 colors in length).
+#' @return A ComplexHeatmap object containing a top-10 marker gene heatmap.
 #' @examples
 #'
-#' # p_umap <- sc_top10_marker_heatmap(d_annotated,"seurat_clusters",18,24,6,8)
+#' # p_umap <- sc_top10_marker_heatmap_rc(
+#' #   d_annotated,
+#' #   "GEX",
+#' #   "sct",
+#' #   "seurat_clusters",
+#' #   18,
+#' #   24,
+#' #   6,
+#' #   8,
+#' #   TRUE,
+#' #   TRUE,
+#' #   col_grad()[c(3, 6, 9, 12)]
+#' # )
 #'
 #' @export
 sc_top10_marker_heatmap_rc <- function(
-  so,
+  sorc,
+  asy,
+  slot1,
   cl_var,
   h_w,
   h_h,
   fs_c,
-  fs_r
+  fs_r,
+  cl_c,
+  cl_r,
+  rot_c,
+  col1
 ) {
-  d <- so
-  if(!file.exists("analysis/recluster/table.marker.genes.txt")) { # nolint
+  d <- sorc
+  if(!file.exists("analysis/recluster/table.marker.genes.txt") && asy == "GEX") { # nolint
     print(
       "No marker gene file has been created;
       calculating marker genes for each cluster..."
     )
+    Seurat::DefaultAssay(d) <- slot1
     cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
     write.table(
       cl_mark,
@@ -41,45 +65,129 @@ sc_top10_marker_heatmap_rc <- function(
       sep = "\t"
     )
   }
+
+  if(!file.exists("analysis/recluster/table.marker.motifs.txt") && asy == "Mult") { # nolint
+    print(
+      "No marker motif file has been created;
+      calculating marker motifs for each cluster..."
+    )
+    Seurat::DefaultAssay(d) <- slot1
+    cl_mark <- Seurat::FindAllMarkers(
+      d,
+      min.pct = 0.05,
+      verbose = TRUE
+    )
+    names_motif <- data.frame(
+      "gene" = seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+      "near.gene" = paste(
+        d@assays$ATAC@meta.features[["nearestGene"]],
+        seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+        sep = "."
+      ),
+      "motif" = paste(
+        d@assays$ATAC@meta.features[["seqnames"]],
+        paste(
+          d@assays$ATAC@meta.features[["start"]],
+          d@assays$ATAC@meta.features[["end"]],
+          sep = "-"
+        ),
+        sep = ":"
+      )
+    )
+    cl_mark <- dplyr::left_join(
+      cl_mark,
+      names_motif,
+      by = "gene"
+    )
+    write.table(
+      cl_mark,
+      "analysis/recluster/table.marker.motifs.txt",
+      col.names = TRUE,
+      row.names = FALSE,
+      sep = "\t"
+    )
+  }
+
+  if(asy == "GEX") { # nolint
+    cl_mark <- read.table(
+      "analysis/recluster/table.marker.genes.txt",
+      sep = "\t",
+      header = TRUE
+    )
+  }
+
+  if(asy == "Mult") { # nolint
+    cl_mark <- read.table(
+      "analysis/recluster/table.marker.motifs.txt",
+      sep = "\t",
+      header = TRUE
+    )
+  }
   ## Marker gene input matrix (top10 per cell type)
-  d_mark <- read.table(
-    "analysis/recluster/table.marker.genes.txt",
-    sep = "\t",
-    header = TRUE
+  if(class(cl_mark[["cluster"]]) == "character") { # nolint
+    cl_mark <- cl_mark[gtools::mixedorder(cl_mark[["cluster"]]), ]
+  }
+  cl_mark[["CellType.no"]] <- cl_mark[["cluster"]]
+
+  cl_mark <- dplyr::group_by(
+    cl_mark,
+    .data[["CellType.no"]] # nolint
   )
-  d_mark[["CellType.no"]] <- d_mark[["cluster"]]
-  ### Top 10 genes per cluster
-  d_mark <- dplyr::slice_max(
-    dplyr::group_by(
-      d_mark,
-      .data[["CellType.no"]] # nolint
-    ),
-    order_by = .data[["avg_log2FC"]],
+  ### Top 10 genes per cluster (by p value then by fold change)
+  cl_mark <- dplyr::slice_max(
+    cl_mark[cl_mark[["avg_log2FC"]] > 0, ],
+    order_by = -.data[["p_val_adj"]], # nolint
+    n = 25
+  )[, c(
+    "gene",
+    "cluster",
+    "avg_log2FC",
+    "p_val_adj"
+  )]
+
+  cl_mark <- dplyr::group_by(
+    cl_mark,
+    .data[["cluster"]] # nolint
+  )
+
+  cl_mark <- dplyr::slice_max(
+    cl_mark,
+    order_by = .data[["avg_log2FC"]], # nolint
     n = 10
   )[, c(
     "gene",
     "cluster"
   )]
+
   #### Save table
-  write.table(
-    d_mark,
-    "analysis/recluster/table.marker.genes.top10.txt",
-    row.names = FALSE,
-    col.names = TRUE,
-    sep = "\t"
-  )
+  if(asy == "GEX") { # nolint
+    write.table(
+      cl_mark,
+      "analysis/table.marker.genes.top10.txt",
+      row.names = FALSE,
+      col.names = TRUE,
+      sep = "\t"
+    )
+    SeuratObject::DefaultAssay(d) <- slot1
+  }
+  if(asy == "Mult") { # nolint
+    write.table(
+      cl_mark,
+      "analysis/table.marker.motifs.top10.txt",
+      row.names = FALSE,
+      col.names = TRUE,
+      sep = "\t"
+    )
+    SeuratObject::DefaultAssay(d) <- slot1
+  }
   ### Subset seurat and scale
-  SeuratObject::DefaultAssay(d) <- "RNA"
   h <- SeuratObject::FetchData(
     d,
     vars = c(
       cl_var,
-      unique(
-        d_mark[["gene"]]
-      )
+      unique(cl_mark[["gene"]])
     )
   )
-
   ### Heatmap annotation (average expression)
   h_anno <- as.data.frame(
     lapply(
@@ -93,7 +201,7 @@ sc_top10_marker_heatmap_rc <- function(
   )
 
   h_anno <- h_anno[, h_anno[1, ] > 0]
-  ### Scale and plot average expression per cell type
+  ### Scale and plot average expression/accessibility per cell type
   h_in <- scale(
     as.matrix(
       magrittr::set_rownames(
@@ -152,10 +260,7 @@ sc_top10_marker_heatmap_rc <- function(
       (qs[[2]]) / 2,
       qs[[2]]
     ),
-    colors = col_grad()[c( # nolint
-      1, 3,
-      6, 12
-    )]
+    colors = col1
   )
   # Create Plot
   h_out <- ComplexHeatmap::Heatmap(
@@ -165,7 +270,7 @@ sc_top10_marker_heatmap_rc <- function(
     top_annotation = ComplexHeatmap::HeatmapAnnotation(
       `Average.Expression` = ComplexHeatmap::anno_barplot(
         as.vector(t(h_anno)),
-        gp = grid::gpar(fill = col_grad()) # nolint
+        gp = grid::gpar(fill = col1) # nolint
       ),
       annotation_name_gp = grid::gpar(
         fontsize = 10
@@ -175,13 +280,13 @@ sc_top10_marker_heatmap_rc <- function(
     show_row_names = TRUE,
     heatmap_width = ggplot2::unit(h_w, "cm"),
     heatmap_height = ggplot2::unit(h_h, "cm"),
-    column_title = "Marker Genes (Top 10)",
-    column_names_rot = 90,
+    column_title = "Top 10 Markers",
+    column_names_rot = rot_c,
     column_names_gp = grid::gpar(fontsize = fs_c),
     row_names_side = "left",
     row_names_gp = grid::gpar(fontsize = fs_r),
-    cluster_columns = FALSE,
-    cluster_rows = FALSE
+    cluster_columns = cl_c,
+    cluster_rows = cl_r,
   )
   return(h_out)
 }
@@ -201,6 +306,9 @@ sc_top10_marker_heatmap_rc <- function(
 #' @param fs_r Numeric value for row fontsize (passed to ComplexHeatmap).
 #' @param cl_c Cluster columns?
 #' @param cl_r Cluster rows?
+#' @param rot_c Rotation of column names.
+#' @param col1 Gradient color scheme to use
+#' (must be exactly 4 colors in length).
 #' @return A ComplexHeatmap object containing a top-10 marker gene heatmap.
 #' @examples
 #'
@@ -213,7 +321,8 @@ sc_top10_marker_heatmap_rc <- function(
 #' #   6,
 #' #   8,
 #' #   TRUE,
-#' #   TRUE
+#' #   TRUE,
+#' #   col_grad()[c(3, 6, 9, 12)]
 #' # )
 #'
 #' @export
@@ -226,7 +335,9 @@ sc_top10_marker_heatmap <- function(
   fs_c,
   fs_r,
   cl_c,
-  cl_r
+  cl_r,
+  rot_c,
+  col1
 ) {
   d <- so
   if(!file.exists("analysis/table.marker.genes.txt") && asy == "RNA") { # nolint
@@ -439,20 +550,17 @@ sc_top10_marker_heatmap <- function(
       (qs[[2]]) / 2,
       qs[[2]]
     ),
-    colors = col_grad()[c( # nolint
-      1, 3,
-      6, 12
-    )]
+    colors = col1
   )
   # Create Plot
   h_out <- ComplexHeatmap::Heatmap(
     h_in,
     col = fun_hm_col,
-    name = "Scaled Expression/Accessibility",
+    name = "Scaled Expression",
     top_annotation = ComplexHeatmap::HeatmapAnnotation(
       `Average.Expression` = ComplexHeatmap::anno_barplot(
         as.vector(t(h_anno)),
-        gp = grid::gpar(fill = col_grad()) # nolint
+        gp = grid::gpar(fill = col1) # nolint
       ),
       annotation_name_gp = grid::gpar(
         fontsize = 10
@@ -463,12 +571,12 @@ sc_top10_marker_heatmap <- function(
     heatmap_width = ggplot2::unit(h_w, "cm"),
     heatmap_height = ggplot2::unit(h_h, "cm"),
     column_title = "Top 10 Markers",
-    column_names_rot = 90,
+    column_names_rot = rot_c,
     column_names_gp = grid::gpar(fontsize = fs_c),
     row_names_side = "left",
     row_names_gp = grid::gpar(fontsize = fs_r),
     cluster_columns = cl_c,
-    cluster_rows = cl_r
+    cluster_rows = cl_r,
   )
   return(h_out)
 }
@@ -711,6 +819,8 @@ sc_top10_de_da_heatmap <- function(
 #' @param list_var (Optional) A vector of character strings
 #' indicating the name(s) of up to two group variables
 #' for stratifying plot points.
+#' @param col1 Gradient color scheme to use.
+#' @param vline1 Add a vertical line to plot?
 #' @return An input data frame and corresponding dot plot displaying
 #' the expression of the top-10 DEGs for a specific cell type.
 #' @examples
@@ -739,7 +849,9 @@ sc_top10_deg_dotplot <- function( # nolint
   ct,
   cl_var,
   split_var,
-  list_var
+  list_var,
+  col1,
+  vline1
 ) {
   # Load Seurat and change default assay to RNA
   d <- so
@@ -1139,10 +1251,11 @@ sc_top10_deg_dotplot <- function( # nolint
     ggplot2::geom_point(
       shape = 21
     ) +
+    ggplot2::geom_vline(xintercept = 6.5, linetype = "dashed") +
     ggplot2::scale_fill_gradientn(
-      colors = col_grad() # nolint
+      colors = col1 # nolint
     ) +
-    ggplot2::scale_size_area(max_size = 10) +
+    ggplot2::scale_size_area(max_size = 12) +
     sc_theme1() + # nolint
     ggplot2::labs(
       fill = "Average Expression",
@@ -1210,6 +1323,7 @@ sc_top10_deg_dotplot <- function( # nolint
 #' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
 #' @param fs_r Numeric value for row fontsize (passed to ComplexHeatmap).
+#' @param col1 Gradient color scheme to use.
 #' @return A ComplexHeatmap object containing a top motif heatmap.
 #' @examples
 #'
@@ -1237,7 +1351,9 @@ sc_top10_deg_dotplot <- function( # nolint
 #' #   # Column font size
 #' #   fs_c = 6,
 #' #   # Row font size
-#' #   fs_r = 8
+#' #   fs_r = 8,
+#' #   # Gradient color scheme
+#' #   col_grad()[c(3, 6, 9, 12)]
 #' # )
 #'
 #' @export
@@ -1253,7 +1369,8 @@ sc_top_motif_heatmap <- function( # nolint
   h_w,
   h_h,
   fs_c,
-  fs_r
+  fs_r,
+  col1
 ) {
   d <- so
   Seurat::DefaultAssay(d) <- "chromvar"
@@ -1311,7 +1428,7 @@ sc_top_motif_heatmap <- function( # nolint
 
     ## Top motifs per cluster (by p value then by fold change)
     d_mark <- dplyr::slice_max(
-      d_mark[d_mark[["avg_diff"]] > 0, ],
+      d_mark[d_mark[["avg_diff"]] > 0 & d_mark[["p_val_adj"]] < 0.05, ],
       order_by = -.data[["p_val_adj"]], # nolint
       n = 100
     )[, c(
@@ -1597,11 +1714,7 @@ sc_top_motif_heatmap <- function( # nolint
       (qs[[2]]) / 2,
       qs[[2]]
     ),
-    colors = col_grad()[c( # nolint
-      1, 3,
-      6, 12
-    )
-    ]
+    colors = col1
   )
   # Create Plot
   if(filt_ct == TRUE) { # nolint
@@ -1609,13 +1722,13 @@ sc_top_motif_heatmap <- function( # nolint
     h_out <- ComplexHeatmap::Heatmap(
       h_in,
       col = fun_hm_col,
-      name = "Scaled Activity Score",
+      name = "Activity Score",
       show_column_names = TRUE,
       show_row_names = TRUE,
       heatmap_width = ggplot2::unit(h_w, "cm"),
       heatmap_height = ggplot2::unit(h_h, "cm"),
       column_title = paste("Top Motifs:", ct_name),
-      column_names_rot = 90,
+      column_names_rot = 45,
       column_names_gp = grid::gpar(fontsize = fs_c),
       row_names_side = "left",
       row_names_gp = grid::gpar(fontsize = fs_r),
@@ -1628,13 +1741,13 @@ sc_top_motif_heatmap <- function( # nolint
     h_out <- ComplexHeatmap::Heatmap(
       h_in,
       col = fun_hm_col,
-      name = "Scaled Activity Score",
+      name = "Activity Score",
       show_column_names = TRUE,
       show_row_names = TRUE,
       heatmap_width = ggplot2::unit(h_w, "cm"),
       heatmap_height = ggplot2::unit(h_h, "cm"),
-      column_title = paste("Top", 10, "Motifs"),
-      column_names_rot = 90,
+      column_title = paste("Top", top_n, "Motifs"),
+      column_names_rot = 45,
       column_names_gp = grid::gpar(fontsize = fs_c),
       row_names_side = "left",
       row_names_gp = grid::gpar(fontsize = fs_r),

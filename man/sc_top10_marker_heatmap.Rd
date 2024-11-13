@@ -4,7 +4,19 @@
 \alias{sc_top10_marker_heatmap}
 \title{Top-10 Marker Gene Heatmap}
 \usage{
-sc_top10_marker_heatmap(so, asy, cl_var, h_w, h_h, fs_c, fs_r, cl_c, cl_r)
+sc_top10_marker_heatmap(
+  so,
+  asy,
+  cl_var,
+  h_w,
+  h_h,
+  fs_c,
+  fs_r,
+  cl_c,
+  cl_r,
+  rot_c,
+  col1
+)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
@@ -25,6 +37,11 @@ of the cluster variable for cell type predictions.}
 \item{cl_c}{Cluster columns?}
 
 \item{cl_r}{Cluster rows?}
+
+\item{rot_c}{Rotation of column names.}
+
+\item{col1}{Gradient color scheme to use
+(must be exactly 4 colors in length).}
 }
 \value{
 A ComplexHeatmap object containing a top-10 marker gene heatmap.
@@ -44,7 +61,8 @@ marker gene list based on the top-10 marker genes for each cluster.
 #   6,
 #   8,
 #   TRUE,
-#   TRUE
+#   TRUE,
+#   col_grad()[c(3, 6, 9, 12)]
 # )
 
 }

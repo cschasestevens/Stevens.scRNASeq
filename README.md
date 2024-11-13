@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v2.0
+# Stevens.scRNASeq v2.1 (20241113)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -98,6 +98,10 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 2.1
+    * Added support for reclustering analysis of scRNA-Seq data
+    * Added flexibility for heat map and UMAP functions
+    * Addresses errors in package documentation
 * 2.0
     * Added functions for processing 10X multiome data sets
     * Updated v1.2 functions for compatibility with Seurat v5.0 and higher
