@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v2.1 (20241113)
+# Stevens.scRNASeq v2.2 (20241122)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -63,7 +63,8 @@ Utilizes Seurat and Signac in tandem with various R packages to perform processi
         * topGO,
         * shadowtext,
         * stringr,
-        * org.Hs.eg.db
+        * org.Hs.eg.db,
+        * CellChat
 
 ### Installation
 * Run the following in a new R session on the command line or within R-Studio:
@@ -98,6 +99,9 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 2.2
+    * Integration of Cell Chat analysis and chord diagram plotting functions.
+    * Revised scATAC-Seq coverage plot functions for greater plotting flexibility.
 * 2.1
     * Added support for reclustering analysis of scRNA-Seq data
     * Added flexibility for heat map and UMAP functions
