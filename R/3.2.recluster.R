@@ -20,7 +20,10 @@
 #' proportion columns.
 #' @param dim1 Number of dimensions to use in PCA.
 #' @param batch_cor Should Harmony based batch correction be performed?
-#' @param cor_col Variables to regress out of PCA if batch_cor is TRUE.
+#' This parameter is automatically set to TRUE for multiome datasets.
+#' @param cor_col Variables to regress out of PCA if batch_cor is TRUE
+#' ("GEX" only).
+#' @param res1 Clustering resolution to use for final cluster determination.
 #' @param h_w Numeric value for heatmap width (passed to ComplexHeatmap).
 #' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
@@ -46,6 +49,7 @@
 #' #   dim1 = 30,
 #' #   batch_cor = TRUE,
 #' #   cor_col = c("Batch", "Code"),
+#' #   res1 = 0.5,
 #' #   h_w = 12,
 #' #   h_h = 39,
 #' #   fs_c = 10,
@@ -69,6 +73,7 @@ sc_recluster <- function(
   dim1,
   batch_cor,
   cor_col,
+  res1,
   h_w,
   h_h,
   fs_c,
@@ -149,7 +154,7 @@ sc_recluster <- function(
       )
       plot_elbow <- Seurat::ElbowPlot(
         d,
-        reduction = "pca.cor",
+        reduction = "pca",
         ndims = 50
       )
       # Run UMAP
@@ -171,7 +176,7 @@ sc_recluster <- function(
     d <- Seurat::FindClusters(
       d,
       cluster.name = "recluster",
-      resolution = 0.3
+      resolution = res1
     )
     d_umap1 <- sc_umap_panel( # nolint
       d,
@@ -227,7 +232,7 @@ sc_recluster <- function(
         "hmap.top10mark.png",
         sep = "."
       ),
-      width = 40,
+      width = 42,
       height = 20,
       units = "cm",
       res = 1800
@@ -297,6 +302,271 @@ sc_recluster <- function(
       ),
     )
 
+  }
+  if(rc_type == "Mult") { # nolint    
+    d2 <- d
+    # Normalization
+    ## GEX
+    Seurat::DefaultAssay(d2) <- "RNA"
+    # subset
+    d2 <- d2[, grepl("5.Secretory|16.Secretory", as.character(d2@meta.data[["CellType"]]))]
+    d2
+    d_umap1 <- sc_umap_panel( # nolint
+      d2,
+      c("CellType", "Code", "Group"),
+      "wnn.umap"
+    )
+    ggplot2::ggsave(
+      paste(
+        "analysis/recluster/recluster",
+        "secretory", "pre",
+        "umap.panel.png",
+        sep = "."
+      ),
+      d_umap1,
+      height = 16,
+      width = 32,
+      dpi = 400
+    )
+
+    d2 <- Seurat::FindVariableFeatures(
+      d2,
+      selection.method = "vst",
+      nfeatures = 3000
+    )
+    options(future.globals.maxSize = 10000 * 1024 ^ 2)
+
+    d2 <- Seurat::SCTransform(d2, new.assay.name = "sct")
+    d2 <- Seurat::RunPCA(d2)
+    plot_var_feat <- Seurat::VariableFeaturePlot(
+      d2,
+      assay = "sct"
+    )
+    plot_dim_load <- Seurat::VizDimLoadings(
+      object = d2,
+      dims = 1:2,
+      reduction = "pca"
+    )
+    plot_elbow <- Seurat::ElbowPlot(
+      d2,
+      reduction = "pca",
+      ndims = 50
+    )
+    d_pca <- sc_pca_plot( # nolint
+      d2,
+      c("CellType", "Code", "Group")
+    )
+    ggplot2::ggsave(
+      paste(
+        "analysis/recluster/recluster",
+        "secretory",
+        "pca.panel.png",
+        sep = "."
+      ),
+      d_pca,
+      width = 42,
+      height = 12,
+      dpi = 700
+    )
+    ## ATAC Peaks
+    Seurat::DefaultAssay(d2) <- "ufy.peaks"
+    d2 <- Signac::FindTopFeatures(d2, min.cutoff = 5)
+    d2 <- Signac::RunTFIDF(d2)
+    d2 <- Signac::RunSVD(d2)
+    Signac::DepthCor(d2)
+    Seurat::DimPlot(d2, reduction = "lsi", group.by = "Code")
+
+    ## Harmony batch effect correction for GEX and ATAC
+    d2 <- harmony::RunHarmony(
+      d2,
+      assay.use = "ufy.peaks",
+      group.by.vars = "Code",
+      reduction.use = "lsi",
+      reduction.save = "ufy.peaks.corrected",
+      project.dim = FALSE
+    )
+    d2 <- harmony::RunHarmony(
+      d2,
+      assay.use = "RNA",
+      group.by.vars = "Code",
+      reduction.use = "pca",
+      reduction.save = "RNA.corrected",
+      project.dim = FALSE
+    )
+    ## WNN
+    d2 <- Seurat::FindMultiModalNeighbors(
+      d2,
+      reduction.list = list("pca", "lsi"),
+      dims.list = list(1:50, 2:50)
+    )
+    d2 <- Seurat::RunUMAP(
+      d2,
+      nn.name = "weighted.nn",
+      reduction.name = "wnn.umap",
+      reduction.key = "wnnUMAP_",
+      n.components = 3
+    )
+    d2 <- harmony::RunHarmony(
+      d2,
+      assay.use = "RNA",
+      group.by.vars = "Code",
+      reduction.use = "wnn.umap",
+      reduction.save = "wnn.umap.cor",
+      project.dim = FALSE
+    )
+    d2 <- Seurat::FindNeighbors(
+      d2,
+      reduction = "wnn.umap.cor",
+      dims = 1:3,
+      verbose = TRUE
+    )
+    d2 <- Seurat::FindClusters(
+      d2,
+      graph.name = "wsnn",
+      cluster.name = "recluster",
+      algorithm = 3,
+      verbose = TRUE,
+      resolution = 0.5
+    )
+    ## Visualize Clusters
+    d_umap1 <- sc_umap_panel( # nolint
+      d2,
+      c("Code", "Group", "recluster", "CellType"),
+      "wnn.umap"
+    )
+    ggplot2::ggsave(
+      paste(
+        "analysis/recluster/recluster",
+        "secretory",
+        "umap.panel.WNN.png",
+        sep = "."
+      ),
+      d_umap1,
+      height = 12,
+      width = 24,
+      dpi = 600
+    )
+    ## Reclustering Performance
+    d1qc_pre <- Seurat::VlnPlot(
+      object = d2,
+      features = c(
+        "nFeature_RNA",
+        "nCount_RNA",
+        "percent.mt",
+        "nCount_ATAC",
+        "TSS.enrichment",
+        "nucleosome_signal"
+      ),
+      layer = "counts",
+      ncol = 4,
+      pt.size = 0.2
+    )
+    ggplot2::ggsave(
+      paste(
+        "analysis/recluster/recluster",
+        title1,
+        "qc.panel.png",
+        sep = "."
+      ),
+      d1qc_pre,
+      width = 24,
+      height = 8,
+      dpi = 800
+    )
+    # Marker gene heatmap
+    d_hmap <- sc_top10_marker_heatmap_rc( # nolint
+      sorc = d2,
+      asy = "GEX",
+      slot1 = slot1,
+      cl_var = "recluster",
+      h_w = h_w,
+      h_h = h_h,
+      fs_c = fs_c,
+      fs_r = fs_r,
+      cl_c = cl_c,
+      cl_r = cl_r,
+      rot_c = rot_c,
+      col1 = col1
+    )
+    ## Save
+    png(
+      paste(
+        "analysis/recluster/recluster",
+        title1,
+        "hmap.top10mark.png",
+        sep = "."
+      ),
+      width = 40,
+      height = 20,
+      units = "cm",
+      res = 1800
+    )
+    print(d_hmap)
+    dev.off()
+
+    # Cluster Proportions
+    fun_predict_prop <- function(
+      x,
+      c,
+      md
+    ) {
+      data_pred_prop2 <- setNames(
+        dplyr::count(
+          x,
+          .data[[c]] # nolint
+        ),
+        c(c, "Total Cells")
+      )
+      data_pred_prop <- dplyr::count(
+        x,
+        x[, c(md, c)]
+      )
+      data_pred_prop <- dplyr::left_join(
+        data_pred_prop,
+        data_pred_prop2,
+        by = c
+      )
+      data_pred_prop[["Proportion"]] <- round(
+        data_pred_prop$n /
+          data_pred_prop$`Total Cells`,
+        digits = 3
+      )
+      return(data_pred_prop)
+    }
+    d2 <- SeuratObject::AddMetaData(
+      d2,
+      gsub("_.*", "", d2@meta.data[["Code"]]),
+      col.name = "Code1"
+    )
+    write.table(
+      fun_predict_prop(
+        d2@meta.data,
+        "recluster",
+        c(prop_list)
+      ),
+      paste(
+        "analysis/recluster/recluster",
+        title1,
+        "table.proportions.txt",
+        sep = "."
+      ),
+      sep = "\t",
+      row.names = FALSE,
+      col.names = TRUE
+    )
+
+    ## Save RDS
+    saveRDS(
+      d2,
+      paste(
+        "analysis/recluster/recluster",
+        title1,
+        "subset.data.RDS",
+        sep = "."
+      ),
+    )
+    d <- d2
+    remove(d2)
   }
   return(
     list = c(

@@ -16,6 +16,7 @@ sc_recluster(
   dim1,
   batch_cor,
   cor_col,
+  res1,
   h_w,
   h_h,
   fs_c,
@@ -51,9 +52,13 @@ proportion columns.}
 
 \item{dim1}{Number of dimensions to use in PCA.}
 
-\item{batch_cor}{Should Harmony based batch correction be performed?}
+\item{batch_cor}{Should Harmony based batch correction be performed?
+This parameter is automatically set to TRUE for multiome datasets.}
 
-\item{cor_col}{Variables to regress out of PCA if batch_cor is TRUE.}
+\item{cor_col}{Variables to regress out of PCA if batch_cor is TRUE
+("GEX" only).}
+
+\item{res1}{Clustering resolution to use for final cluster determination.}
 
 \item{h_w}{Numeric value for heatmap width (passed to ComplexHeatmap).}
 
@@ -95,6 +100,7 @@ Subsets are determined based on cell groups.
 #   dim1 = 30,
 #   batch_cor = TRUE,
 #   cor_col = c("Batch", "Code"),
+#   res1 = 0.5,
 #   h_w = 12,
 #   h_h = 39,
 #   fs_c = 10,

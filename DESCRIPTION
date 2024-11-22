@@ -59,4 +59,5 @@ Imports:
   topGO,
   shadowtext,
   stringr,
-  org.Hs.eg.db
+  org.Hs.eg.db,
+  CellChat

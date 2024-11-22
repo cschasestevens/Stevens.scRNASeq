@@ -1757,3 +1757,657 @@ sc_top_motif_heatmap <- function( # nolint
   }
   return(h_out)
 }
+
+#' CellChat Interaction Heatmap
+#'
+#' Generates a heatmap from a Seurat Object and
+#' differential activity analysis result.
+#'
+#' @param so An object of class Seurat.
+#' @param mot_m Character string providing the name of the assay to use.
+#' @param filt_ct Logical indicating whether the data should
+#' be filtered based on cell type
+#' @param ct_name Character string containing the cell type name to filter.
+#' @param cl_var Character string containing the name
+#' of the clustering variable.
+#' @param split_var Logical indicating whether the cluster variable
+#' should be stratified by additional group variables.
+#' @param list_var (Optional) A vector of character strings
+#' indicating the name(s) of up to two group variables
+#' for stratifying plot points.
+#' @param top_n Number of motifs to use (filters top-100 motifs per assay or
+#' specified cell type and subsequently filters by scaled activity score).
+#' @param h_w Numeric value for heatmap width (passed to ComplexHeatmap).
+#' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
+#' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
+#' @param fs_r Numeric value for row fontsize (passed to ComplexHeatmap).
+#' @param col1 Gradient color scheme to use.
+#' @return A ComplexHeatmap object containing a top motif heatmap.
+#' @examples
+#'
+#' # tf_heatmap <- sc_top_motif_heatmap(
+#' #   # Seurat object
+#' #   so = d,
+#' #   # Differential activity results
+#' #   mot_m = diff_output_activity,
+#' #   # Filter based on CellType?
+#' #   filt_ct = TRUE,
+#' #   # Cell type name
+#' #   ct_name = "11.Secretory",
+#' #   # Clustering column
+#' #   cl_var = "CellType",
+#' #   # Split by additional variable(s)?
+#' #   split_var = TRUE,
+#' #   # Additional variable(s) to split plot (if split_var = TRUE)
+#' #   list_var = c("Airway"),
+#' #   # Number of motifs to use
+#' #   top_n = 50,
+#' #   # Heatmap width
+#' #   h_w = 36,
+#' #   # Heatmap height
+#' #   h_h = 12,
+#' #   # Column font size
+#' #   fs_c = 6,
+#' #   # Row font size
+#' #   fs_r = 8,
+#' #   # Gradient color scheme
+#' #   col_grad()[c(3, 6, 9, 12)]
+#' # )
+#'
+#' @export
+sc_cc_hmap <- function(
+
+) {
+CC.heat.fun <- function(df,ext1) {
+  
+  # Heatmap function
+  
+  p.dot2 <- ggplot(df,
+                   aes(x = source,
+                       y = pathway_name,
+                       fill = log2.rat.sig)) +
+    geom_tile() + 
+    scale_fill_gradientn(colors = c("dodgerblue3",
+                                    "white",
+                                    "firebrick2"),
+                         breaks = c(min(path.heat.in[["log2.rat.sig"]]),
+                                    0,
+                                    max(path.heat.in[["log2.rat.sig"]]))) +
+    thm.mult +
+    labs(title = paste(d.chat.g1,"vs.",d.chat.g2,
+                       "Outgoing Signaling",
+                       sep = " "),
+         fill = "Log2(Signal Ratio)",
+         y = "Pathway",
+         x = "Cell Type") +
+    theme(plot.margin = unit(c(0.5,0.5,
+                               0.5,0.5),
+                             "cm"),
+          # Axes
+          axis.ticks.y = element_blank(),
+          axis.text.x = element_text(face = 'bold',
+                                     size = 10,
+                                     angle = 45,
+                                     hjust = 1,
+                                     vjust = 1),
+          axis.text.y = element_text(face = 'bold',
+                                     size = 10),
+          axis.title.x = element_text(face = 'bold',
+                                      size = 14),
+          axis.title.y = element_text(face='bold',
+                                      size = 14,
+                                      angle = 90),
+          
+          # Strip
+          strip.background = element_rect(fill = 'slategray2'),
+          strip.text = element_text(face = 'bold',
+                                    size = 8)) +
+    
+    theme(legend.text = element_text(size = 12),
+          legend.position = "right",
+          panel.grid.major.y = element_blank())
+  
+  ggsave(paste(ext1,
+               "CC_total_sig_path_",
+               d.chat.g1,"v",d.chat.g2,".png",
+               sep = ""),
+         p.dot2,
+         width = 9,
+         height = 14,
+         dpi = 600)
+  
+  
+  # Heatmap annotations (to be added separately)
+  
+  d1.anno.in <- df %>%
+    dplyr::count(pathway_name)
+  
+  d1.anno.in2 <- df %>%
+    dplyr::count(source)
+  
+  CC.heat.anno.fun <- function(df2,
+                               v1) {
+    
+    d1.anno <- ggplot(df2,
+                      aes(x = df2[[v1]],
+                          y = n,
+                          fill = n)) +
+      geom_col(show.legend = F,
+               width = 1) + 
+      
+      scale_fill_gradientn(name = "Interaction Number",
+                           colors = viridis::magma(n = 12)) +
+      thm.univ +
+      labs(x = "",
+           y = "Interaction Number") +
+      theme(axis.title.y = element_text(angle = 360,
+                                        vjust = 0.5),
+            # axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            plot.margin = unit(c(0,0,0,0),
+                               "cm"))
+    
+  }
+}
+}
+
+#' CellChat Dot Plot
+#'
+#' Generates a dot plot from a Seurat Object and DEG list based on
+#' the top-10 DEGs for a specific cell type and comparison.
+#'
+#' @param p_type Should a custom gene list or DGEA results object
+#' be used for plotting?
+#' Type "cstm.list" for custom gene lists and "deg.list"
+#' for using dgea.results objects.
+#' @param l_deg A list of DGEA results returned by sc.DGEA()
+#' or a vector of selected genes for plotting.
+#' @param so An object of class Seurat.
+#' @param ct A pattern provided as a character string for
+#' matching a specific cell type or types.
+#' @param cl_var Character string indicating the name of the
+#' cluster/cell type variable.
+#' @param split_var Logical indicating whether the cluster variable
+#' should be stratified by additional group variables.
+#' @param list_var (Optional) A vector of character strings
+#' indicating the name(s) of up to two group variables
+#' for stratifying plot points.
+#' @param col1 Gradient color scheme to use.
+#' @param vline1 Add a vertical line to plot?
+#' @return An input data frame and corresponding dot plot displaying
+#' the expression of the top-10 DEGs for a specific cell type.
+#' @examples
+#'
+#' # p_dotplot <- sc_top10_deg_dotplot(
+#' #   # Type "deg.list" or "cstm.list" to toggle between inputs
+#' #   "deg.list",
+#' #   # Name of a custom gene list or dgea.results object
+#' #   dgea_output,
+#' #   # Seurat object
+#' #   d_annotated,
+#' #   # Unique character strings corresponding to cell types
+#' #   "3.Se|6.Se",
+#' #   # Name of clustering variable
+#' #   "CellType",
+#' #   TRUE,
+#' #   # Vector of up to 2 variables for stratifying clustering variables
+#' #   c("Knockout","Airway")
+#' # )
+#'
+#' @export
+sc_cc_dotp <- function(
+
+) {
+# 
+# if(split_var == FALSE) { # nolint
+#     d1 <- cbind(
+#       SeuratObject::FetchData(
+#         d,
+#         vars = c(
+#           cl_var,
+#           top10_pres
+#         )
+#       )
+#     )
+#   }
+#   ## Subset based on cell type
+#   d1 <- d1[grepl(c, d1[[cl_var]]), ]
+#   d1[["CellType"]] <- d1[[cl_var]]
+#   ## Count/ratio table for creating dot plots
+#   d1_prc <- dplyr::bind_rows(
+#     setNames(
+#       lapply(
+#         top10_pres,
+#         function(x) {
+#           # Determine average expression of each gene
+#           ## for 2 variables:
+#           if(split_var == TRUE && length(list_var) == 2) { # nolint
+#             ### average expression
+#             d_avg <- setNames(
+#               aggregate(
+#                 d1[[x]],
+#                 by = list(
+#                   d1[,  c("CellType")],
+#                   d1[,  c(list_var[[1]])],
+#                   d1[,  c(list_var[[2]])]
+#                 ),
+#                 function(y) mean(y)
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "avg.exp"
+#               )
+#             )
+#             d_avg[["avg.exp"]] <- round(
+#               d_avg[["avg.exp"]],
+#               digits = 2
+#             )
+#             ### percent expressed
+#             d_prc <- dplyr::count(
+#               d1, .data[["CellType"]], # nolint
+#               .data[[list_var[[1]]]],
+#               .data[[list_var[[2]]]],
+#               .data[[x]] > 0
+#             )
+#             d_prc <- setNames(
+#               dplyr::filter(
+#                 d_prc, d_prc[4] == TRUE
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "pres", "n"
+#               )
+#             )
+#             d_cnt <- setNames(
+#               dplyr::count(
+#                 d1, .data[["CellType"]], # nolint
+#                 .data[[list_var[[1]]]],
+#                 .data[[list_var[[2]]]]
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "n"
+#               )
+#             )
+#             d_comb <- dplyr::left_join(
+#               d_cnt,
+#               d_prc,
+#               by = c(
+#                 "CellType", c(list_var)
+#               )
+#             )
+#             d_comb[is.na(d_comb)] <- 0
+#             d_comb <- dplyr::mutate(
+#               d_comb,
+#               "perc.exp" = round(
+#                 d_comb[["n.y"]] /
+#                   d_comb[["n.x"]],
+#                 digits = 2
+#               )
+#             )
+#             ### combined
+#             d_comb_out <- dplyr::left_join(
+#               d_avg,
+#               d_comb[,
+#                      c(
+#                        "CellType", c(list_var),
+#                        "perc.exp"
+#                      )],
+#               by = c(
+#                 "CellType",
+#                 c(list_var)
+#               )
+#             )
+#           }
+#           if(split_var == TRUE && length(list_var) < 2) { # nolint
+#             ### average expression
+#             d_avg <- setNames(
+#               aggregate(
+#                 d1[[x]],
+#                 by = list(
+#                   d1[, c("CellType")],
+#                   d1[, c(list_var[[1]])]
+#                 ),
+#                 function(y) mean(y)
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "avg.exp"
+#               )
+#             )
+#             d_avg[["avg.exp"]] <- round(
+#               d_avg[["avg.exp"]],
+#               digits = 2
+#             )
+#             ### percent expressed
+#             d_prc <- dplyr::count(
+#               d1,.data[["CellType"]], # nolint
+#               .data[[list_var[[1]]]],
+#               .data[[x]] > 0
+#             )
+#             d_prc <- setNames(
+#               dplyr::filter(
+#                 d_prc, d_prc[3] == TRUE
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "pres", "n"
+#               )
+#             )
+#             d_cnt <- setNames(
+#               dplyr::count(
+#                 d1, .data[["CellType"]], # nolint
+#                 .data[[list_var[[1]]]]
+#               ),
+#               c(
+#                 "CellType", c(list_var),
+#                 "n"
+#               )
+#             )
+#             d_comb <- dplyr::left_join(
+#               d_cnt,
+#               d_prc,
+#               by = c(
+#                 "CellType", c(list_var)
+#               )
+#             )
+#             d_comb[is.na(d_comb)] <- 0
+#             d_comb <- dplyr::mutate(
+#               d_comb,
+#               "perc.exp" = round(
+#                 d_comb[["n.y"]] /
+#                   d_comb[["n.x"]],
+#                 digits = 2
+#               )
+#             )
+#             ### combined
+#             d_comb_out <- dplyr::left_join(
+#               d_avg,
+#               d_comb[,
+#                      c(
+#                        "CellType", c(list_var),
+#                        "perc.exp"
+#                      )],
+#               by = c(
+#                 "CellType",
+#                 c(list_var)
+#               )
+#             )
+#           }
+#           if(split_var == FALSE) { # nolint
+#             ### average expression
+#             d_avg <- setNames(
+#               aggregate(
+#                 d1[[x]],
+#                 by = list(
+#                   d1[, c("CellType")]
+#                 ),
+#                 function(y) mean(y)
+#               ),
+#               c(
+#                 "CellType",
+#                 "avg.exp"
+#               )
+#             )
+#             d_avg[["avg.exp"]] <- round(
+#               d_avg[["avg.exp"]],
+#               digits = 2
+#             )
+#             ### percent expressed
+#             d_prc <- dplyr::count(
+#               d1,.data[["CellType"]], # nolint
+#               .data[[x]] > 0
+#             )
+#             d_prc <- setNames(
+#               dplyr::filter(
+#                 d_prc, d_prc[2] == TRUE
+#               ),
+#               c(
+#                 "CellType",
+#                 "pres", "n"
+#               )
+#             )
+#             d_cnt <- setNames(
+#               dplyr::count(
+#                 d1, .data[["CellType"]] # nolint
+#               ),
+#               c(
+#                 "CellType",
+#                 "n"
+#               )
+#             )
+#             d_comb <- dplyr::left_join(
+#               d_cnt,
+#               d_prc,
+#               by = c(
+#                 "CellType"
+#               )
+#             )
+#             d_comb[is.na(d_comb)] <- 0
+#             d_comb <- dplyr::mutate(
+#               d_comb,
+#               "perc.exp" = round(
+#                 d_comb[["n.y"]] /
+#                   d_comb[["n.x"]],
+#                 digits = 2
+#               )
+#             )
+#             ### combined
+#             d_comb_out <- dplyr::left_join(
+#               d_avg,
+#               d_comb[,
+#                      c(
+#                        "CellType",
+#                        "perc.exp"
+#                      )],
+#               by = c(
+#                 "CellType"
+#               )
+#             )
+#           }
+#           return(d_comb_out)
+#         }
+#       ),
+#       c(top10_pres)
+#     ),
+#     .id = "GENE"
+#   )
+#   ## Add row name labels and convert GENE column to factor
+#   if(split_var == TRUE && length(list_var) == 2) { # nolint
+# 
+#     d1_prc <- data.frame(
+#       d1_prc,
+#       "labs" = factor(
+#         paste(
+#           d1_prc[["CellType"]],
+#           d1_prc[[list_var[[1]]]],
+#           d1_prc[[list_var[[2]]]],
+#           sep = " "
+#         ),
+#         levels = gtools::mixedsort(
+#           unique(
+#             paste(
+#               d1_prc[["CellType"]],
+#               d1_prc[[list_var[[1]]]],
+#               d1_prc[[list_var[[2]]]],
+#               sep = " "
+#             )
+#           )
+#         )
+#       )
+#     )
+#     d1_prc[["GENE"]] <- factor(
+#       d1_prc[["GENE"]],
+#       levels = unique(
+#         d1_prc[["GENE"]]
+#       )
+#     )
+#   }
+#   ## Add row name labels and convert GENE column to factor
+#   if(split_var == TRUE && length(list_var) < 2) { # nolint
+#     d1_prc <- data.frame(
+#       d1_prc,
+#       "labs" = factor(
+#         paste(
+#           d1_prc[["CellType"]],
+#           d1_prc[[list_var[[1]]]],
+#           sep = " "
+#         ),
+#         levels = gtools::mixedsort(
+#           unique(
+#             paste(
+#               d1_prc[["CellType"]],
+#               d1_prc[[list_var[[1]]]],
+#               sep = " "
+#             )
+#           )
+#         )
+#       )
+#     )
+#     d1_prc[["GENE"]] <- factor(
+#       d1_prc[["GENE"]],
+#       levels = unique(
+#         d1_prc[["GENE"]]
+#       )
+#     )
+#   }
+#   if(split_var == FALSE) { # nolint
+#     d1_prc <- data.frame(
+#       d1_prc,
+#       "labs" = d1_prc[["CellType"]]
+#     )
+#     d1_prc[["GENE"]] <- factor(
+#       d1_prc[["GENE"]],
+#       levels = unique(
+#         d1_prc[["GENE"]]
+#       )
+#     )
+#   }
+#   ## Plot
+#   p_dot <- ggplot2::ggplot(
+#     d1_prc,
+#     ggplot2::aes(
+#       x = .data[["GENE"]], # nolint
+#       y = .data[["labs"]],
+#       fill = .data[["avg.exp"]],
+#       size = .data[["perc.exp"]]
+#     )
+#   ) +
+#     ggplot2::geom_point(
+#       shape = 21
+#     ) +
+#     ggplot2::geom_vline(xintercept = 6.5, linetype = "dashed") +
+#     ggplot2::scale_fill_gradientn(
+#       colors = col1 # nolint
+#     ) +
+#     ggplot2::scale_size_area(max_size = 12) +
+#     sc_theme1() + # nolint
+#     ggplot2::labs(
+#       fill = "Average Expression",
+#       size = "Percent Expressed",
+#       y = ""
+#     ) +
+#     ggplot2::theme(
+#       plot.margin = ggplot2::unit(
+#         c(.2, .2,
+#           .2, .2),
+#         "cm"
+#       )
+#     )
+# 
+#   if(exists("top10.abs") && length(top10_abs) == 1) { # nolint
+#     print(
+#       paste(
+#         top10_abs,
+#         "was not found in the provided Seurat object;
+#         plots for this gene was excluded from the dot plot...",
+#         sep = " "
+#       )
+#     )
+#   }
+# 
+#   if(exists("top10.abs") && length(top10_abs) > 1) { # nolint
+#     print(
+#       paste(
+#         top10_abs,
+#         "were not found in the provided Seurat object;
+#         these genes were excluded from the dot plot...",
+#         sep = " "
+#       )
+#     )
+#   }
+# 
+#   return(
+#     list(
+#       "Input" = d1_prc,
+#       "Plot" = p_dot
+#     )
+#   )
+#   # Ligand-Receptor Dot Plots for Chosen Pathways
+# 
+# CC.dot.fun <- function(pat1,w,h) {
+#   
+#   d.chat.in.ind <- d.chat.in %>%
+#     dplyr::select(Group,source,target,
+#                   pathway_name,interaction_name_2,
+#                   prob)
+#   
+#   d.chat.in.ind <- d.chat.in.ind %>%
+#     dplyr::filter(pathway_name == pat1)
+#   
+#   d.chat.in.ind[["Group2"]] <- paste(d.chat.in.ind$Group,
+#                                      d.chat.in.ind$source)
+#   
+#   unique(d.chat.in.ind$Group2)
+#   levels(d.chat.in.ind$source)
+#   
+#   d.chat.in.ind[["Group2"]] <- factor(d.chat.in.ind$Group2,
+#                                       levels = d.chat.groups)
+#   
+#   d.chat.in.ind2 <- aggregate(d.chat.in.ind$prob,
+#                               by = list(d.chat.in.ind$Group2,
+#                                         d.chat.in.ind$interaction_name_2),
+#                               FUN = mean)
+#   
+#   d.chat.in.ind2[[d.chat.group.var]] <- ifelse(grepl(d.chat.g1,
+#                                                      d.chat.in.ind2$Group.1),
+#                                                d.chat.g1,
+#                                                d.chat.g2)
+#   
+#   
+#   ## Plot
+#   
+#   p.dot.fun <- function(df) {
+#     
+#     p.dot2 <- ggplot(df,
+#                      aes(x = Group.1,
+#                          y = Group.2,
+#                          fill = df[[d.chat.group.var]],
+#                          size = x)
+#     ) +
+#       geom_point(shape = 21) +
+#       thm.mult +
+#       labs(title = paste(pat1,"Ligand-Receptor Interaction Probability",
+#                          sep = " "),
+#            x = "Cell Type",
+#            y = "L-R Pair",
+#            fill = d.chat.group.var,
+#            size = "Avg. Probability") +
+#       theme(plot.margin = unit(c(.2,.2,
+#                                  .2,.2),
+#                                "cm"))
+#     
+#     p.dot2 <- p.dot2 +
+#       scale_fill_manual(values = col1a[5:6]) +
+#       scale_size_continuous(labels = c("min",
+#                                        "max"),
+#                             breaks = c(min(df[["x"]]),
+#                                        max(df[["x"]])
+#                             )
+#       )
+#     
+#     return(p.dot2)
+#     
+#   }
+# }
+}
