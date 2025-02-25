@@ -104,10 +104,12 @@ sc_cc_run <- function(
 #' ligand-receptor interactions.
 #' @examples
 #'
-#' # pchrd <- sc_cc_chrd(
+#' # sc_cc_chrd(
 #' #   ccdf = ccm[[1]],
-#' #   title1 = "CellChat: Total L-R Interactions",
+#' #   title1 = "plot.cc.LR.sec",
+#' #   title2 = "L-R Interactions: Secretory",
 #' #   cc_type = "total",
+#' #   sel_tar = c("5.Secretory", "16.Secretory"),
 #' #   pw = 12,
 #' #   ph = 12,
 #' #   fs1 = 0.6,
@@ -115,26 +117,26 @@ sc_cc_run <- function(
 #' # )
 #'
 #' @export
-sc_cc_chrd <- function(
+sc_cc_chrd <- function( # nolint
   ccdf,
   title1,
   title2,
   cc_type,
-  g_name = NULL,
-  pw_sel = NULL,
+  col_g = NULL,
+  sel_pw = NULL,
+  sel_src = NULL,
+  sel_tar = NULL,
+  spl_pw = FALSE,
   pw,
   ph,
   fs1,
   fd1,
   lgx = 0.1,
-  lgy = 0.1,
-  g_ind,
-  list_ct
+  lgy = 0.25
 ) {
   # Input CC data frame
   chrd1 <- ccdf
-  # Set parameters
-  ## circlize params
+  # Set global circlize parameters
   circlize::circos.clear()
   circlize::circos.par(
     start.degree = 90,
@@ -142,235 +144,156 @@ sc_cc_chrd <- function(
     track.margin = c(-0.1, 0.1),
     points.overflow.warning = FALSE
   )
-  ## base params
   par(mar = rep(0.5, 4))
 
   # Plots
-  ## All communications
-  if(is.null(pw_sel)) { # nolint
-    ## Total interactions
-    if(cc_type == "total") { # nolint
-      col1 <- setNames(
-        col_univ()[1:length(unique( # nolint
-        c(
-          as.character(ccm[[1]][["target"]]),
-          as.character(ccm[[1]][["source"]])
-        )
-        ))],
-        gtools::mixedsort(unique(
-          c(
-            as.character(ccm[[1]][["target"]]),
-            as.character(ccm[[1]][["source"]])
-          )
-        ))
-      )
-col1
+  ## Total interactions
+  if(cc_type == "total") { # nolint
+    ## Subset by pathway, source, or target
+    if(!is.null(sel_pw)) { # nolint
+      chrd1 <- chrd1[chrd1[["pathway_name"]] == sel_pw, ]
+    }
+    if(!is.null(sel_src) && is.null(sel_tar)) { # nolint
+      chrd1 <- chrd1[chrd1[["source"]] %in% sel_src, ]
+    }
+    if(!is.null(sel_tar) && is.null(sel_src)) { # nolint
+      chrd1 <- chrd1[chrd1[["target"]] %in% sel_tar, ]
+    }
+    if(!is.null(sel_tar) && !is.null(sel_src)) { # nolint
       chrd1 <- chrd1[
-        chrd1[["Group"]] == "NonCF" &
-          chrd1[["target"]] %in% list_ct,
+        chrd1[["target"]] %in% sel_tar &
+          chrd1[["source"]] %in% sel_src,
       ]
-      col_fun <- col1[col1 %in% unique(
+    }
+    ## Set colors
+    col1 <- setNames(
+      col_univ()[1:length(unique( # nolint
         c(
           as.character(chrd1[["target"]]),
           as.character(chrd1[["source"]])
         )
-        )]
+      ))],
+      gtools::mixedsort(unique(
+        c(
+          as.character(chrd1[["target"]]),
+          as.character(chrd1[["source"]])
+        )
+      ))
+    )
+    # Plot
+    png(
+      paste(
+        "analysis/",
+        title1,
+        ".png",
+        sep = ""
+      ),
+      width = pw,
+      height = ph,
+      res = 1200,
+      units = "cm"
+    )
+    circlize::chordDiagram(
+      x = chrd1,
+      grid.col = col1, # nolint
+      transparency = 0.25,
+        order = gtools::mixedsort(
+          unique(c(
+            as.character(chrd1[["target"]]),
+            as.character(chrd1[["source"]])
+          ))
+        ),
+      directional = 1,
+      direction.type = c("arrows", "diffHeight"),
+      diffHeight  = -0.04,
+      annotationTrack = "grid",
+      annotationTrackHeight = c(0.05, 0.1),
+      link.arr.type = "big.arrow",
+      link.sort = TRUE,
+      link.largest.ontop = TRUE
+    )
+    circlize::circos.trackPlotRegion(
+      track.index = 1,
+      bg.border = NA,
+      panel.fun = function(x, y) {
+        xlim <- circlize::get.cell.meta.data("xlim")
+        sector_index <- circlize::get.cell.meta.data("sector.index")
+        circlize::circos.text(
+          x = mean(xlim),
+          y = fd1,
+          labels = sector_index,
+          facing = "bending",
+          cex = fs1
+        )
+      }
+    )
+    circlize::circos.clear()
+    text(-0, 1.02, title2, cex = 1)
+    dev.off()
 
-      png(
-        paste(
-          "analysis/",
-          title1,
-          ".png",
-          sep = ""
-        ),
-        width = pw,
-        height = ph,
-        res = 1200,
-        units = "cm"
-      )
-      circlize::chordDiagram(
-        x = chrd1,
-        grid.col = col_fun, # nolint
-        transparency = 0.25,
-        directional = 1,
-        direction.type = c("arrows", "diffHeight"),
-        diffHeight  = -0.04,
-        annotationTrack = "grid",
-        annotationTrackHeight = c(0.05, 0.1),
-        link.arr.type = "big.arrow",
-        link.sort = TRUE,
-        link.largest.ontop = TRUE
-      )
-      circlize::circos.trackPlotRegion(
-        track.index = 1,
-        bg.border = NA,
-        panel.fun = function(x, y) {
-          xlim <- circlize::get.cell.meta.data("xlim")
-          sector_index <- circlize::get.cell.meta.data("sector.index")
-          circlize::circos.text(
-            x = mean(xlim),
-            y = fd1,
-            labels = sector_index,
-            facing = "bending",
-            cex = fs1
-          )
-        }
-      )
-      dev.off()
-    }
-    # Comparison between two datasets
-    if(cc_type == "comp") { # nolint
-      col_fun <- circlize::colorRamp2(
-        c(min(chrd1[[3]]), 1, max(chrd1[[3]])),
-        c("dodgerblue3", "white", "firebrick2"),
-        transparency = 0.25
-      )
-      grid_col <- setNames(
-        col_univ()[1:length(unique(as.character(chrd1[[2]])))], # nolint
-        unique(as.character(chrd1[[2]]))
-      )
-      png(
-        paste(
-          "analysis/",
-          title1,
-          ".png",
-          sep = ""
-        ),
-        width = pw,
-        height = ph,
-        res = 1200,
-        units = "cm"
-      )
-      circlize::chordDiagram(
-        x = chrd1,
-        grid.col = grid_col, # nolint
-        col = col_fun,
-        transparency = 0.25,
-        directional = 1,
-        direction.type = c("arrows", "diffHeight"),
-        diffHeight  = -0.04,
-        annotationTrack = "grid",
-        annotationTrackHeight = c(0.05, 0.1),
-        link.arr.type = "big.arrow",
-        link.sort = TRUE,
-        link.largest.ontop = TRUE
-      )
-      circlize::circos.trackPlotRegion(
-        track.index = 1,
-        bg.border = NA,
-        panel.fun = function(x, y) {
-          xlim <- circlize::get.cell.meta.data("xlim")
-          sector_index <- circlize::get.cell.meta.data("sector.index")
-          circlize::circos.text(
-            x = mean(xlim),
-            y = fd1,
-            labels = sector_index,
-            facing = "bending",
-            cex = fs1
-          )
-        }
-      )
-      dev.off()
-    }
   }
-    if(!is.null(pw_sel)) { # nolint
-    chrd1 <- chrd1[chrd1[["pathway_name"]] == pw_sel, ]
-    ## Total interactions
-    if(cc_type == "total") { # nolint
-      png(
-        paste(
-          "analysis/",
-          title1,
-          ".png",
-          sep = ""
-        ),
-        width = pw,
-        height = ph,
-        res = 1200,
-        units = "cm"
-      )
-      circlize::chordDiagram(
-        x = chrd1,
-        grid.col = col_univ()[1:length(unique(chrd1[["target"]]))], # nolint
-        transparency = 0.25,
-        directional = 1,
-        direction.type = c("arrows", "diffHeight"),
-        diffHeight  = -0.04,
-        annotationTrack = "grid",
-        annotationTrackHeight = c(0.05, 0.1),
-        link.arr.type = "big.arrow",
-        link.sort = TRUE,
-        link.largest.ontop = TRUE
-      )
-      circlize::circos.trackPlotRegion(
-        track.index = 1,
-        bg.border = NA,
-        panel.fun = function(x, y) {
-          xlim <- circlize::get.cell.meta.data("xlim")
-          sector_index <- circlize::get.cell.meta.data("sector.index")
-          circlize::circos.text(
-            x = mean(xlim),
-            y = fd1,
-            labels = sector_index,
-            facing = "bending",
-            cex = fs1
-          )
-        }
-      )
-      dev.off()
+  ## Compare between treatments
+  if(cc_type == "comp") { # nolint
+    ## Subset by pathway, source, or target
+    if(!is.null(sel_pw)) { # nolint
+      chrd1 <- chrd1[chrd1[["pathway_name"]] == sel_pw, ]
     }
-    # Comparison between two datasets
-    if(cc_type == "comp") { # nolint
-      # calculate differences in interactions between groups
-      ## add fold change column
-      cc_comp <- chrd1[chrd1[["pathway_name"]] == pw_sel, ]
+    if(!is.null(sel_src) && is.null(sel_tar)) { # nolint
+      chrd1 <- chrd1[chrd1[["source"]] %in% sel_src, ]
+    }
+    if(!is.null(sel_tar) && is.null(sel_src)) { # nolint
+      chrd1 <- chrd1[chrd1[["target"]] %in% sel_tar, ]
+    }
+    if(!is.null(sel_tar) && !is.null(sel_src)) { # nolint
+      chrd1 <- chrd1[
+        chrd1[["target"]] %in% sel_tar &
+          chrd1[["source"]] %in% sel_src,
+      ]
+    }
+
+    # calculate ratio column
+    ## add fold change column
+    if(spl_pw == TRUE) { # nolint
       cc_comp2 <- dplyr::count(
-        cc_comp,
-        .data[[g_name]], # nolint
+        chrd1,
+        .data[[col_g]], # nolint
         source, # nolint
-        target # nolint
+        target, # nolint
+        pathway_name # nolint
       )
       cc_comp3 <- reshape2::dcast(
         cc_comp2,
-        source + target ~ cc_comp2[[g_name]], value.var = "n"
+        source + target + pathway_name ~ cc_comp2[[col_g]], value.var = "n"
       )
       cc_comp3[is.na(cc_comp3)] <- 0
-      cc_comp3[["ratio"]] <- cc_comp3[[3]] / (cc_comp3[[3]] + cc_comp3[[4]])
-      cc_comp <- dplyr::left_join(
-        cc_comp,
-        cc_comp3[, c("source", "target", "ratio")],
-        by = c("source", "target")
-      )
-      write.table(
-        cc_comp,
-        "analysis/table.cellchat.LR.IL1.compare.txt",
-        col.names = TRUE,
-        row.names = FALSE,
-        sep = "\t"
-      )
-      cc_plot <- cc_comp[, c("source", "target", "Group")]
-      # color schemes
-      col_fun <- circlize::colorRamp2(
-        c(min(cc_comp[["ratio"]]), 0.5, max(cc_comp[["ratio"]])),
+      cc_comp3[["ratio"]] <- cc_comp3[[4]] / (cc_comp3[[4]] + cc_comp3[[5]])
+      chrd1 <- cc_comp3[, c("source", "target", "ratio", "pathway_name")]
+      # color schemes and grouping
+      nm1 <- sort(unique(chrd1[["pathway_name"]]))
+      g1 <- structure(chrd1[["pathway_name"]], names = nm1)
+      col2 <- circlize::colorRamp2(
+        c(min(chrd1[["ratio"]]), 0.5, max(chrd1[["ratio"]])),
         c("dodgerblue3", "white", "firebrick2"),
         transparency = 0.25
       )
-      grid_col <- setNames(
+      col1 <- setNames(
         col_univ()[ # nolint
           1:( # nolint
             length(unique(c(
-              as.character(cc_comp[["target"]]),
-              as.character(cc_comp[["source"]])
+              as.character(chrd1[["target"]]),
+              as.character(chrd1[["source"]])
             )))
           )
         ],
         gtools::mixedsort(
           unique(c(
-            as.character(cc_comp[["target"]]),
-            as.character(cc_comp[["source"]])
+            as.character(chrd1[["target"]]),
+            as.character(chrd1[["source"]])
           ))
         )
       )
+
+      # Plot
       png(
         paste(
           "analysis/",
@@ -384,13 +307,17 @@ col1
         units = "cm"
       )
       circlize::chordDiagram(
-        x = cc_plot,
-        grid.col = grid_col, # nolint
-        col = ifelse(
-          cc_plot[[g_name]] == unique(cc_plot[[g_name]])[[1]],
-          col_univ()[[1]], # nolint
-          col_univ()[[2]]
+        x = chrd1,
+        grid.col = col1, # nolint
+        col = col2,
+        group = g1,
+        order = gtools::mixedsort(
+          unique(c(
+            as.character(chrd1[["target"]]),
+            as.character(chrd1[["source"]])
+          ))
         ),
+        transparency = 0.25,
         directional = 1,
         direction.type = c("arrows", "diffHeight"),
         diffHeight  = -0.04,
@@ -416,10 +343,108 @@ col1
         }
       )
       lgd <- ComplexHeatmap::Legend(
-        at = unique(cc_plot[[g_name]]),
-        type = "grid",
-        legend_gp = grid::gpar(fill = col_univ()), # nolint
-        title = "Group"
+        col_fun = col2,
+        title = "L-R Interaction Ratio"
+      )
+      ComplexHeatmap::draw(
+        lgd,
+        x = grid::unit(1, "npc") - grid::unit(lgx, "mm"), # nolint
+        y = grid::unit(lgy, "mm"),
+        just = c("right", "bottom")
+      )
+      circlize::circos.clear()
+      text(-0, 1.02, title2, cex = 1)
+      dev.off()
+    }
+
+    if(spl_pw == FALSE) { # nolint
+      cc_comp2 <- dplyr::count(
+        chrd1,
+        .data[[col_g]], # nolint
+        source, # nolint
+        target # nolint
+      )
+      cc_comp3 <- reshape2::dcast(
+        cc_comp2,
+        source + target ~ cc_comp2[[col_g]], value.var = "n"
+      )
+      cc_comp3[is.na(cc_comp3)] <- 0
+      cc_comp3[["ratio"]] <- cc_comp3[[3]] / (cc_comp3[[3]] + cc_comp3[[4]])
+      chrd1 <- cc_comp3[, c("source", "target", "ratio")]
+      # color schemes
+      col2 <- circlize::colorRamp2(
+        c(min(chrd1[["ratio"]]), 0.5, max(chrd1[["ratio"]])),
+        c("dodgerblue3", "white", "firebrick2"),
+        transparency = 0.25
+      )
+      col1 <- setNames(
+        col_univ()[ # nolint
+          1:( # nolint
+            length(unique(c(
+              as.character(chrd1[["target"]]),
+              as.character(chrd1[["source"]])
+            )))
+          )
+        ],
+        gtools::mixedsort(
+          unique(c(
+            as.character(chrd1[["target"]]),
+            as.character(chrd1[["source"]])
+          ))
+        )
+      )
+
+      # Plot
+      png(
+        paste(
+          "analysis/",
+          title1,
+          ".png",
+          sep = ""
+        ),
+        width = pw,
+        height = ph,
+        res = 1200,
+        units = "cm"
+      )
+      circlize::chordDiagram(
+        x = chrd1,
+        grid.col = col1, # nolint
+        col = col2,
+        order = gtools::mixedsort(
+          unique(c(
+            as.character(chrd1[["target"]]),
+            as.character(chrd1[["source"]])
+          ))
+        ),
+        transparency = 0.25,
+        directional = 1,
+        direction.type = c("arrows", "diffHeight"),
+        diffHeight  = -0.04,
+        annotationTrack = "grid",
+        annotationTrackHeight = c(0.05, 0.1),
+        link.arr.type = "big.arrow",
+        link.sort = TRUE,
+        link.largest.ontop = TRUE
+      )
+      circlize::circos.trackPlotRegion(
+        track.index = 1,
+        bg.border = NA,
+        panel.fun = function(x, y) {
+          xlim <- circlize::get.cell.meta.data("xlim")
+          sector_index <- circlize::get.cell.meta.data("sector.index")
+          circlize::circos.text(
+            x = mean(xlim),
+            y = fd1,
+            labels = sector_index,
+            facing = "bending",
+            cex = fs1
+          )
+        }
+      )
+      lgd <- ComplexHeatmap::Legend(
+        col_fun = col2,
+        title = "L-R Interaction Ratio"
       )
       ComplexHeatmap::draw(
         lgd,

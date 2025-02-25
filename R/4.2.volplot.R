@@ -7,6 +7,7 @@
 #' @param ct A character string pattern for matching to specific cell types.
 #' @param comp_name Comparison name, provided as a character string.
 #' @param gene_name Column name containing gene or motif names.
+#' @param filt_lab (optional) Select labels to include on plot.
 #' @param diff_col Column name containing effect size.
 #' @param p_col Column name containing adjust p-values.
 #' @param p_cut Numeric value for p-value cutoff to indicate significance.
@@ -22,6 +23,7 @@
 #' #   ct = "1.Secretory",
 #' #   comp_name = "KO vs. Control",
 #' #   gene_name = "gene",
+#' #   filt_lab = grepl("NKX|FOXA", diff.output.activity[["gene"]]),
 #' #   diff_col = "avg_diff",
 #' #   p_col = "p_val_adj",
 #' #   p_cut = 0.005,
@@ -37,6 +39,7 @@ sc_volcano <- function(
   ct,
   comp_name,
   gene_name,
+  filt_lab = NULL,
   diff_col,
   p_col,
   p_cut,
@@ -45,164 +48,314 @@ sc_volcano <- function(
   y_limit,
   x_title
 ) {
-  if(missing(ct) == TRUE && class(l_deg) == "data.frame") { # nolint
-    ld <- l_deg
-    # Plot function
-    v <- EnhancedVolcano::EnhancedVolcano(
-      ld,
-      lab = ld[[gene_name]],
-      subtitle = ggplot2::element_blank(),
-      caption = ggplot2::element_blank(),
-      x = diff_col,
-      y = p_col,
-      pCutoff = p_cut,
-      FCcutoff = f_cut,
-      cutoffLineType = "twodash",
-      legendLabels = c("NS", "Fold Change",
-                       "p-value", "FC+P"),
-      legendLabSize = 12,
-      labFace = "bold",
-      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
-      colAlpha = 0.6,
-      legendIconSize = 4,
-      pointSize = 2,
-      border = "full",
-      borderWidth = 1.5,
-      legendPosition = "'right'",
-      labSize = 3,
-      drawConnectors = TRUE,
-      typeConnectors = "open",
-      widthConnectors = 0.35,
-      colConnectors = "grey75",
-      max.overlaps = 18,
-      min.segment.length = ggplot2::unit(
-        1,
-        "mm"
-      )
-    ) +
-      sc_theme1() + # nolint
-      ggplot2::labs(
-        color = "Key",
-        x = x_title,
-        y = paste("-log10 P-value (FDR)")
-      ) +
-      ggplot2::ggtitle(
-        paste(
-          comp_name,
-          sep = " "
+  if(is.null(filt_lab) == TRUE) { # nolint
+    if(missing(ct) == TRUE && class(l_deg) == "data.frame") { # nolint
+      ld <- l_deg
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.6,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        widthConnectors = 0.35,
+        colConnectors = "grey75",
+        max.overlaps = 18,
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
         )
       ) +
-      ggplot2::theme(
-        plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")
+        sc_theme1() + # nolint
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::ggtitle(
+          paste(
+            comp_name,
+            sep = " "
+          )
+        ) +
+        ggplot2::theme(
+          plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")
+        ) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(
+          breaks = seq(-f_lim, f_lim, (f_lim / 4))
+        )
+    }
+    if(missing(ct) == FALSE && class(l_deg) == "data.frame") { # nolint
+      # Subset Input data
+      ld <- l_deg
+      ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        title = ggplot2::element_blank(),
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.7,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
+        )
       ) +
-      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
-                               ylim = c(0, y_limit)) +
-      ggplot2::scale_x_continuous(
-        breaks = seq(-f_lim, f_lim, (f_lim / 4))
-      )
-  }
-
-  if(missing(ct) == FALSE && class(l_deg) == "data.frame") { # nolint
-    # Subset Input data
-    ld <- l_deg
-    ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
-
-    # Plot function
-    v <- EnhancedVolcano::EnhancedVolcano(
-      ld,
-      lab = ld[[gene_name]],
-      title = ggplot2::element_blank(),
-      subtitle = ggplot2::element_blank(),
-      caption = ggplot2::element_blank(),
-      x = diff_col,
-      y = p_col,
-      pCutoff = p_cut,
-      FCcutoff = f_cut,
-      cutoffLineType = "twodash",
-      legendLabels = c("NS", "Fold Change",
-                       "p-value", "FC+P"),
-      legendLabSize = 12,
-      labFace = "bold",
-      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
-      colAlpha = 0.7,
-      legendIconSize = 4,
-      pointSize = 2,
-      border = "full",
-      borderWidth = 1.5,
-      legendPosition = "'right'",
-      labSize = 3,
-      drawConnectors = TRUE,
-      typeConnectors = "open",
-      min.segment.length = ggplot2::unit(
-        1,
-        "mm"
-      )
-    ) +
-      sc_theme1() + # nolint
-      ggplot2::labs(color = "Key") +
-      ggplot2::labs(
-        color = "Key",
-        x = x_title,
-        y = paste("-log10 P-value (FDR)")
+        sc_theme1() + # nolint
+        ggplot2::labs(color = "Key") +
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
+    }
+    if(missing(ct) == FALSE && class(l_deg) == "list") { # nolint
+      # Subset Input data
+      ld <- l_deg[[1]]
+      ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        title = ggplot2::element_blank(),
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.7,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        max.overlaps = 18,
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
+        )
       ) +
-      ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
-      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
-                               ylim = c(0, y_limit)) +
-      ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
-
+        sc_theme1() + # nolint
+        ggplot2::labs(color = "Key") +
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
+    }
   }
-
-  if(missing(ct) == FALSE && class(l_deg) == "list") { # nolint
-    # Subset Input data
-    ld <- l_deg[[1]]
-    ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
-
-    # Plot function
-    v <- EnhancedVolcano::EnhancedVolcano(
-      ld,
-      lab = ld[[gene_name]],
-      title = ggplot2::element_blank(),
-      subtitle = ggplot2::element_blank(),
-      caption = ggplot2::element_blank(),
-      x = diff_col,
-      y = p_col,
-      pCutoff = p_cut,
-      FCcutoff = f_cut,
-      cutoffLineType = "twodash",
-      legendLabels = c("NS", "Fold Change",
-                       "p-value", "FC+P"),
-      legendLabSize = 12,
-      labFace = "bold",
-      col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
-      colAlpha = 0.7,
-      legendIconSize = 4,
-      pointSize = 2,
-      border = "full",
-      borderWidth = 1.5,
-      legendPosition = "'right'",
-      labSize = 3,
-      drawConnectors = TRUE,
-      typeConnectors = "open",
-      max.overlaps = 18,
-      min.segment.length = ggplot2::unit(
-        1,
-        "mm"
-      )
-    ) +
-      sc_theme1() + # nolint
-      ggplot2::labs(color = "Key") +
-      ggplot2::labs(
-        color = "Key",
-        x = x_title,
-        y = paste("-log10 P-value (FDR)")
+  if(is.null(filt_lab) == FALSE) { # nolint
+    if(missing(ct) == TRUE && class(l_deg) == "data.frame") { # nolint
+      ld <- l_deg
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        selectLab = filt_lab,
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.6,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        widthConnectors = 0.35,
+        colConnectors = "grey75",
+        max.overlaps = 18,
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
+        )
       ) +
-      ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
-      ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
-                               ylim = c(0, y_limit)) +
-      ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
-
+        sc_theme1() + # nolint
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::ggtitle(
+          paste(
+            comp_name,
+            sep = " "
+          )
+        ) +
+        ggplot2::theme(
+          plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")
+        ) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(
+          breaks = seq(-f_lim, f_lim, (f_lim / 4))
+        )
+    }
+    if(missing(ct) == FALSE && class(l_deg) == "data.frame") { # nolint
+      # Subset Input data
+      ld <- l_deg
+      ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        selectLab = filt_lab,
+        title = ggplot2::element_blank(),
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.7,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
+        )
+      ) +
+        sc_theme1() + # nolint
+        ggplot2::labs(color = "Key") +
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
+    }
+    if(missing(ct) == FALSE && class(l_deg) == "list") { # nolint
+      # Subset Input data
+      ld <- l_deg[[1]]
+      ld <- ld[ld[["CellType"]] == ct & ld[["Comparison"]] == comp_name, ]
+      # Plot function
+      v <- EnhancedVolcano::EnhancedVolcano(
+        ld,
+        lab = ld[[gene_name]],
+        selectLab = filt_lab,
+        title = ggplot2::element_blank(),
+        subtitle = ggplot2::element_blank(),
+        caption = ggplot2::element_blank(),
+        x = diff_col,
+        y = p_col,
+        pCutoff = p_cut,
+        FCcutoff = f_cut,
+        cutoffLineType = "twodash",
+        legendLabels = c("NS", "Fold Change",
+                         "p-value", "FC+P"),
+        legendLabSize = 12,
+        labFace = "bold",
+        col = ggsci::pal_npg("nrc")(10)[c(4, 3, 5, 8)],
+        colAlpha = 0.7,
+        legendIconSize = 4,
+        pointSize = 2,
+        border = "full",
+        borderWidth = 1.5,
+        legendPosition = "'right'",
+        labSize = 4,
+        drawConnectors = TRUE,
+        typeConnectors = "open",
+        max.overlaps = 18,
+        min.segment.length = ggplot2::unit(
+          1,
+          "mm"
+        )
+      ) +
+        sc_theme1() + # nolint
+        ggplot2::labs(color = "Key") +
+        ggplot2::labs(
+          color = "Key",
+          x = x_title,
+          y = paste("-log10 P-value (FDR)")
+        ) +
+        ggplot2::theme(plot.margin = ggplot2::unit(c(.2, .2, .2, .2), "cm")) +
+        ggplot2::coord_cartesian(xlim = c(-f_lim, f_lim),
+                                 ylim = c(0, y_limit)) +
+        ggplot2::scale_x_continuous(breaks = seq(-f_lim, f_lim, (f_lim / 4)))
+    }
   }
-
   return(v)
-
 }

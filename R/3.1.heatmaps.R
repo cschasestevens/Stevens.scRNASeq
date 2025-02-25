@@ -1306,7 +1306,10 @@ sc_top10_deg_dotplot <- function( # nolint
 #' differential activity analysis result.
 #'
 #' @param so An object of class Seurat.
-#' @param mot_m Character string providing the name of the assay to use.
+#' @param mot_m Differential activity results object.
+#' @param mot_list (optional) A vector of motif names to plot on the
+#' heatmap. Note that supplying a list will override filtering based
+#' on the top n motifs for a specified activity results object.
 #' @param filt_ct Logical indicating whether the data should
 #' be filtered based on cell type
 #' @param ct_name Character string containing the cell type name to filter.
@@ -1314,6 +1317,9 @@ sc_top10_deg_dotplot <- function( # nolint
 #' of the clustering variable.
 #' @param split_var Logical indicating whether the cluster variable
 #' should be stratified by additional group variables.
+#' @param inc_var Logical indicating whether two separate clustering variables
+#' should be plotted in a single figure (useful for comparing summarized and
+#' split expression together). Uses list_var if TRUE.
 #' @param list_var (Optional) A vector of character strings
 #' indicating the name(s) of up to two group variables
 #' for stratifying plot points.
@@ -1323,6 +1329,8 @@ sc_top10_deg_dotplot <- function( # nolint
 #' @param h_h Numeric value for heatmap height (passed to ComplexHeatmap).
 #' @param fs_c Numeric value for column fontsize (passed to ComplexHeatmap).
 #' @param fs_r Numeric value for row fontsize (passed to ComplexHeatmap).
+#' @param cl_c Cluster columns?
+#' @param cl_r Cluster rows?
 #' @param col1 Gradient color scheme to use.
 #' @return A ComplexHeatmap object containing a top motif heatmap.
 #' @examples
@@ -1360,17 +1368,23 @@ sc_top10_deg_dotplot <- function( # nolint
 sc_top_motif_heatmap <- function( # nolint
   so,
   mot_m,
-  filt_ct,
-  ct_name,
-  cl_var,
-  split_var,
-  list_var,
-  top_n,
-  h_w,
-  h_h,
-  fs_c,
-  fs_r,
-  col1
+  mot_list = NULL,
+  filt_ct = FALSE,
+  ct_name = NULL,
+  cl_var = NULL,
+  split_var = FALSE,
+  inc_var = FALSE,
+  list_var = NULL,
+  top_n = 10,
+  ord1 = FALSE,
+  ord_c = NULL,
+  h_w = 44,
+  h_h = 14,
+  fs_c = 10,
+  fs_r = 10,
+  cl_c = TRUE,
+  cl_r = TRUE,
+  col1 = col_grad # nolint
 ) {
   d <- so
   Seurat::DefaultAssay(d) <- "chromvar"
@@ -1380,380 +1394,861 @@ sc_top_motif_heatmap <- function( # nolint
   if(class(d_mark[["cluster"]]) == "character") { # nolint
     d_mark <- d_mark[gtools::mixedorder(d_mark[["cluster"]]), ]
   }
-  if(filt_ct == TRUE) { # nolint
-    d_mark <- dplyr::bind_rows(setNames(
-      lapply(
-        seq.int(1, length(unique(d_mark[["gene"]])), 1),
-        function(x) {
-          d1 <- d_mark[
-            d_mark[["gene"]] == unique(d_mark[["gene"]])[[x]] &
-              d_mark[["avg_diff"]] > 0,
-          ]
-          d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
-          d1 <- d1[1, ]
-          return(d1)
-        }
-      ),
-      c(unique(d_mark[["gene"]]))
-    ))
-    d_mark <- d_mark[
-      d_mark[["cluster"]] == ct_name &
-        !is.na(d_mark[["cluster"]]),
-    ]
-    d_mark[["ID"]] <- gsub(
-      "^([^.]*\\.)|\\..*",
-      "\\1",
-      d_mark[["ID"]]
-    )
-    #### Save table
-    write.table(
-      d_mark,
-      paste(
-        "analysis/table.diff.active.motifs.",
-        ct_name,
-        ".txt",
-        sep = ""
-      ),
-      row.names = FALSE,
-      col.names = TRUE,
-      sep = "\t"
-    )
-  }
 
-  if(filt_ct == FALSE) { # nolint
-    d_mark <- dplyr::group_by(
-      d_mark,
-      .data[["cluster"]] # nolint
-    )
-
-    ## Top motifs per cluster (by p value then by fold change)
-    d_mark <- dplyr::slice_max(
-      d_mark[d_mark[["avg_diff"]] > 0 & d_mark[["p_val_adj"]] < 0.05, ],
-      order_by = -.data[["p_val_adj"]], # nolint
-      n = 100
-    )[, c(
-      "gene",
-      "ID",
-      "cluster",
-      "avg_diff",
-      "p_val_adj"
-    )
-    ]
-
-    d_mark <- dplyr::group_by(
-      d_mark,
-      .data[["cluster"]] # nolint
-    )
-
-    d_mark <- dplyr::slice_max(
-      d_mark,
-      order_by = .data[["avg_diff"]], # nolint
-      n = top_n
-    )[, c(
-      "gene",
-      "ID",
-      "cluster"
-    )
-    ]
-    d_mark[["ID"]] <- gsub(
-      "^([^.]*\\.)|\\..*",
-      "\\1",
-      d_mark[["ID"]]
-    )
-
-    #### Save table
-    write.table(
-      d_mark,
-      paste(
-        "analysis/table.marker.motifs.Top",
-        paste(as.character(top_n)),
-        ".txt",
-        sep = ""
-      ),
-      row.names = FALSE,
-      col.names = TRUE,
-      sep = "\t"
-    )
-  }
-
-  ### Subset seurat and scale
-  ## select genes from Seurat object
-  if(split_var == TRUE) { # nolint
-    h <- SeuratObject::FetchData(
-      d,
-      vars = c(
-        cl_var,
-        list_var,
-        unique(
-          d_mark[["ID"]]
+  if(!is.null(mot_list)) { # nolint
+    if(filt_ct == TRUE) { # nolint
+      d_mark <- dplyr::bind_rows(setNames(
+        lapply(
+          seq.int(1, length(unique(d_mark[["gene"]])), 1),
+          function(x) {
+            d1 <- d_mark[
+              d_mark[["gene"]] == unique(d_mark[["gene"]])[[x]] &
+                d_mark[["avg_diff"]] > 0,
+            ]
+            d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
+            d1 <- d1[1, ]
+            return(d1)
+          }
+        ),
+        c(unique(d_mark[["gene"]]))
+      ))
+      d_mark <- d_mark[
+        d_mark[["cluster"]] == ct_name &
+          !is.na(d_mark[["cluster"]]),
+      ]
+      d_mark[["ID"]] <- gsub(
+        "^([^.]*\\.)|\\..*",
+        "\\1",
+        d_mark[["ID"]]
+      )
+      #### Save table
+      write.table(
+        d_mark,
+        paste(
+          "analysis/table.diff.active.motifs.",
+          ct_name,
+          ".txt",
+          sep = ""
+        ),
+        row.names = FALSE,
+        col.names = TRUE,
+        sep = "\t"
+      )
+    }
+    if(filt_ct == FALSE) { # nolint
+      d_mark[["ID"]] <- gsub(
+        "^([^.]*\\.)|\\..*",
+        "\\1",
+        d_mark[["ID"]]
+      )
+      mot_l <- gsub(
+        "^([^.]*\\.)|\\..*",
+        "\\1",
+        l1[["ID"]]
+      )
+    }
+    ### Subset seurat and scale
+    ## select motifs from Seurat object
+    if(split_var == TRUE && ord1 == FALSE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          mot_l
         )
       )
-    )
-  }
-  if(split_var == FALSE) { # nolint
-    h <- SeuratObject::FetchData(
-      d,
-      vars = c(
-        cl_var,
-        unique(
-          d_mark[["ID"]]
+    }
+    if(split_var == FALSE && ord1 == FALSE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          mot_l
         )
       )
-    )
-  }
-  if(split_var == TRUE && length(list_var) == 2) { # nolint
-    h_in <- scale(
-      as.matrix(
-        magrittr::set_rownames(
-          setNames(
-            as.data.frame(
-              lapply(
-                h[, 4:ncol(
-                  h
-                )
-                ],
-                function(x) {
-                  dplyr::select(
-                    aggregate(
-                      x,
-                      list(
-                        h[, 1],
-                        h[, 2],
-                        h[, 3]
-                      ),
-                      FUN = mean
-                    ),
-                    c(4)
-                  )
-                }
-              )
-            ),
-            names(h[, 4:ncol(h)])
-          ),
-          paste(
-            aggregate(
-              h[, 4],
-              list(
-                h[, 1],
-                h[, 2],
-                h[, 3]
-              ),
-              FUN = mean
-            )[[1]],
-            aggregate(
-              h[, 4],
-              list(
-                h[, 1],
-                h[, 2],
-                h[, 3]
-              ),
-              FUN = mean
-            )[[2]],
-            aggregate(
-              h[, 4],
-              list(
-                h[, 1],
-                h[, 2],
-                h[, 3]
-              ),
-              FUN = mean
-            )[[3]],
-            sep = "."
-          )
+    }
+    if(split_var == TRUE && ord1 == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          ord_c
         )
-      ),
-      center = TRUE
-    )
-  }
-  if(split_var == TRUE && length(list_var) < 2) { # nolint
-    h_in <- scale(
-      as.matrix(
-        magrittr::set_rownames(
-          setNames(
-            as.data.frame(
-              lapply(
-                h[, 3:ncol(
-                  h
-                )
-                ],
-                function(x) {
-                  dplyr::select(
-                    aggregate(
-                      x,
-                      list(
-                        h[, 1],
-                        h[, 2]
-                      ),
-                      FUN = mean
-                    ),
-                    c(3)
-                  )
-                }
-              )
-            ),
-            names(h[, 3:ncol(h)])
-          ),
-          paste(
-            aggregate(
-              h[, 3],
-              list(
-                h[, 1],
-                h[, 2]
-              ),
-              FUN = mean
-            )[[1]],
-            aggregate(
-              h[, 3],
-              list(
-                h[, 1],
-                h[, 2]
-              ),
-              FUN = mean
-            )[[2]],
-            sep = "."
-          )
-        )
-      ),
-      center = TRUE
-    )
-  }
-  if(split_var == FALSE) { # nolint
-    h_in <- scale(
-      as.matrix(
-        magrittr::set_rownames(
-          setNames(
-            as.data.frame(
-              lapply(
-                h[, 2:ncol(
-                  h
-                )
-                ],
-                function(x) {
-                  dplyr::select(
-                    aggregate(
-                      x,
-                      list(
-                        h[, 1]
-                      ),
-                      FUN = mean
-                    ),
-                    c(2)
-                  )
-                }
-              )
-            ),
-            names(h[, 2:ncol(h)])
-          ),
-          levels(h[, 1])
-        )
-      ),
-      center = TRUE
-    )
-  }
-
-
-  qs <- quantile(
-    h_in,
-    probs = c(
-      0.05,
-      0.95
-    ),
-    na.rm = TRUE
-  )
-
-  h_in <- as.matrix(
-    as.data.frame(h_in)[, unlist(
-      lapply(
-        seq.int(1, ncol(as.data.frame(h_in)), 1),
-        function(x) !anyNA(as.data.frame(h_in)[x])
       )
-    )
-    ]
-  )
-
-  if(split_var == TRUE && length(list_var) == 2) { # nolint
-    h_in <- h_in[
-      gtools::mixedsort(
-        unique(
-          paste(
-            h[["CellType"]],
-            h[[list_var[[1]]]], # nolint
-            h[[list_var[[2]]]],
-            sep = "."
-          )
+    }
+    if(split_var == FALSE && ord1 == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          ord_c
         )
-      ),
-    ]
-  }
-  if(split_var == TRUE && length(list_var) < 2) { # nolint
-    h_in <- h_in[
-      gtools::mixedsort(
-        unique(
-          paste(
-            h[["CellType"]],
-            h[[list_var[[1]]]], # nolint
-            sep = "."
-          )
+      )
+    }
+    if(split_var == FALSE && inc_var == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          mot_l
         )
-      ),
-    ]
-  }
-
-  tf_names <- data.frame("ID" = colnames(h_in))
-  tf_names <- dplyr::left_join(
-    tf_names,
-    unique(d_mark[, c("ID", "gene")]),
-    by = "ID"
-  )
-  colnames(h_in) <- tf_names[["gene"]]
-
-  fun_hm_col <- circlize::colorRamp2(
-    c(
-      qs[[1]],
-      (qs[[1]]) / 2,
-      (qs[[2]]) / 2,
-      qs[[2]]
-    ),
-    colors = col1
-  )
-  # Create Plot
-  if(filt_ct == TRUE) { # nolint
-    # Plot
-    h_out <- ComplexHeatmap::Heatmap(
+      )
+    }
+    if(split_var == TRUE && length(list_var) == 2) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 4:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1],
+                          h[, 2],
+                          h[, 3]
+                        ),
+                        FUN = mean
+                      ),
+                      c(4)
+                    )
+                  }
+                )
+              ),
+              names(h[, 4:ncol(h)])
+            ),
+            paste(
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[1]],
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[2]],
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[3]],
+              sep = "."
+            )
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == TRUE && length(list_var) < 2) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 3:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1],
+                          h[, 2]
+                        ),
+                        FUN = mean
+                      ),
+                      c(3)
+                    )
+                  }
+                )
+              ),
+              names(h[, 3:ncol(h)])
+            ),
+            paste(
+              aggregate(
+                h[, 3],
+                list(
+                  h[, 1],
+                  h[, 2]
+                ),
+                FUN = mean
+              )[[1]],
+              aggregate(
+                h[, 3],
+                list(
+                  h[, 1],
+                  h[, 2]
+                ),
+                FUN = mean
+              )[[2]],
+              sep = "."
+            )
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == FALSE && inc_var == FALSE) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 2:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1]
+                        ),
+                        FUN = mean
+                      ),
+                      c(2)
+                    )
+                  }
+                )
+              ),
+              names(h[, 2:ncol(h)])
+            ),
+            levels(h[, 1])
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == FALSE && inc_var == TRUE) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              rbind(
+                as.data.frame(
+                  lapply(
+                    h[, 3:ncol(
+                      h
+                    )
+                    ],
+                    function(x) {
+                      dplyr::select(
+                        aggregate(
+                          x,
+                          list(
+                            h[, 2]
+                          ),
+                          FUN = mean
+                        ),
+                        c(2)
+                      )
+                    }
+                  )
+                ),
+                as.data.frame(
+                  lapply(
+                    h[, 3:ncol(
+                      h
+                    )
+                    ],
+                    function(x) {
+                      dplyr::select(
+                        aggregate(
+                          x,
+                          list(
+                            h[, 1]
+                          ),
+                          FUN = mean
+                        ),
+                        c(2)
+                      )
+                    }
+                  )
+                )
+              ),
+              names(h[, 3:ncol(h)])
+            ),
+            c(levels(as.factor(h[, 2])), levels(h[, 1]))
+          )
+        ),
+        center = TRUE
+      )
+    }
+    qs <- quantile(
       h_in,
-      col = fun_hm_col,
-      name = "Activity Score",
-      show_column_names = TRUE,
-      show_row_names = TRUE,
-      heatmap_width = ggplot2::unit(h_w, "cm"),
-      heatmap_height = ggplot2::unit(h_h, "cm"),
-      column_title = paste("Top Motifs:", ct_name),
-      column_names_rot = 45,
-      column_names_gp = grid::gpar(fontsize = fs_c),
-      row_names_side = "left",
-      row_names_gp = grid::gpar(fontsize = fs_r),
-      cluster_columns = TRUE,
-      cluster_rows = TRUE
+      probs = c(
+        0.05,
+        0.95
+      ),
+      na.rm = TRUE
     )
+    h_in <- as.matrix(
+      as.data.frame(h_in)[, unlist(
+        lapply(
+          seq.int(1, ncol(as.data.frame(h_in)), 1),
+          function(x) !anyNA(as.data.frame(h_in)[x])
+        )
+      )
+      ]
+    )
+    if(split_var == TRUE && length(list_var) == 2) { # nolint
+      h_in <- h_in[
+        gtools::mixedsort(
+          unique(
+            paste(
+              h[["CellType"]],
+              h[[list_var[[1]]]], # nolint
+              h[[list_var[[2]]]],
+              sep = "."
+            )
+          )
+        ),
+      ]
+    }
+    if(split_var == TRUE && length(list_var) < 2) { # nolint
+      h_in <- h_in[
+        gtools::mixedsort(
+          unique(
+            paste(
+              h[["CellType"]],
+              h[[list_var[[1]]]], # nolint
+              sep = "."
+            )
+          )
+        ),
+      ]
+    }
+    tf_names <- data.frame("ID" = colnames(h_in))
+    tf_names <- dplyr::left_join(
+      tf_names,
+      unique(d_mark[, c("ID", "gene")]),
+      by = "ID"
+    )
+    colnames(h_in) <- tf_names[["gene"]]
+    fun_hm_col <- circlize::colorRamp2(
+      c(
+        qs[[1]],
+        (qs[[1]]) / 2,
+        (qs[[2]]) / 2,
+        qs[[2]]
+      ),
+      colors = col1
+    )
+    # Create Plot
+    if(filt_ct == TRUE) { # nolint
+      # Plot
+      h_out <- ComplexHeatmap::Heatmap(
+        h_in,
+        col = fun_hm_col,
+        name = "Activity Score",
+        show_column_names = TRUE,
+        show_row_names = TRUE,
+        heatmap_width = ggplot2::unit(h_w, "cm"),
+        heatmap_height = ggplot2::unit(h_h, "cm"),
+        column_title = paste("Top Motifs:", ct_name),
+        column_names_rot = 45,
+        column_names_gp = grid::gpar(fontsize = fs_c),
+        row_names_side = "left",
+        row_names_gp = grid::gpar(fontsize = fs_r),
+        cluster_columns = cl_c,
+        cluster_rows = cl_r
+      )
+    }
+    if(filt_ct == FALSE) { # nolint
+      h_out <- ComplexHeatmap::Heatmap(
+        h_in,
+        col = fun_hm_col,
+        name = "Activity Score",
+        show_column_names = TRUE,
+        show_row_names = TRUE,
+        heatmap_width = ggplot2::unit(h_w, "cm"),
+        heatmap_height = ggplot2::unit(h_h, "cm"),
+        column_title = paste("Selected TF Motifs"),
+        column_names_rot = 45,
+        column_names_gp = grid::gpar(fontsize = fs_c),
+        row_names_side = "left",
+        row_names_gp = grid::gpar(fontsize = fs_r),
+        cluster_columns = cl_c,
+        cluster_rows = cl_r
+      )
+    }
   }
-
-  if(filt_ct == FALSE) { # nolint
-    h_out <- ComplexHeatmap::Heatmap(
+  if(is.null(mot_list)) { # nolint
+    if(filt_ct == TRUE) { # nolint
+      d_mark <- dplyr::bind_rows(setNames(
+        lapply(
+          seq.int(1, length(unique(d_mark[["gene"]])), 1),
+          function(x) {
+            d1 <- d_mark[
+              d_mark[["gene"]] == unique(d_mark[["gene"]])[[x]] &
+                d_mark[["avg_diff"]] > 0,
+            ]
+            d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
+            d1 <- d1[1, ]
+            return(d1)
+          }
+        ),
+        c(unique(d_mark[["gene"]]))
+      ))
+      d_mark <- d_mark[
+        d_mark[["cluster"]] == ct_name &
+          !is.na(d_mark[["cluster"]]),
+      ]
+      d_mark[["ID"]] <- gsub(
+        "^([^.]*\\.)|\\..*",
+        "\\1",
+        d_mark[["ID"]]
+      )
+      #### Save table
+      write.table(
+        d_mark,
+        paste(
+          "analysis/table.diff.active.motifs.",
+          ct_name,
+          ".txt",
+          sep = ""
+        ),
+        row.names = FALSE,
+        col.names = TRUE,
+        sep = "\t"
+      )
+    }
+    if(filt_ct == FALSE) { # nolint
+      d_mark <- dplyr::group_by(
+        d_mark,
+        .data[["cluster"]] # nolint
+      )
+      ## Top motifs per cluster (by p value then by fold change)
+      d_mark <- dplyr::slice_max(
+        d_mark[d_mark[["avg_diff"]] > 0 & d_mark[["p_val_adj"]] < 0.05, ],
+        order_by = -.data[["p_val_adj"]], # nolint
+        n = 100
+      )[, c(
+        "gene",
+        "ID",
+        "cluster",
+        "avg_diff",
+        "p_val_adj"
+      )
+      ]
+      d_mark <- dplyr::group_by(
+        d_mark,
+        .data[["cluster"]] # nolint
+      )
+      d_mark <- dplyr::slice_max(
+        d_mark,
+        order_by = .data[["avg_diff"]], # nolint
+        n = top_n
+      )[, c(
+        "gene",
+        "ID",
+        "cluster"
+      )
+      ]
+      d_mark[["ID"]] <- gsub(
+        "^([^.]*\\.)|\\..*",
+        "\\1",
+        d_mark[["ID"]]
+      )
+      #### Save table
+      write.table(
+        d_mark,
+        paste(
+          "analysis/table.marker.motifs.Top",
+          paste(as.character(top_n)),
+          ".txt",
+          sep = ""
+        ),
+        row.names = FALSE,
+        col.names = TRUE,
+        sep = "\t"
+      )
+    }
+    ### Subset seurat and scale
+    ## select genes from Seurat object
+    if(split_var == TRUE && ord1 == FALSE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          unique(
+            d_mark[["ID"]]
+          )
+        )
+      )
+    }
+    if(split_var == FALSE && ord1 == FALSE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          unique(
+            d_mark[["ID"]]
+          )
+        )
+      )
+    }
+    if(split_var == TRUE && ord1 == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          ord_c
+        )
+      )
+    }
+    if(split_var == FALSE && ord1 == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          ord_c
+        )
+      )
+    }
+    if(split_var == FALSE && inc_var == TRUE) { # nolint
+      h <- SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          list_var,
+          unique(
+            d_mark[["ID"]]
+          )
+        )
+      )
+    }
+    if(split_var == TRUE && length(list_var) == 2) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 4:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1],
+                          h[, 2],
+                          h[, 3]
+                        ),
+                        FUN = mean
+                      ),
+                      c(4)
+                    )
+                  }
+                )
+              ),
+              names(h[, 4:ncol(h)])
+            ),
+            paste(
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[1]],
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[2]],
+              aggregate(
+                h[, 4],
+                list(
+                  h[, 1],
+                  h[, 2],
+                  h[, 3]
+                ),
+                FUN = mean
+              )[[3]],
+              sep = "."
+            )
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == TRUE && length(list_var) < 2) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 3:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1],
+                          h[, 2]
+                        ),
+                        FUN = mean
+                      ),
+                      c(3)
+                    )
+                  }
+                )
+              ),
+              names(h[, 3:ncol(h)])
+            ),
+            paste(
+              aggregate(
+                h[, 3],
+                list(
+                  h[, 1],
+                  h[, 2]
+                ),
+                FUN = mean
+              )[[1]],
+              aggregate(
+                h[, 3],
+                list(
+                  h[, 1],
+                  h[, 2]
+                ),
+                FUN = mean
+              )[[2]],
+              sep = "."
+            )
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == FALSE && inc_var == FALSE) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              as.data.frame(
+                lapply(
+                  h[, 2:ncol(
+                    h
+                  )
+                  ],
+                  function(x) {
+                    dplyr::select(
+                      aggregate(
+                        x,
+                        list(
+                          h[, 1]
+                        ),
+                        FUN = mean
+                      ),
+                      c(2)
+                    )
+                  }
+                )
+              ),
+              names(h[, 2:ncol(h)])
+            ),
+            levels(h[, 1])
+          )
+        ),
+        center = TRUE
+      )
+    }
+    if(split_var == FALSE && inc_var == TRUE) { # nolint
+      h_in <- scale(
+        as.matrix(
+          magrittr::set_rownames(
+            setNames(
+              rbind(
+                as.data.frame(
+                  lapply(
+                    h[, 3:ncol(
+                      h
+                    )
+                    ],
+                    function(x) {
+                      dplyr::select(
+                        aggregate(
+                          x,
+                          list(
+                            h[, 2]
+                          ),
+                          FUN = mean
+                        ),
+                        c(2)
+                      )
+                    }
+                  )
+                ),
+                as.data.frame(
+                  lapply(
+                    h[, 3:ncol(
+                      h
+                    )
+                    ],
+                    function(x) {
+                      dplyr::select(
+                        aggregate(
+                          x,
+                          list(
+                            h[, 1]
+                          ),
+                          FUN = mean
+                        ),
+                        c(2)
+                      )
+                    }
+                  )
+                )
+              ),
+              names(h[, 3:ncol(h)])
+            ),
+            c(levels(as.factor(h[, 2])), levels(h[, 1]))
+          )
+        ),
+        center = TRUE
+      )
+    }
+    qs <- quantile(
       h_in,
-      col = fun_hm_col,
-      name = "Activity Score",
-      show_column_names = TRUE,
-      show_row_names = TRUE,
-      heatmap_width = ggplot2::unit(h_w, "cm"),
-      heatmap_height = ggplot2::unit(h_h, "cm"),
-      column_title = paste("Top", top_n, "Motifs"),
-      column_names_rot = 45,
-      column_names_gp = grid::gpar(fontsize = fs_c),
-      row_names_side = "left",
-      row_names_gp = grid::gpar(fontsize = fs_r),
-      cluster_columns = TRUE,
-      cluster_rows = TRUE
+      probs = c(
+        0.05,
+        0.95
+      ),
+      na.rm = TRUE
     )
+    h_in <- as.matrix(
+      as.data.frame(h_in)[, unlist(
+        lapply(
+          seq.int(1, ncol(as.data.frame(h_in)), 1),
+          function(x) !anyNA(as.data.frame(h_in)[x])
+        )
+      )
+      ]
+    )
+    if(split_var == TRUE && length(list_var) == 2) { # nolint
+      h_in <- h_in[
+        gtools::mixedsort(
+          unique(
+            paste(
+              h[["CellType"]],
+              h[[list_var[[1]]]], # nolint
+              h[[list_var[[2]]]],
+              sep = "."
+            )
+          )
+        ),
+      ]
+    }
+    if(split_var == TRUE && length(list_var) < 2) { # nolint
+      h_in <- h_in[
+        gtools::mixedsort(
+          unique(
+            paste(
+              h[["CellType"]],
+              h[[list_var[[1]]]], # nolint
+              sep = "."
+            )
+          )
+        ),
+      ]
+    }
+    tf_names <- data.frame("ID" = colnames(h_in))
+    tf_names <- dplyr::left_join(
+      tf_names,
+      unique(d_mark[, c("ID", "gene")]),
+      by = "ID"
+    )
+    colnames(h_in) <- tf_names[["gene"]]
+    fun_hm_col <- circlize::colorRamp2(
+      c(
+        qs[[1]],
+        (qs[[1]]) / 2,
+        (qs[[2]]) / 2,
+        qs[[2]]
+      ),
+      colors = col1
+    )
+    # Create Plot
+    if(filt_ct == TRUE) { # nolint
+      # Plot
+      h_out <- ComplexHeatmap::Heatmap(
+        h_in,
+        col = fun_hm_col,
+        name = "Activity Score",
+        show_column_names = TRUE,
+        show_row_names = TRUE,
+        heatmap_width = ggplot2::unit(h_w, "cm"),
+        heatmap_height = ggplot2::unit(h_h, "cm"),
+        column_title = paste("Top Motifs:", ct_name),
+        column_names_rot = 45,
+        column_names_gp = grid::gpar(fontsize = fs_c),
+        row_names_side = "left",
+        row_names_gp = grid::gpar(fontsize = fs_r),
+        cluster_columns = cl_c,
+        cluster_rows = cl_r
+      )
+    }
+    if(filt_ct == FALSE) { # nolint
+      h_out <- ComplexHeatmap::Heatmap(
+        h_in,
+        col = fun_hm_col,
+        name = "Activity Score",
+        show_column_names = TRUE,
+        show_row_names = TRUE,
+        heatmap_width = ggplot2::unit(h_w, "cm"),
+        heatmap_height = ggplot2::unit(h_h, "cm"),
+        column_title = paste("Top", top_n, "Motifs"),
+        column_names_rot = 45,
+        column_names_gp = grid::gpar(fontsize = fs_c),
+        row_names_side = "left",
+        row_names_gp = grid::gpar(fontsize = fs_r),
+        cluster_columns = cl_c,
+        cluster_rows = cl_r
+      )
+    }
   }
   return(h_out)
 }
