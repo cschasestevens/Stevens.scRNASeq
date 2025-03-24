@@ -34,7 +34,7 @@
 #' # )
 #'
 #' @export
-sc_volcano <- function(
+sc_volcano <- function( # nolint
   l_deg,
   ct,
   comp_name,
@@ -42,8 +42,8 @@ sc_volcano <- function(
   filt_lab = NULL,
   diff_col,
   p_col,
-  p_cut,
-  f_cut,
+  p_cut = 0.05,
+  f_cut = 0.25,
   f_lim,
   y_limit,
   x_title

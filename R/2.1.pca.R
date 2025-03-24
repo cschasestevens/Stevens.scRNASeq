@@ -48,19 +48,20 @@ sc_pca <- function(
 #' @param so An object of class Seurat.
 #' @param md_list A vector of character strings indicating
 #' metadata columns for overlaying on a loadings plot.
+#' @param red1 Reduction to use for plotting PCA components.
 #' @return A series of loadings plots with specified metadata overlays.
 #' @examples
 #'
-#' # p_pca <- sc_pca_plot(d_integrated,c("col1","col2","col3"))
+#' # p_pca <- sc_pca_plot(d_integrated,c("col1","col2","col3"), "pca_cor")
 #'
 #' @export
-sc_pca_plot <- function(so, md_list) { # nolint
+sc_pca_plot <- function(so, md_list, red1) { # nolint
   # Format input data
   d <- so
   d2 <- data.frame(
     d@meta.data,
-    PC1 = d@reductions$pca@cell.embeddings[, 1],
-    PC2 = d@reductions$pca@cell.embeddings[, 2]
+    PC1 = d@reductions[[red1]]@cell.embeddings[, 1],
+    PC2 = d@reductions[[red1]]@cell.embeddings[, 2]
   )
   # Generate df for each grouping
   d2_list <- setNames(

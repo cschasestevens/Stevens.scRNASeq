@@ -5,6 +5,7 @@
 \title{Top-10 Marker Gene Heatmap (Reclustered)}
 \usage{
 sc_top10_marker_heatmap_rc(
+  title1,
   sorc,
   asy,
   slot1,
@@ -20,6 +21,8 @@ sc_top10_marker_heatmap_rc(
 )
 }
 \arguments{
+\item{title1}{Celltype name to include in output files.}
+
 \item{sorc}{An object of class Seurat.}
 
 \item{asy}{Assay type (either "GEX" or "Mult").}
@@ -56,6 +59,7 @@ marker gene list based on the top-10 marker genes for each cluster.
 \examples{
 
 # p_umap <- sc_top10_marker_heatmap_rc(
+#   "secretory",
 #   d_annotated,
 #   "GEX",
 #   "sct",

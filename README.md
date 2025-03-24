@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v2.2 (20241122)
+# Stevens.scRNASeq v2.3 (20250324)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -99,6 +99,9 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 2.3
+    * Simplified plotting functions with default parameters.
+    * Added batch plotting functions for analyses spanning multiple Seurat objects.
 * 2.2
     * Integration of Cell Chat analysis and chord diagram plotting functions.
     * Revised scATAC-Seq coverage plot functions for greater plotting flexibility.

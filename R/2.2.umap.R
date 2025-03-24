@@ -151,6 +151,7 @@ sc_umap_panel <- function(
 #' individual gene expression per cluster.
 #'
 #' @param so An object of class Seurat.
+#' @param asy1 Assay to use; either "sct" (default) or "chromvar".
 #' @param md_var A character string indicating
 #' the clustering column for overlaying on a UMAP plot.
 #' @param g_name A character string indicating the gene name.
@@ -188,21 +189,23 @@ sc_umap_panel <- function(
 #' @export
 sc_umap_panel_gene <- function(
   so,
+  asy1 = "sct",
   md_var,
   g_name,
   col_scheme,
   col_names,
-  leg_x,
-  leg_y,
+  leg_x = 0.9,
+  leg_y = 0.8,
   slot1,
-  col1,
-  plot_comb,
-  out1
+  col1 = col_grad(),
+  plot_comb = FALSE,
+  out1 = "umap_gex"
 ) {
   # Format input data
   cols <- setNames(col_scheme,
                    col_names)
   d <- so
+  SeuratObject::DefaultAssay(d) <- asy1
   d2 <- data.frame(
     Seurat::FetchData(
       d,
@@ -218,160 +221,474 @@ sc_umap_panel_gene <- function(
     `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
     `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2]
   )
-
-  # Generate plots
-  d2_plot <- ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x=`UMAP.1`, # nolint
-      y=`UMAP.2`, # nolint
-      color = .data[[gsub( # nolint
-        "-",
-        ".",
-        g_name
-      )]]
+  if(asy1 == "chromvar") { # nolint
+    # Add motif names
+    colnames(d2) <- c(
+      name(TFBSTools::getMatrixByID(JASPAR2020, ID = g_name)), # nolint
+      md_var,
+      "UMAP.1", # nolint
+      "UMAP.2" # nolint
     )
-  ) +
-    ggplot2::scale_color_gradientn(
-      name = "Relative Exp.",
-      colors = col1
-    ) +
-    # Add 3D points, axes, and axis-labels
-    ggplot2::geom_point(
-      shape = 16,
-      size = 1,
-      alpha = 0.6
-    ) +
-    ggplot2::ggtitle(g_name) +
-    # Add general multivariate plot theme and adjust axis text
-    sc_theme1() + # nolint
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.title.x = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(),
-      axis.ticks = ggplot2::element_blank(),
-      plot.margin = ggplot2::unit(
-        c(
-          0.1, 0.1, 0.1, 0.1
-        ),
-        "cm"
-      ),
-      legend.position = c(
-        leg_x,
-        leg_y
+    # Generate plots
+    d2_plot <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[ # nolint
+          name(TFBSTools::getMatrixByID(JASPAR2020, ID = g_name)) # nolint
+        ]]
       )
-    )
-  ## Metadata overlay
-  p_md <-  ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x=`UMAP.1`, # nolint
-      y=`UMAP.2`, # nolint
-      color = .data[[md_var]], # nolint
-      label = .data[[md_var]] # nolint
-    )
-  ) +
-    ggplot2::scale_color_manual(
-      paste(""),
-      values = cols
     ) +
-    ggplot2::geom_point(
-      shape = 16,
-      size = 1,
-      alpha = 0.6
-    ) +
-    ggrepel::geom_text_repel(data = setNames(
-      aggregate(
-        d2[, c(
-          "UMAP.1",
-          "UMAP.2"
-        )],
-        list(
-          d2[[md_var]]
+      ggplot2::scale_color_gradientn(
+        name = "Accessibility",
+        colors = col1
+      ) +
+      # Add 3D points, axes, and axis-labels
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggplot2::ggtitle(name(TFBSTools::getMatrixByID(JASPAR2020, ID = g_name))) + # nolint
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
         ),
-        FUN = median
-      ),
-      c(
-        md_var,
-        names(
+        legend.position = c(
+          leg_x,
+          leg_y
+        )
+      )
+    ## Metadata overlay
+    p_md <-  ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[md_var]], # nolint
+        label = .data[[md_var]] # nolint
+      )
+    ) +
+      ggplot2::scale_color_manual(
+        paste(""),
+        values = cols
+      ) +
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggrepel::geom_text_repel(data = setNames(
+        aggregate(
           d2[, c(
             "UMAP.1",
             "UMAP.2"
-          )]
+          )],
+          list(
+            d2[[md_var]]
+          ),
+          FUN = median
+        ),
+        c(
+          md_var,
+          names(
+            d2[, c(
+              "UMAP.1",
+              "UMAP.2"
+            )]
+          )
+        )
+      ),
+      size = 4,
+      bg.color = "white") +
+      ggplot2::ggtitle(md_var) +
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+    ## Violin Plot
+    plot_v <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x = .data[[md_var]], # nolint
+        y = .data[[
+          name(TFBSTools::getMatrixByID(JASPAR2020, ID = g_name)) # nolint
+        ]],
+        fill = .data[[md_var]]
+      )
+    ) +
+      ggplot2::scale_fill_manual(
+        name = md_var,
+        values = col_scheme
+      ) +
+      # Add violin plot and dotplot
+      ggplot2::geom_violin(
+        trim = TRUE
+      ) +
+      ggplot2::geom_jitter(
+        ggplot2::aes(
+          alpha = 0.2
+        ),
+        shape = 16,
+        size = 0.2,
+        position = ggplot2::position_jitter(
+          width = 0.4
+        ),
+        show.legend = FALSE
+      ) +
+      # Add Theme
+      sc_theme1() + # nolint
+      ggplot2::labs(
+        y = "Accessibility"
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(
+          c(
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+  }
+  if(asy1 == "sct") { # nolint
+    # Generate plots
+    d2_plot <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[gsub( # nolint
+          "-",
+          ".",
+          g_name
+        )]]
+      )
+    ) +
+      ggplot2::scale_color_gradientn(
+        name = "Relative Exp.",
+        colors = col1
+      ) +
+      # Add 3D points, axes, and axis-labels
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggplot2::ggtitle(g_name) +
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
+        ),
+        legend.position = c(
+          leg_x,
+          leg_y
         )
       )
-    ),
-    size = 4,
-    bg.color = "white") +
-    ggplot2::ggtitle(md_var) +
-    # Add general multivariate plot theme and adjust axis text
-    sc_theme1() + # nolint
-    ggplot2::theme(
-      panel.grid.major.y = ggplot2::element_blank(),
-      axis.text.x = ggplot2::element_blank(),
-      axis.text.y = ggplot2::element_blank(),
-      axis.title.x = ggplot2::element_blank(),
-      axis.title.y = ggplot2::element_blank(),
-      axis.ticks = ggplot2::element_blank(),
-      plot.margin = ggplot2::unit(
-        c(
-          0.1, 0.1, 0.1, 0.1
-        ),
-        "cm"
-      ),
-      legend.position = "none"
-    )
-  ## Violin Plot
-  plot_v <- ggplot2::ggplot(
-    d2,
-    ggplot2::aes(
-      x = .data[[md_var]], # nolint
-      y = .data[[gsub(
-        "-",
-        ".",
-        g_name
-      )]],
-      fill = .data[[md_var]]
-    )
-  ) +
-    ggplot2::scale_fill_manual(
-      name = md_var,
-      values = col_scheme
-    ) +
-    # Add violin plot and dotplot
-    ggplot2::geom_violin(
-      trim = TRUE
-    ) +
-    ggplot2::geom_jitter(
+    ## Metadata overlay
+    p_md <-  ggplot2::ggplot(
+      d2,
       ggplot2::aes(
-        alpha = 0.2
-      ),
-      shape = 16,
-      size = 0.2,
-      position = ggplot2::position_jitter(
-        width = 0.4
-      ),
-      show.legend = FALSE
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[md_var]], # nolint
+        label = .data[[md_var]] # nolint
+      )
     ) +
-    # Add Theme
-    sc_theme1() + # nolint
-    ggplot2::labs(
-      y = "Relative Expression"
-    ) +
-    ggplot2::theme(
-      plot.margin = ggplot2::unit(
-        c(
-          0.1,
-          0.1,
-          0.1,
-          0.1
+      ggplot2::scale_color_manual(
+        paste(""),
+        values = cols
+      ) +
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggrepel::geom_text_repel(data = setNames(
+        aggregate(
+          d2[, c(
+            "UMAP.1",
+            "UMAP.2"
+          )],
+          list(
+            d2[[md_var]]
+          ),
+          FUN = median
         ),
-        "cm"
+        c(
+          md_var,
+          names(
+            d2[, c(
+              "UMAP.1",
+              "UMAP.2"
+            )]
+          )
+        )
       ),
-      legend.position = "none"
-    )
+      size = 4,
+      bg.color = "white") +
+      ggplot2::ggtitle(md_var) +
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+    ## Violin Plot
+    plot_v <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x = .data[[md_var]], # nolint
+        y = .data[[gsub(
+          "-",
+          ".",
+          g_name
+        )]],
+        fill = .data[[md_var]]
+      )
+    ) +
+      ggplot2::scale_fill_manual(
+        name = md_var,
+        values = col_scheme
+      ) +
+      # Add violin plot and dotplot
+      ggplot2::geom_violin(
+        trim = TRUE
+      ) +
+      ggplot2::geom_jitter(
+        ggplot2::aes(
+          alpha = 0.2
+        ),
+        shape = 16,
+        size = 0.2,
+        position = ggplot2::position_jitter(
+          width = 0.4
+        ),
+        show.legend = FALSE
+      ) +
+      # Add Theme
+      sc_theme1() + # nolint
+      ggplot2::labs(
+        y = "Relative Expression"
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(
+          c(
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+  }
+  if(asy1 == "SCT") { # nolint
+    # Generate plots
+    d2_plot <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[gsub( # nolint
+          "-",
+          ".",
+          g_name
+        )]]
+      )
+    ) +
+      ggplot2::scale_color_gradientn(
+        name = "Relative Exp.",
+        colors = col1
+      ) +
+      # Add 3D points, axes, and axis-labels
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggplot2::ggtitle(g_name) +
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
+        ),
+        legend.position = c(
+          leg_x,
+          leg_y
+        )
+      )
+    ## Metadata overlay
+    p_md <-  ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x=`UMAP.1`, # nolint
+        y=`UMAP.2`, # nolint
+        color = .data[[md_var]], # nolint
+        label = .data[[md_var]] # nolint
+      )
+    ) +
+      ggplot2::scale_color_manual(
+        paste(""),
+        values = cols
+      ) +
+      ggplot2::geom_point(
+        shape = 16,
+        size = 1,
+        alpha = 0.6
+      ) +
+      ggrepel::geom_text_repel(data = setNames(
+        aggregate(
+          d2[, c(
+            "UMAP.1",
+            "UMAP.2"
+          )],
+          list(
+            d2[[md_var]]
+          ),
+          FUN = median
+        ),
+        c(
+          md_var,
+          names(
+            d2[, c(
+              "UMAP.1",
+              "UMAP.2"
+            )]
+          )
+        )
+      ),
+      size = 4,
+      bg.color = "white") +
+      ggplot2::ggtitle(md_var) +
+      # Add general multivariate plot theme and adjust axis text
+      sc_theme1() + # nolint
+      ggplot2::theme(
+        panel.grid.major.y = ggplot2::element_blank(),
+        axis.text.x = ggplot2::element_blank(),
+        axis.text.y = ggplot2::element_blank(),
+        axis.title.x = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        plot.margin = ggplot2::unit(
+          c(
+            0.1, 0.1, 0.1, 0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+    ## Violin Plot
+    plot_v <- ggplot2::ggplot(
+      d2,
+      ggplot2::aes(
+        x = .data[[md_var]], # nolint
+        y = .data[[gsub(
+          "-",
+          ".",
+          g_name
+        )]],
+        fill = .data[[md_var]]
+      )
+    ) +
+      ggplot2::scale_fill_manual(
+        name = md_var,
+        values = col_scheme
+      ) +
+      # Add violin plot and dotplot
+      ggplot2::geom_violin(
+        trim = TRUE
+      ) +
+      ggplot2::geom_jitter(
+        ggplot2::aes(
+          alpha = 0.2
+        ),
+        shape = 16,
+        size = 0.2,
+        position = ggplot2::position_jitter(
+          width = 0.4
+        ),
+        show.legend = FALSE
+      ) +
+      # Add Theme
+      sc_theme1() + # nolint
+      ggplot2::labs(
+        y = "Relative Expression"
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(
+          c(
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ),
+          "cm"
+        ),
+        legend.position = "none"
+      )
+  }
   # Combine output or choose slot
   if(plot_comb == TRUE) { # nolint
     d2_out <- ggpubr::ggarrange(
@@ -758,9 +1075,9 @@ sc_umap_standard <- function(
   so,
   md_var,
   slot1,
-  dims1,
-  col1,
-  pos_leg
+  dims1 = "2D",
+  col1 = col_univ(),
+  pos_leg = "none"
 ) {
   # Format input data
   d <- so

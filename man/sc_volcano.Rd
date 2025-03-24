@@ -9,10 +9,11 @@ sc_volcano(
   ct,
   comp_name,
   gene_name,
+  filt_lab = NULL,
   diff_col,
   p_col,
-  p_cut,
-  f_cut,
+  p_cut = 0.05,
+  f_cut = 0.25,
   f_lim,
   y_limit,
   x_title
@@ -26,6 +27,8 @@ sc_volcano(
 \item{comp_name}{Comparison name, provided as a character string.}
 
 \item{gene_name}{Column name containing gene or motif names.}
+
+\item{filt_lab}{(optional) Select labels to include on plot.}
 
 \item{diff_col}{Column name containing effect size.}
 
@@ -55,6 +58,7 @@ a chosen comparison and/or cell type.
 #   ct = "1.Secretory",
 #   comp_name = "KO vs. Control",
 #   gene_name = "gene",
+#   filt_lab = grepl("NKX|FOXA", diff.output.activity[["gene"]]),
 #   diff_col = "avg_diff",
 #   p_col = "p_val_adj",
 #   p_cut = 0.005,

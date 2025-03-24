@@ -4,7 +4,7 @@
 \alias{sc_atac_motifs}
 \title{Add JASPAR TF Motifs}
 \usage{
-sc_atac_motifs(so, asy1, dref)
+sc_atac_motifs(so, asy1 = "ufy.peaks", dref)
 }
 \arguments{
 \item{so}{An object of class Seurat. Must contain an ATAC assay.}

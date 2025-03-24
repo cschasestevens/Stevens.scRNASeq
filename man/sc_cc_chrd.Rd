@@ -9,16 +9,17 @@ sc_cc_chrd(
   title1,
   title2,
   cc_type,
-  g_name = NULL,
-  pw_sel = NULL,
+  col_g = NULL,
+  sel_pw = NULL,
+  sel_src = NULL,
+  sel_tar = NULL,
+  spl_pw = FALSE,
   pw,
   ph,
   fs1,
   fd1,
   lgx = 0.1,
-  lgy = 0.1,
-  g_ind,
-  list_ct
+  lgy = 0.25
 )
 }
 \arguments{
@@ -30,11 +31,6 @@ sc_cc_chrd(
 "total" plots the total number of interactions between cell types, whereas
 "comp" compares the fold difference between two treatment groups}
 
-\item{g_name}{Group name to split data by if cc_type is "comp."}
-
-\item{pw_sel}{Character string of a pathway to use for filtering the
-provided CellChat object.}
-
 \item{pw}{Plot width (in cm).}
 
 \item{ph}{Plot height (in cm).}
@@ -42,6 +38,11 @@ provided CellChat object.}
 \item{fs1}{Font size (between 0.1 and 1).}
 
 \item{fd1}{Gap between cell type labels and plot (generally between 1 and 3).}
+
+\item{pw_sel}{Character string of a pathway to use for filtering the
+provided CellChat object.}
+
+\item{g_name}{Group name to split data by if cc_type is "comp."}
 }
 \value{
 A chord diagram displaying either pathway or individual
@@ -52,10 +53,12 @@ Creates a chord diagram from a provided CellChat results data frame.
 }
 \examples{
 
-# pchrd <- sc_cc_chrd(
+# sc_cc_chrd(
 #   ccdf = ccm[[1]],
-#   title1 = "CellChat: Total L-R Interactions",
+#   title1 = "plot.cc.LR.sec",
+#   title2 = "L-R Interactions: Secretory",
 #   cc_type = "total",
+#   sel_tar = c("5.Secretory", "16.Secretory"),
 #   pw = 12,
 #   ph = 12,
 #   fs1 = 0.6,

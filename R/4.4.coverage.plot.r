@@ -807,7 +807,7 @@ sc_coverage_plot <- function(
 #' @export
 sc_atac_motifs <- function(
   so,
-  asy1,
+  asy1 = "ufy.peaks",
   dref
 ) {
   library(TFBSTools)
@@ -826,14 +826,12 @@ sc_atac_motifs <- function(
     gene_coords,
     pruning.mode = "coarse"
   )
-
   d1 <- Signac::CreateChromatinAssay(
     counts = dc,
     sep = c("-", "-"),
     verbose = TRUE,
     meta.data = d@meta.data
   )
-
   ## Use CORE, CNE, PBM, PBM_HLH, PHYLOFACTS, POLII, SPLICE, and PBM_HOMEO
   list_clt1 <- c(
     "CORE", "CNE", "PBM", "PBM_HLH",
@@ -854,7 +852,6 @@ sc_atac_motifs <- function(
     ),
     list_clt1
   )
-
   ## Query JASPAR and combine position frequency matrices
   list_pfm <- setNames(
     lapply(
@@ -869,9 +866,7 @@ sc_atac_motifs <- function(
     ),
     list_clt1
   )
-
   list_pfm <- list_pfm[lengths(list_pfm) > 0]
-
   ## 4 JASPAR collections have PFMs
   list_pfm <- c(
     list_pfm[[1]],
@@ -879,14 +874,12 @@ sc_atac_motifs <- function(
     list_pfm[[3]],
     list_pfm[[4]]
   )
-
   ## Add motifs to chromatinassay
   d1 <- Signac::AddMotifs(
     object = d1,
     genome = BSgenome.Hsapiens.UCSC.hg38, # nolint
     pfm = list_pfm,
   )
-
   ## Save motif list
   tf_list <- Signac::GetMotifData(d1)
   tf_list <- data.frame(
@@ -905,11 +898,11 @@ sc_atac_motifs <- function(
     sep = "\t",
     col.names = TRUE,
     row.names = FALSE,
-    file = "analysis/table.motif.names.jaspar2020.txt"
+    file = paste(
+      "analysis/table_motifs_jaspar2020.txt"
+    )
   )
-  saveRDS(d1, "analysis/data.chromassay.wTFmotifs.rds")
   return(d1)
-
 }
 
 #' scATAC-Seq Coverage Plot 2

@@ -3,6 +3,7 @@
 #' Generates a heatmap from a reclustered Seurat Object and
 #' marker gene list based on the top-10 marker genes for each cluster.
 #'
+#' @param title1 Celltype name to include in output files.
 #' @param sorc An object of class Seurat.
 #' @param asy Assay type (either "GEX" or "Mult").
 #' @param slot1 Assay to use from Seurat object subset.
@@ -21,6 +22,7 @@
 #' @examples
 #'
 #' # p_umap <- sc_top10_marker_heatmap_rc(
+#' #   "secretory",
 #' #   d_annotated,
 #' #   "GEX",
 #' #   "sct",
@@ -36,6 +38,7 @@
 #'
 #' @export
 sc_top10_marker_heatmap_rc <- function(
+  title1,
   sorc,
   asy,
   slot1,
@@ -50,26 +53,28 @@ sc_top10_marker_heatmap_rc <- function(
   col1
 ) {
   d <- sorc
-  if(!file.exists("analysis/recluster/table.marker.genes.txt") && asy == "GEX") { # nolint
+  if(asy == "GEX") { # nolint
     print(
-      "No marker gene file has been created;
-      calculating marker genes for each cluster..."
+      "Calculating marker genes for each cluster..."
     )
     Seurat::DefaultAssay(d) <- slot1
     cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
     write.table(
       cl_mark,
-      "analysis/recluster/table.marker.genes.txt",
+      paste(
+        "analysis/t_re",
+        title1,
+        "markers_gex.txt",
+        sep = "_"
+      ),
       col.names = TRUE,
       row.names = FALSE,
       sep = "\t"
     )
   }
-
-  if(!file.exists("analysis/recluster/table.marker.motifs.txt") && asy == "Mult") { # nolint
+  if(asy == "Mult") { # nolint
     print(
-      "No marker motif file has been created;
-      calculating marker motifs for each cluster..."
+      "Calculating marker motifs for each cluster..."
     )
     Seurat::DefaultAssay(d) <- slot1
     cl_mark <- Seurat::FindAllMarkers(
@@ -101,26 +106,15 @@ sc_top10_marker_heatmap_rc <- function(
     )
     write.table(
       cl_mark,
-      "analysis/recluster/table.marker.motifs.txt",
+      paste(
+        "analysis/t_re",
+        title1,
+        "markers_atac.txt",
+        sep = "_"
+      ),
       col.names = TRUE,
       row.names = FALSE,
       sep = "\t"
-    )
-  }
-
-  if(asy == "GEX") { # nolint
-    cl_mark <- read.table(
-      "analysis/recluster/table.marker.genes.txt",
-      sep = "\t",
-      header = TRUE
-    )
-  }
-
-  if(asy == "Mult") { # nolint
-    cl_mark <- read.table(
-      "analysis/recluster/table.marker.motifs.txt",
-      sep = "\t",
-      header = TRUE
     )
   }
   ## Marker gene input matrix (top10 per cell type)
@@ -163,7 +157,12 @@ sc_top10_marker_heatmap_rc <- function(
   if(asy == "GEX") { # nolint
     write.table(
       cl_mark,
-      "analysis/table.marker.genes.top10.txt",
+      paste(
+        "analysis/t_re",
+        title1,
+        "topmarkers_gex.txt",
+        sep = "_"
+      ),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
@@ -173,7 +172,12 @@ sc_top10_marker_heatmap_rc <- function(
   if(asy == "Mult") { # nolint
     write.table(
       cl_mark,
-      "analysis/table.marker.motifs.top10.txt",
+      paste(
+        "analysis/t_re",
+        title1,
+        "topmarkers_atac.txt",
+        sep = "_"
+      ),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
@@ -2453,456 +2457,456 @@ CC.heat.fun <- function(df,ext1) {
 sc_cc_dotp <- function(
 
 ) {
-# 
-# if(split_var == FALSE) { # nolint
-#     d1 <- cbind(
-#       SeuratObject::FetchData(
-#         d,
-#         vars = c(
-#           cl_var,
-#           top10_pres
-#         )
-#       )
-#     )
-#   }
-#   ## Subset based on cell type
-#   d1 <- d1[grepl(c, d1[[cl_var]]), ]
-#   d1[["CellType"]] <- d1[[cl_var]]
-#   ## Count/ratio table for creating dot plots
-#   d1_prc <- dplyr::bind_rows(
-#     setNames(
-#       lapply(
-#         top10_pres,
-#         function(x) {
-#           # Determine average expression of each gene
-#           ## for 2 variables:
-#           if(split_var == TRUE && length(list_var) == 2) { # nolint
-#             ### average expression
-#             d_avg <- setNames(
-#               aggregate(
-#                 d1[[x]],
-#                 by = list(
-#                   d1[,  c("CellType")],
-#                   d1[,  c(list_var[[1]])],
-#                   d1[,  c(list_var[[2]])]
-#                 ),
-#                 function(y) mean(y)
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "avg.exp"
-#               )
-#             )
-#             d_avg[["avg.exp"]] <- round(
-#               d_avg[["avg.exp"]],
-#               digits = 2
-#             )
-#             ### percent expressed
-#             d_prc <- dplyr::count(
-#               d1, .data[["CellType"]], # nolint
-#               .data[[list_var[[1]]]],
-#               .data[[list_var[[2]]]],
-#               .data[[x]] > 0
-#             )
-#             d_prc <- setNames(
-#               dplyr::filter(
-#                 d_prc, d_prc[4] == TRUE
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "pres", "n"
-#               )
-#             )
-#             d_cnt <- setNames(
-#               dplyr::count(
-#                 d1, .data[["CellType"]], # nolint
-#                 .data[[list_var[[1]]]],
-#                 .data[[list_var[[2]]]]
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "n"
-#               )
-#             )
-#             d_comb <- dplyr::left_join(
-#               d_cnt,
-#               d_prc,
-#               by = c(
-#                 "CellType", c(list_var)
-#               )
-#             )
-#             d_comb[is.na(d_comb)] <- 0
-#             d_comb <- dplyr::mutate(
-#               d_comb,
-#               "perc.exp" = round(
-#                 d_comb[["n.y"]] /
-#                   d_comb[["n.x"]],
-#                 digits = 2
-#               )
-#             )
-#             ### combined
-#             d_comb_out <- dplyr::left_join(
-#               d_avg,
-#               d_comb[,
-#                      c(
-#                        "CellType", c(list_var),
-#                        "perc.exp"
-#                      )],
-#               by = c(
-#                 "CellType",
-#                 c(list_var)
-#               )
-#             )
-#           }
-#           if(split_var == TRUE && length(list_var) < 2) { # nolint
-#             ### average expression
-#             d_avg <- setNames(
-#               aggregate(
-#                 d1[[x]],
-#                 by = list(
-#                   d1[, c("CellType")],
-#                   d1[, c(list_var[[1]])]
-#                 ),
-#                 function(y) mean(y)
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "avg.exp"
-#               )
-#             )
-#             d_avg[["avg.exp"]] <- round(
-#               d_avg[["avg.exp"]],
-#               digits = 2
-#             )
-#             ### percent expressed
-#             d_prc <- dplyr::count(
-#               d1,.data[["CellType"]], # nolint
-#               .data[[list_var[[1]]]],
-#               .data[[x]] > 0
-#             )
-#             d_prc <- setNames(
-#               dplyr::filter(
-#                 d_prc, d_prc[3] == TRUE
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "pres", "n"
-#               )
-#             )
-#             d_cnt <- setNames(
-#               dplyr::count(
-#                 d1, .data[["CellType"]], # nolint
-#                 .data[[list_var[[1]]]]
-#               ),
-#               c(
-#                 "CellType", c(list_var),
-#                 "n"
-#               )
-#             )
-#             d_comb <- dplyr::left_join(
-#               d_cnt,
-#               d_prc,
-#               by = c(
-#                 "CellType", c(list_var)
-#               )
-#             )
-#             d_comb[is.na(d_comb)] <- 0
-#             d_comb <- dplyr::mutate(
-#               d_comb,
-#               "perc.exp" = round(
-#                 d_comb[["n.y"]] /
-#                   d_comb[["n.x"]],
-#                 digits = 2
-#               )
-#             )
-#             ### combined
-#             d_comb_out <- dplyr::left_join(
-#               d_avg,
-#               d_comb[,
-#                      c(
-#                        "CellType", c(list_var),
-#                        "perc.exp"
-#                      )],
-#               by = c(
-#                 "CellType",
-#                 c(list_var)
-#               )
-#             )
-#           }
-#           if(split_var == FALSE) { # nolint
-#             ### average expression
-#             d_avg <- setNames(
-#               aggregate(
-#                 d1[[x]],
-#                 by = list(
-#                   d1[, c("CellType")]
-#                 ),
-#                 function(y) mean(y)
-#               ),
-#               c(
-#                 "CellType",
-#                 "avg.exp"
-#               )
-#             )
-#             d_avg[["avg.exp"]] <- round(
-#               d_avg[["avg.exp"]],
-#               digits = 2
-#             )
-#             ### percent expressed
-#             d_prc <- dplyr::count(
-#               d1,.data[["CellType"]], # nolint
-#               .data[[x]] > 0
-#             )
-#             d_prc <- setNames(
-#               dplyr::filter(
-#                 d_prc, d_prc[2] == TRUE
-#               ),
-#               c(
-#                 "CellType",
-#                 "pres", "n"
-#               )
-#             )
-#             d_cnt <- setNames(
-#               dplyr::count(
-#                 d1, .data[["CellType"]] # nolint
-#               ),
-#               c(
-#                 "CellType",
-#                 "n"
-#               )
-#             )
-#             d_comb <- dplyr::left_join(
-#               d_cnt,
-#               d_prc,
-#               by = c(
-#                 "CellType"
-#               )
-#             )
-#             d_comb[is.na(d_comb)] <- 0
-#             d_comb <- dplyr::mutate(
-#               d_comb,
-#               "perc.exp" = round(
-#                 d_comb[["n.y"]] /
-#                   d_comb[["n.x"]],
-#                 digits = 2
-#               )
-#             )
-#             ### combined
-#             d_comb_out <- dplyr::left_join(
-#               d_avg,
-#               d_comb[,
-#                      c(
-#                        "CellType",
-#                        "perc.exp"
-#                      )],
-#               by = c(
-#                 "CellType"
-#               )
-#             )
-#           }
-#           return(d_comb_out)
-#         }
-#       ),
-#       c(top10_pres)
-#     ),
-#     .id = "GENE"
-#   )
-#   ## Add row name labels and convert GENE column to factor
-#   if(split_var == TRUE && length(list_var) == 2) { # nolint
-# 
-#     d1_prc <- data.frame(
-#       d1_prc,
-#       "labs" = factor(
-#         paste(
-#           d1_prc[["CellType"]],
-#           d1_prc[[list_var[[1]]]],
-#           d1_prc[[list_var[[2]]]],
-#           sep = " "
-#         ),
-#         levels = gtools::mixedsort(
-#           unique(
-#             paste(
-#               d1_prc[["CellType"]],
-#               d1_prc[[list_var[[1]]]],
-#               d1_prc[[list_var[[2]]]],
-#               sep = " "
-#             )
-#           )
-#         )
-#       )
-#     )
-#     d1_prc[["GENE"]] <- factor(
-#       d1_prc[["GENE"]],
-#       levels = unique(
-#         d1_prc[["GENE"]]
-#       )
-#     )
-#   }
-#   ## Add row name labels and convert GENE column to factor
-#   if(split_var == TRUE && length(list_var) < 2) { # nolint
-#     d1_prc <- data.frame(
-#       d1_prc,
-#       "labs" = factor(
-#         paste(
-#           d1_prc[["CellType"]],
-#           d1_prc[[list_var[[1]]]],
-#           sep = " "
-#         ),
-#         levels = gtools::mixedsort(
-#           unique(
-#             paste(
-#               d1_prc[["CellType"]],
-#               d1_prc[[list_var[[1]]]],
-#               sep = " "
-#             )
-#           )
-#         )
-#       )
-#     )
-#     d1_prc[["GENE"]] <- factor(
-#       d1_prc[["GENE"]],
-#       levels = unique(
-#         d1_prc[["GENE"]]
-#       )
-#     )
-#   }
-#   if(split_var == FALSE) { # nolint
-#     d1_prc <- data.frame(
-#       d1_prc,
-#       "labs" = d1_prc[["CellType"]]
-#     )
-#     d1_prc[["GENE"]] <- factor(
-#       d1_prc[["GENE"]],
-#       levels = unique(
-#         d1_prc[["GENE"]]
-#       )
-#     )
-#   }
-#   ## Plot
-#   p_dot <- ggplot2::ggplot(
-#     d1_prc,
-#     ggplot2::aes(
-#       x = .data[["GENE"]], # nolint
-#       y = .data[["labs"]],
-#       fill = .data[["avg.exp"]],
-#       size = .data[["perc.exp"]]
-#     )
-#   ) +
-#     ggplot2::geom_point(
-#       shape = 21
-#     ) +
-#     ggplot2::geom_vline(xintercept = 6.5, linetype = "dashed") +
-#     ggplot2::scale_fill_gradientn(
-#       colors = col1 # nolint
-#     ) +
-#     ggplot2::scale_size_area(max_size = 12) +
-#     sc_theme1() + # nolint
-#     ggplot2::labs(
-#       fill = "Average Expression",
-#       size = "Percent Expressed",
-#       y = ""
-#     ) +
-#     ggplot2::theme(
-#       plot.margin = ggplot2::unit(
-#         c(.2, .2,
-#           .2, .2),
-#         "cm"
-#       )
-#     )
-# 
-#   if(exists("top10.abs") && length(top10_abs) == 1) { # nolint
-#     print(
-#       paste(
-#         top10_abs,
-#         "was not found in the provided Seurat object;
-#         plots for this gene was excluded from the dot plot...",
-#         sep = " "
-#       )
-#     )
-#   }
-# 
-#   if(exists("top10.abs") && length(top10_abs) > 1) { # nolint
-#     print(
-#       paste(
-#         top10_abs,
-#         "were not found in the provided Seurat object;
-#         these genes were excluded from the dot plot...",
-#         sep = " "
-#       )
-#     )
-#   }
-# 
-#   return(
-#     list(
-#       "Input" = d1_prc,
-#       "Plot" = p_dot
-#     )
-#   )
-#   # Ligand-Receptor Dot Plots for Chosen Pathways
-# 
-# CC.dot.fun <- function(pat1,w,h) {
-#   
-#   d.chat.in.ind <- d.chat.in %>%
-#     dplyr::select(Group,source,target,
-#                   pathway_name,interaction_name_2,
-#                   prob)
-#   
-#   d.chat.in.ind <- d.chat.in.ind %>%
-#     dplyr::filter(pathway_name == pat1)
-#   
-#   d.chat.in.ind[["Group2"]] <- paste(d.chat.in.ind$Group,
-#                                      d.chat.in.ind$source)
-#   
-#   unique(d.chat.in.ind$Group2)
-#   levels(d.chat.in.ind$source)
-#   
-#   d.chat.in.ind[["Group2"]] <- factor(d.chat.in.ind$Group2,
-#                                       levels = d.chat.groups)
-#   
-#   d.chat.in.ind2 <- aggregate(d.chat.in.ind$prob,
-#                               by = list(d.chat.in.ind$Group2,
-#                                         d.chat.in.ind$interaction_name_2),
-#                               FUN = mean)
-#   
-#   d.chat.in.ind2[[d.chat.group.var]] <- ifelse(grepl(d.chat.g1,
-#                                                      d.chat.in.ind2$Group.1),
-#                                                d.chat.g1,
-#                                                d.chat.g2)
-#   
-#   
-#   ## Plot
-#   
-#   p.dot.fun <- function(df) {
-#     
-#     p.dot2 <- ggplot(df,
-#                      aes(x = Group.1,
-#                          y = Group.2,
-#                          fill = df[[d.chat.group.var]],
-#                          size = x)
-#     ) +
-#       geom_point(shape = 21) +
-#       thm.mult +
-#       labs(title = paste(pat1,"Ligand-Receptor Interaction Probability",
-#                          sep = " "),
-#            x = "Cell Type",
-#            y = "L-R Pair",
-#            fill = d.chat.group.var,
-#            size = "Avg. Probability") +
-#       theme(plot.margin = unit(c(.2,.2,
-#                                  .2,.2),
-#                                "cm"))
-#     
-#     p.dot2 <- p.dot2 +
-#       scale_fill_manual(values = col1a[5:6]) +
-#       scale_size_continuous(labels = c("min",
-#                                        "max"),
-#                             breaks = c(min(df[["x"]]),
-#                                        max(df[["x"]])
-#                             )
-#       )
-#     
-#     return(p.dot2)
-#     
-#   }
-# }
+
+if(split_var == FALSE) { # nolint
+    d1 <- cbind(
+      SeuratObject::FetchData(
+        d,
+        vars = c(
+          cl_var,
+          top10_pres
+        )
+      )
+    )
+  }
+  ## Subset based on cell type
+  d1 <- d1[grepl(c, d1[[cl_var]]), ]
+  d1[["CellType"]] <- d1[[cl_var]]
+  ## Count/ratio table for creating dot plots
+  d1_prc <- dplyr::bind_rows(
+    setNames(
+      lapply(
+        top10_pres,
+        function(x) {
+          # Determine average expression of each gene
+          ## for 2 variables:
+          if(split_var == TRUE && length(list_var) == 2) { # nolint
+            ### average expression
+            d_avg <- setNames(
+              aggregate(
+                d1[[x]],
+                by = list(
+                  d1[,  c("CellType")],
+                  d1[,  c(list_var[[1]])],
+                  d1[,  c(list_var[[2]])]
+                ),
+                function(y) mean(y)
+              ),
+              c(
+                "CellType", c(list_var),
+                "avg.exp"
+              )
+            )
+            d_avg[["avg.exp"]] <- round(
+              d_avg[["avg.exp"]],
+              digits = 2
+            )
+            ### percent expressed
+            d_prc <- dplyr::count(
+              d1, .data[["CellType"]], # nolint
+              .data[[list_var[[1]]]],
+              .data[[list_var[[2]]]],
+              .data[[x]] > 0
+            )
+            d_prc <- setNames(
+              dplyr::filter(
+                d_prc, d_prc[4] == TRUE
+              ),
+              c(
+                "CellType", c(list_var),
+                "pres", "n"
+              )
+            )
+            d_cnt <- setNames(
+              dplyr::count(
+                d1, .data[["CellType"]], # nolint
+                .data[[list_var[[1]]]],
+                .data[[list_var[[2]]]]
+              ),
+              c(
+                "CellType", c(list_var),
+                "n"
+              )
+            )
+            d_comb <- dplyr::left_join(
+              d_cnt,
+              d_prc,
+              by = c(
+                "CellType", c(list_var)
+              )
+            )
+            d_comb[is.na(d_comb)] <- 0
+            d_comb <- dplyr::mutate(
+              d_comb,
+              "perc.exp" = round(
+                d_comb[["n.y"]] /
+                  d_comb[["n.x"]],
+                digits = 2
+              )
+            )
+            ### combined
+            d_comb_out <- dplyr::left_join(
+              d_avg,
+              d_comb[,
+                     c(
+                       "CellType", c(list_var),
+                       "perc.exp"
+                     )],
+              by = c(
+                "CellType",
+                c(list_var)
+              )
+            )
+          }
+          if(split_var == TRUE && length(list_var) < 2) { # nolint
+            ### average expression
+            d_avg <- setNames(
+              aggregate(
+                d1[[x]],
+                by = list(
+                  d1[, c("CellType")],
+                  d1[, c(list_var[[1]])]
+                ),
+                function(y) mean(y)
+              ),
+              c(
+                "CellType", c(list_var),
+                "avg.exp"
+              )
+            )
+            d_avg[["avg.exp"]] <- round(
+              d_avg[["avg.exp"]],
+              digits = 2
+            )
+            ### percent expressed
+            d_prc <- dplyr::count(
+              d1,.data[["CellType"]], # nolint
+              .data[[list_var[[1]]]],
+              .data[[x]] > 0
+            )
+            d_prc <- setNames(
+              dplyr::filter(
+                d_prc, d_prc[3] == TRUE
+              ),
+              c(
+                "CellType", c(list_var),
+                "pres", "n"
+              )
+            )
+            d_cnt <- setNames(
+              dplyr::count(
+                d1, .data[["CellType"]], # nolint
+                .data[[list_var[[1]]]]
+              ),
+              c(
+                "CellType", c(list_var),
+                "n"
+              )
+            )
+            d_comb <- dplyr::left_join(
+              d_cnt,
+              d_prc,
+              by = c(
+                "CellType", c(list_var)
+              )
+            )
+            d_comb[is.na(d_comb)] <- 0
+            d_comb <- dplyr::mutate(
+              d_comb,
+              "perc.exp" = round(
+                d_comb[["n.y"]] /
+                  d_comb[["n.x"]],
+                digits = 2
+              )
+            )
+            ### combined
+            d_comb_out <- dplyr::left_join(
+              d_avg,
+              d_comb[,
+                     c(
+                       "CellType", c(list_var),
+                       "perc.exp"
+                     )],
+              by = c(
+                "CellType",
+                c(list_var)
+              )
+            )
+          }
+          if(split_var == FALSE) { # nolint
+            ### average expression
+            d_avg <- setNames(
+              aggregate(
+                d1[[x]],
+                by = list(
+                  d1[, c("CellType")]
+                ),
+                function(y) mean(y)
+              ),
+              c(
+                "CellType",
+                "avg.exp"
+              )
+            )
+            d_avg[["avg.exp"]] <- round(
+              d_avg[["avg.exp"]],
+              digits = 2
+            )
+            ### percent expressed
+            d_prc <- dplyr::count(
+              d1,.data[["CellType"]], # nolint
+              .data[[x]] > 0
+            )
+            d_prc <- setNames(
+              dplyr::filter(
+                d_prc, d_prc[2] == TRUE
+              ),
+              c(
+                "CellType",
+                "pres", "n"
+              )
+            )
+            d_cnt <- setNames(
+              dplyr::count(
+                d1, .data[["CellType"]] # nolint
+              ),
+              c(
+                "CellType",
+                "n"
+              )
+            )
+            d_comb <- dplyr::left_join(
+              d_cnt,
+              d_prc,
+              by = c(
+                "CellType"
+              )
+            )
+            d_comb[is.na(d_comb)] <- 0
+            d_comb <- dplyr::mutate(
+              d_comb,
+              "perc.exp" = round(
+                d_comb[["n.y"]] /
+                  d_comb[["n.x"]],
+                digits = 2
+              )
+            )
+            ### combined
+            d_comb_out <- dplyr::left_join(
+              d_avg,
+              d_comb[,
+                     c(
+                       "CellType",
+                       "perc.exp"
+                     )],
+              by = c(
+                "CellType"
+              )
+            )
+          }
+          return(d_comb_out)
+        }
+      ),
+      c(top10_pres)
+    ),
+    .id = "GENE"
+  )
+  ## Add row name labels and convert GENE column to factor
+  if(split_var == TRUE && length(list_var) == 2) { # nolint
+
+    d1_prc <- data.frame(
+      d1_prc,
+      "labs" = factor(
+        paste(
+          d1_prc[["CellType"]],
+          d1_prc[[list_var[[1]]]],
+          d1_prc[[list_var[[2]]]],
+          sep = " "
+        ),
+        levels = gtools::mixedsort(
+          unique(
+            paste(
+              d1_prc[["CellType"]],
+              d1_prc[[list_var[[1]]]],
+              d1_prc[[list_var[[2]]]],
+              sep = " "
+            )
+          )
+        )
+      )
+    )
+    d1_prc[["GENE"]] <- factor(
+      d1_prc[["GENE"]],
+      levels = unique(
+        d1_prc[["GENE"]]
+      )
+    )
+  }
+  ## Add row name labels and convert GENE column to factor
+  if(split_var == TRUE && length(list_var) < 2) { # nolint
+    d1_prc <- data.frame(
+      d1_prc,
+      "labs" = factor(
+        paste(
+          d1_prc[["CellType"]],
+          d1_prc[[list_var[[1]]]],
+          sep = " "
+        ),
+        levels = gtools::mixedsort(
+          unique(
+            paste(
+              d1_prc[["CellType"]],
+              d1_prc[[list_var[[1]]]],
+              sep = " "
+            )
+          )
+        )
+      )
+    )
+    d1_prc[["GENE"]] <- factor(
+      d1_prc[["GENE"]],
+      levels = unique(
+        d1_prc[["GENE"]]
+      )
+    )
+  }
+  if(split_var == FALSE) { # nolint
+    d1_prc <- data.frame(
+      d1_prc,
+      "labs" = d1_prc[["CellType"]]
+    )
+    d1_prc[["GENE"]] <- factor(
+      d1_prc[["GENE"]],
+      levels = unique(
+        d1_prc[["GENE"]]
+      )
+    )
+  }
+  ## Plot
+  p_dot <- ggplot2::ggplot(
+    d1_prc,
+    ggplot2::aes(
+      x = .data[["GENE"]], # nolint
+      y = .data[["labs"]],
+      fill = .data[["avg.exp"]],
+      size = .data[["perc.exp"]]
+    )
+  ) +
+    ggplot2::geom_point(
+      shape = 21
+    ) +
+    ggplot2::geom_vline(xintercept = 6.5, linetype = "dashed") +
+    ggplot2::scale_fill_gradientn(
+      colors = col1 # nolint
+    ) +
+    ggplot2::scale_size_area(max_size = 12) +
+    sc_theme1() + # nolint
+    ggplot2::labs(
+      fill = "Average Expression",
+      size = "Percent Expressed",
+      y = ""
+    ) +
+    ggplot2::theme(
+      plot.margin = ggplot2::unit(
+        c(.2, .2,
+          .2, .2),
+        "cm"
+      )
+    )
+
+  if(exists("top10.abs") && length(top10_abs) == 1) { # nolint
+    print(
+      paste(
+        top10_abs,
+        "was not found in the provided Seurat object;
+        plots for this gene was excluded from the dot plot...",
+        sep = " "
+      )
+    )
+  }
+
+  if(exists("top10.abs") && length(top10_abs) > 1) { # nolint
+    print(
+      paste(
+        top10_abs,
+        "were not found in the provided Seurat object;
+        these genes were excluded from the dot plot...",
+        sep = " "
+      )
+    )
+  }
+
+  return(
+    list(
+      "Input" = d1_prc,
+      "Plot" = p_dot
+    )
+  )
+  # Ligand-Receptor Dot Plots for Chosen Pathways
+
+CC.dot.fun <- function(pat1,w,h) {
+  
+  d.chat.in.ind <- d.chat.in %>%
+    dplyr::select(Group,source,target,
+                  pathway_name,interaction_name_2,
+                  prob)
+  
+  d.chat.in.ind <- d.chat.in.ind %>%
+    dplyr::filter(pathway_name == pat1)
+  
+  d.chat.in.ind[["Group2"]] <- paste(d.chat.in.ind$Group,
+                                     d.chat.in.ind$source)
+  
+  unique(d.chat.in.ind$Group2)
+  levels(d.chat.in.ind$source)
+  
+  d.chat.in.ind[["Group2"]] <- factor(d.chat.in.ind$Group2,
+                                      levels = d.chat.groups)
+  
+  d.chat.in.ind2 <- aggregate(d.chat.in.ind$prob,
+                              by = list(d.chat.in.ind$Group2,
+                                        d.chat.in.ind$interaction_name_2),
+                              FUN = mean)
+  
+  d.chat.in.ind2[[d.chat.group.var]] <- ifelse(grepl(d.chat.g1,
+                                                     d.chat.in.ind2$Group.1),
+                                               d.chat.g1,
+                                               d.chat.g2)
+  
+  
+  ## Plot
+  
+  p.dot.fun <- function(df) {
+    
+    p.dot2 <- ggplot(df,
+                     aes(x = Group.1,
+                         y = Group.2,
+                         fill = df[[d.chat.group.var]],
+                         size = x)
+    ) +
+      geom_point(shape = 21) +
+      thm.mult +
+      labs(title = paste(pat1,"Ligand-Receptor Interaction Probability",
+                         sep = " "),
+           x = "Cell Type",
+           y = "L-R Pair",
+           fill = d.chat.group.var,
+           size = "Avg. Probability") +
+      theme(plot.margin = unit(c(.2,.2,
+                                 .2,.2),
+                               "cm"))
+    
+    p.dot2 <- p.dot2 +
+      scale_fill_manual(values = col1a[5:6]) +
+      scale_size_continuous(labels = c("min",
+                                       "max"),
+                            breaks = c(min(df[["x"]]),
+                                       max(df[["x"]])
+                            )
+      )
+    
+    return(p.dot2)
+    
+  }
+}
 }

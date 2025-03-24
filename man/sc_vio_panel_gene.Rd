@@ -6,20 +6,17 @@
 \usage{
 sc_vio_panel_gene(
   so,
-  md_var,
+  md_vars,
   g_name,
-  col_scheme,
-  col_names,
-  leg_x,
-  leg_y,
-  slot1
+  col_scheme = col_univ(),
+  col_names = NULL,
+  leg_x = 0.95,
+  leg_y = 0.95,
+  asy1 = "RNA"
 )
 }
 \arguments{
 \item{so}{An object of class Seurat.}
-
-\item{md_var}{A character string indicating
-the clustering column for overlaying on a UMAP plot.}
 
 \item{g_name}{A character string indicating the gene name.}
 
@@ -35,11 +32,11 @@ of the figure legend on the x-axis.}
 \item{leg_y}{A numeric value indicating the placement
 of the figure legend on the y-axis.}
 
-\item{slot1}{A character string corresponding to the umap slot name to plot.}
-}
-\value{
-A series of plots stored as a ggplot2 object
-for visualizing cluster gene expression.
+\item{asy1}{Default assay for plotting violin plot ("RNA" by default).
+for visualizing cluster gene expression.}
+
+\item{md_var}{A character string indicating
+the clustering column for overlaying on a UMAP plot.}
 }
 \description{
 Generates a series of plots to visualize
@@ -54,8 +51,7 @@ individual gene expression per cluster.
 #  col_univ,
 #  c("group1","group2"),
 #  0.95,
-#  0.95,
-#  "wnn.umap"
+#  0.95
 # )
 
 }

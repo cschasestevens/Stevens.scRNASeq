@@ -10,20 +10,20 @@ sc_recluster(
   rc_type,
   ct_col,
   ct,
-  slot1,
+  slot1 = "RNA",
   md_list,
   prop_list,
-  dim1,
-  batch_cor,
+  dim1 = 50,
+  batch_cor = TRUE,
   cor_col,
-  res1,
-  h_w,
-  h_h,
-  fs_c,
-  fs_r,
-  cl_c,
-  cl_r,
-  rot_c,
+  res1 = 0.5,
+  h_w = 38,
+  h_h = 18,
+  fs_c = 6,
+  fs_r = 9,
+  cl_c = FALSE,
+  cl_r = FALSE,
+  rot_c = 45,
   col1
 )
 }
@@ -55,8 +55,7 @@ proportion columns.}
 \item{batch_cor}{Should Harmony based batch correction be performed?
 This parameter is automatically set to TRUE for multiome datasets.}
 
-\item{cor_col}{Variables to regress out of PCA if batch_cor is TRUE
-("GEX" only).}
+\item{cor_col}{Variables to account for in batch correction.}
 
 \item{res1}{Clustering resolution to use for final cluster determination.}
 
@@ -98,16 +97,7 @@ Subsets are determined based on cell groups.
 #   md_list = c("Code", "Airway", "Batch"),
 #   prop_list = c("Code", "Airway"),
 #   dim1 = 30,
-#   batch_cor = TRUE,
 #   cor_col = c("Batch", "Code"),
-#   res1 = 0.5,
-#   h_w = 12,
-#   h_h = 39,
-#   fs_c = 10,
-#   fs_r = 9,
-#   cl_c = TRUE,
-#   cl_r = TRUE,
-#   rot_c = 45,
 #   col1 = col_hmap
 # )
 

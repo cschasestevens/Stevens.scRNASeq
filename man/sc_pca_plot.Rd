@@ -4,13 +4,15 @@
 \alias{sc_pca_plot}
 \title{scRNA-Seq PCA Loadings Plot}
 \usage{
-sc_pca_plot(so, md_list)
+sc_pca_plot(so, md_list, red1)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
 
 \item{md_list}{A vector of character strings indicating
 metadata columns for overlaying on a loadings plot.}
+
+\item{red1}{Reduction to use for plotting PCA components.}
 }
 \value{
 A series of loadings plots with specified metadata overlays.
@@ -21,6 +23,6 @@ a Seurat object containing PCA results.
 }
 \examples{
 
-# p_pca <- sc_pca_plot(d_integrated,c("col1","col2","col3"))
+# p_pca <- sc_pca_plot(d_integrated,c("col1","col2","col3"), "pca_cor")
 
 }

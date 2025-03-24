@@ -6,20 +6,23 @@
 \usage{
 sc_umap_panel_gene(
   so,
+  asy1 = "sct",
   md_var,
   g_name,
   col_scheme,
   col_names,
-  leg_x,
-  leg_y,
+  leg_x = 0.9,
+  leg_y = 0.8,
   slot1,
-  col1,
-  plot_comb,
-  out1
+  col1 = col_grad(),
+  plot_comb = FALSE,
+  out1 = "umap_gex"
 )
 }
 \arguments{
 \item{so}{An object of class Seurat.}
+
+\item{asy1}{Assay to use; either "sct" (default) or "chromvar".}
 
 \item{md_var}{A character string indicating
 the clustering column for overlaying on a UMAP plot.}

@@ -7,23 +7,33 @@
 sc_top_motif_heatmap(
   so,
   mot_m,
-  filt_ct,
-  ct_name,
-  cl_var,
-  split_var,
-  list_var,
-  top_n,
-  h_w,
-  h_h,
-  fs_c,
-  fs_r,
-  col1
+  mot_list = NULL,
+  filt_ct = FALSE,
+  ct_name = NULL,
+  cl_var = NULL,
+  split_var = FALSE,
+  inc_var = FALSE,
+  list_var = NULL,
+  top_n = 10,
+  ord1 = FALSE,
+  ord_c = NULL,
+  h_w = 44,
+  h_h = 14,
+  fs_c = 10,
+  fs_r = 10,
+  cl_c = TRUE,
+  cl_r = TRUE,
+  col1 = col_grad
 )
 }
 \arguments{
 \item{so}{An object of class Seurat.}
 
-\item{mot_m}{Character string providing the name of the assay to use.}
+\item{mot_m}{Differential activity results object.}
+
+\item{mot_list}{(optional) A vector of motif names to plot on the
+heatmap. Note that supplying a list will override filtering based
+on the top n motifs for a specified activity results object.}
 
 \item{filt_ct}{Logical indicating whether the data should
 be filtered based on cell type}
@@ -35,6 +45,10 @@ of the clustering variable.}
 
 \item{split_var}{Logical indicating whether the cluster variable
 should be stratified by additional group variables.}
+
+\item{inc_var}{Logical indicating whether two separate clustering variables
+should be plotted in a single figure (useful for comparing summarized and
+split expression together). Uses list_var if TRUE.}
 
 \item{list_var}{(Optional) A vector of character strings
 indicating the name(s) of up to two group variables
@@ -50,6 +64,10 @@ specified cell type and subsequently filters by scaled activity score).}
 \item{fs_c}{Numeric value for column fontsize (passed to ComplexHeatmap).}
 
 \item{fs_r}{Numeric value for row fontsize (passed to ComplexHeatmap).}
+
+\item{cl_c}{Cluster columns?}
+
+\item{cl_r}{Cluster rows?}
 
 \item{col1}{Gradient color scheme to use.}
 }

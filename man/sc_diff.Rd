@@ -6,16 +6,16 @@
 \usage{
 sc_diff(
   so,
-  asy,
-  slot1,
+  asy = "sct",
+  slot1 = "scale.data",
   md_list,
-  ct,
+  ct = "CellType",
   mast_comp,
   mast_name,
   form1,
-  parl,
-  core_perc,
-  atac_type
+  parl = FALSE,
+  core_perc = 0.2,
+  atac_type = NULL
 )
 }
 \arguments{
