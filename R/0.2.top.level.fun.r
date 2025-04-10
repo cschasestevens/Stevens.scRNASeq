@@ -25,7 +25,7 @@ sc_visualize <- function(
   #---- Volcano Plot ----
   if(ptype == "vol_std") { # nolint
     if(is.null(par1[["opt"]])) { # nolint
-      p_vol <- sc_volcano(
+      p_vol <- sc_volcano( # nolint
         l_deg = par1[["obj_list"]],
         comp_name = par1[["title"]],
         gene_name = par1[["var_lab"]],
@@ -52,7 +52,7 @@ sc_visualize <- function(
       )
     }
     if(!is.null(par1[["opt"]])) { # nolint
-      p_vol <- sc_volcano(
+      p_vol <- sc_volcano( # nolint
         l_deg = par1[["obj_list"]],
         comp_name = par1[["title"]],
         gene_name = par1[["var_lab"]],
@@ -90,7 +90,7 @@ sc_visualize <- function(
           ".png",
           sep = ""
         ),
-        sc_umap_standard(
+        sc_umap_standard( # nolint
           # Seurat object
           so = par1[["obj_list"]],
           # metadata column
@@ -111,7 +111,7 @@ sc_visualize <- function(
           ".png",
           sep = ""
         ),
-        sc_umap_standard(
+        sc_umap_standard( # nolint
           # Seurat object
           so = par1[["obj_list"]],
           # metadata column
@@ -151,12 +151,12 @@ sc_visualize <- function(
                     ".png",
                     sep = ""
                   ),
-                  sc_umap_panel_gene(
+                  sc_umap_panel_gene( # nolint
                     so = par1[["obj_list"]][[1]],
                     asy1 = par1[["asy"]],
                     md_var = par1[["var"]],
                     g_name = par1[["lg"]][x, "Gene"],
-                    col_scheme = col_univ()[
+                    col_scheme = col_univ()[ # nolint
                       1:length( # nolint
                         levels(
                           par1[["obj_list"]][[y]]@meta.data[[par1[["var"]]]]
@@ -261,12 +261,12 @@ sc_visualize <- function(
                     ".png",
                     sep = ""
                   ),
-                  sc_umap_panel_gene(
+                  sc_umap_panel_gene( # nolint
                     so = par1[["obj_list"]][[y]],
                     asy1 = par1[["asy"]],
                     md_var = par1[["var"]],
                     g_name = par1[["lg"]][x, "ID"],
-                    col_scheme = col_univ()[
+                    col_scheme = col_univ()[ # nolint
                       1:length( # nolint
                         levels(
                           par1[["obj_list"]][[y]]@meta.data[[par1[["var"]]]]

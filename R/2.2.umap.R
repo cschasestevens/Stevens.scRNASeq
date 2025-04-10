@@ -197,7 +197,7 @@ sc_umap_panel_gene <- function(
   leg_x = 0.9,
   leg_y = 0.8,
   slot1,
-  col1 = col_grad(),
+  col1 = col_grad(), # nolint
   plot_comb = FALSE,
   out1 = "umap_gex"
 ) {
@@ -1076,7 +1076,7 @@ sc_umap_standard <- function(
   md_var,
   slot1,
   dims1 = "2D",
-  col1 = col_univ(),
+  col1 = col_univ(), # nolint
   pos_leg = "none"
 ) {
   # Format input data

@@ -392,6 +392,14 @@ sc_recluster <- function(
       verbose = TRUE,
       resolution = res1
     )
+    d@meta.data[["recluster"]] <- factor(
+      as.numeric(d@meta.data[["recluster"]]),
+      levels = seq.int(
+        1,
+        length(unique(as.numeric(d@meta.data[["recluster"]]))),
+        1
+      )
+    )
     ## Visualize Clusters
     d_umap1 <- sc_umap_panel( # nolint
       d,

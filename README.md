@@ -74,7 +74,7 @@ devtools::install_github(
   "cschasestevens/Stevens.scRNASeq", 
   ref = "master", 
   build_vignettes = TRUE
-  )
+)
 ```
 
 ## Help
@@ -99,6 +99,9 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 2.4
+    * Bug fixes for subsetting and reclustering multiome data.
+    * Simplified parameters for UMAP and visualization.
 * 2.3
     * Simplified plotting functions with default parameters.
     * Added batch plotting functions for analyses spanning multiple Seurat objects.

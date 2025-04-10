@@ -52,13 +52,14 @@ sc_top10_marker_heatmap_rc <- function(
   rot_c,
   col1
 ) {
-  d <- sorc
+  d1 <- sorc
   if(asy == "GEX") { # nolint
     print(
       "Calculating marker genes for each cluster..."
     )
-    Seurat::DefaultAssay(d) <- slot1
-    cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
+    Seurat::DefaultAssay(d1) <- slot1
+    Seurat::Idents(d1) <- cl_var
+    cl_mark <- Seurat::FindAllMarkers(d1, verbose = TRUE)
     write.table(
       cl_mark,
       paste(
@@ -76,24 +77,25 @@ sc_top10_marker_heatmap_rc <- function(
     print(
       "Calculating marker motifs for each cluster..."
     )
-    Seurat::DefaultAssay(d) <- slot1
+    Seurat::DefaultAssay(d1) <- slot1
+    Seurat::Idents(d1) <- cl_var
     cl_mark <- Seurat::FindAllMarkers(
-      d,
+      d1,
       min.pct = 0.05,
       verbose = TRUE
     )
     names_motif <- data.frame(
-      "gene" = seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+      "gene" = seq.int(1, nrow(d1@assays$ATAC@meta.features), 1),
       "near.gene" = paste(
-        d@assays$ATAC@meta.features[["nearestGene"]],
-        seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+        d1@assays$ATAC@meta.features[["nearestGene"]],
+        seq.int(1, nrow(d1@assays$ATAC@meta.features), 1),
         sep = "."
       ),
       "motif" = paste(
-        d@assays$ATAC@meta.features[["seqnames"]],
+        d1@assays$ATAC@meta.features[["seqnames"]],
         paste(
-          d@assays$ATAC@meta.features[["start"]],
-          d@assays$ATAC@meta.features[["end"]],
+          d1@assays$ATAC@meta.features[["start"]],
+          d1@assays$ATAC@meta.features[["end"]],
           sep = "-"
         ),
         sep = ":"
@@ -117,18 +119,12 @@ sc_top10_marker_heatmap_rc <- function(
       sep = "\t"
     )
   }
-  ## Marker gene input matrix (top10 per cell type)
-  if(class(cl_mark[["cluster"]]) == "character") { # nolint
-    cl_mark <- cl_mark[gtools::mixedorder(cl_mark[["cluster"]]), ]
-  }
-  cl_mark[["CellType.no"]] <- cl_mark[["cluster"]]
-
+  ### Top 10 genes per cluster (by p value then by fold change)
   cl_mark <- dplyr::group_by(
     cl_mark,
-    .data[["CellType.no"]] # nolint
+    .data[["cluster"]] # nolint
   )
-  ### Top 10 genes per cluster (by p value then by fold change)
-  cl_mark <- dplyr::slice_max(
+  cl_mark2 <- dplyr::slice_max(
     cl_mark[cl_mark[["avg_log2FC"]] > 0, ],
     order_by = -.data[["p_val_adj"]], # nolint
     n = 25
@@ -138,25 +134,22 @@ sc_top10_marker_heatmap_rc <- function(
     "avg_log2FC",
     "p_val_adj"
   )]
-
-  cl_mark <- dplyr::group_by(
-    cl_mark,
+  cl_mark2 <- dplyr::group_by(
+    cl_mark2,
     .data[["cluster"]] # nolint
   )
-
-  cl_mark <- dplyr::slice_max(
-    cl_mark,
+  cl_mark2 <- dplyr::slice_max(
+    cl_mark2,
     order_by = .data[["avg_log2FC"]], # nolint
     n = 10
   )[, c(
     "gene",
     "cluster"
   )]
-
   #### Save table
   if(asy == "GEX") { # nolint
     write.table(
-      cl_mark,
+      cl_mark2,
       paste(
         "analysis/t_re",
         title1,
@@ -167,11 +160,11 @@ sc_top10_marker_heatmap_rc <- function(
       col.names = TRUE,
       sep = "\t"
     )
-    SeuratObject::DefaultAssay(d) <- slot1
+    SeuratObject::DefaultAssay(d1) <- slot1
   }
   if(asy == "Mult") { # nolint
     write.table(
-      cl_mark,
+      cl_mark2,
       paste(
         "analysis/t_re",
         title1,
@@ -182,14 +175,14 @@ sc_top10_marker_heatmap_rc <- function(
       col.names = TRUE,
       sep = "\t"
     )
-    SeuratObject::DefaultAssay(d) <- slot1
+    SeuratObject::DefaultAssay(d1) <- slot1
   }
   ### Subset seurat and scale
   h <- SeuratObject::FetchData(
-    d,
+    d1,
     vars = c(
       cl_var,
-      unique(cl_mark[["gene"]])
+      unique(cl_mark2[["gene"]])
     )
   )
   ### Heatmap annotation (average expression)
@@ -203,7 +196,6 @@ sc_top10_marker_heatmap_rc <- function(
       }
     )
   )
-
   h_anno <- h_anno[, h_anno[1, ] > 0]
   ### Scale and plot average expression/accessibility per cell type
   h_in <- scale(
@@ -244,7 +236,6 @@ sc_top10_marker_heatmap_rc <- function(
     ),
     na.rm = TRUE
   )
-
   h_in <- as.matrix(
     as.data.frame(h_in)[, unlist(
       lapply(
@@ -256,7 +247,6 @@ sc_top10_marker_heatmap_rc <- function(
     )
     ]
   )
-
   fun_hm_col <- circlize::colorRamp2(
     c(
       qs[[1]],
@@ -290,7 +280,7 @@ sc_top10_marker_heatmap_rc <- function(
     row_names_side = "left",
     row_names_gp = grid::gpar(fontsize = fs_r),
     cluster_columns = cl_c,
-    cluster_rows = cl_r,
+    cluster_rows = cl_r
   )
   return(h_out)
 }
