@@ -4,18 +4,7 @@
 \alias{sc_coverage_plot2}
 \title{scATAC-Seq Coverage Plot 2}
 \usage{
-sc_coverage_plot2(
-  so,
-  dref,
-  asy1,
-  g_name,
-  bp_window,
-  ct_col,
-  ct_spl,
-  ct_sel,
-  md_list1,
-  p_type
-)
+sc_coverage_plot2(so, dref, asy1, g_name, bp_window, md_list1)
 }
 \arguments{
 \item{so}{An object of class Seurat. Must contain an ATAC assay.}
@@ -30,21 +19,8 @@ sc_coverage_plot2(
 extend the plotting window on each end of the selected gene's location.
 Useful for visualizing peaks corresponding to neighboring genes.}
 
-\item{ct_col}{Cell type column name to use in the selected Seurat object.}
-
-\item{ct_spl}{Logical indicating whether cell types should be stratified
-by an additional variable.}
-
-\item{ct_sel}{Pattern for selecting individual cell types if ct_spl == TRUE.}
-
-\item{md_list1}{Character vector of 1 metadata variable for
+\item{md_list1}{Character vector of up to 2 metadata variables for
 stratifying peak data.}
-
-\item{p_type}{Final coverage plot type
-(either "ct_only", "gn_only", or "gn_ct");
-Note that "gn_only" and "gn_ct" use the variable
-from md_list1 for plotting. This can be useful for summarizing differences
-in accessbility between treatment groups.}
 }
 \value{
 A coverage plot including the specified gene track and all other
@@ -53,24 +29,18 @@ genes present within the specified window.
 \description{
 Generates a coverage plot from a Signac ChromatinAssay.
 Requires scATAC-Seq peak information and a reference GRanges object
-for plotting gene positions. The Signac function CoveragePlot() is
-used to generate the final plot.
+for plotting gene positions.
 }
 \examples{
 
-# p_cov <- sc_coverage_plot2(
-#   so = d,
-#   dref = rtracklayer::import(
+# p_cov <- sc_coverage_plot(
+#   readRDS("analysis/data.annotated.withTFs.rds"),
+#   rtracklayer::import(
 #    "ref/gencode.v45.primary_assembly.annotation.gtf"
 #   ),
-#   asy1 = "ufy.peaks",
-#   g_name = "SCGB3A2",
-#   bp_window = 5000,
-#   ct_col = "CellType",
-#   ct_spl = TRUE,
-#   ct_sel = "Secretory",
-#   md_list1 = c("Group"),
-#   p_type = "gn_ct"
+#   "TMEM45A",
+#   20000,
+#   c("CellType", "Airway")
 # )
 
 }

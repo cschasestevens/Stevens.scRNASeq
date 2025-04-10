@@ -160,7 +160,7 @@ sc_seqanno_plot <- function(
   return(p_seq)
 }
 
-#' scATAC-Seq Coverage Plot
+#' scATAC-Seq Coverage Plot 2
 #'
 #' Generates a coverage plot from a Signac ChromatinAssay.
 #' Requires scATAC-Seq peak information and a reference GRanges object
@@ -190,7 +190,7 @@ sc_seqanno_plot <- function(
 #' # )
 #'
 #' @export
-sc_coverage_plot <- function(
+sc_coverage_plot2 <- function(
   so,
   dref,
   asy1,
@@ -905,7 +905,7 @@ sc_atac_motifs <- function(
   return(d1)
 }
 
-#' scATAC-Seq Coverage Plot 2
+#' scATAC-Seq Coverage Plot
 #'
 #' Generates a coverage plot from a Signac ChromatinAssay.
 #' Requires scATAC-Seq peak information and a reference GRanges object
@@ -915,11 +915,13 @@ sc_atac_motifs <- function(
 #' @param so An object of class Seurat. Must contain an ATAC assay.
 #' @param dref Path to a .gtf file containing reference gene annotations.
 #' @param asy1 ATAC peaks assay to use.
+#' @param asy2 GEX assay to use.
 #' @param g_name Gene to plot, provided as a character string.
 #' @param bp_window Numeric value indicating the number of base pairs to
 #' extend the plotting window on each end of the selected gene's location.
 #' Useful for visualizing peaks corresponding to neighboring genes.
 #' @param ct_col Cell type column name to use in the selected Seurat object.
+#' Must be a factor variable.
 #' @param ct_spl Logical indicating whether cell types should be stratified
 #' by an additional variable.
 #' @param ct_sel Pattern for selecting individual cell types if ct_spl == TRUE.
@@ -950,38 +952,56 @@ sc_atac_motifs <- function(
 #' # )
 #'
 #' @export
-sc_coverage_plot2 <- function(
+sc_coverage_plot <- function( # nolint
   so,
-  dref,
-  asy1,
+  dref = NULL,
+  asy1 = "ufy.peaks",
+  asy2 = "sct",
+  asy_dat = "scale.data",
   g_name,
-  bp_window,
-  ct_col,
-  ct_spl,
-  ct_sel,
-  md_list1,
-  p_type
+  bp_window = 5000,
+  ct_col = NULL,
+  ct_spl = TRUE,
+  ct_filt = FALSE,
+  ct_sel = NULL,
+  md_list1 = NULL,
+  p_type = "ct_only"
 ) {
   d <- so
   # Change assay and format reference annotation file
   Seurat::DefaultAssay(d) <- asy1
   if(!file.exists("ref/ref.gene.formatted.rds") == TRUE) { # nolint
-    ref_gene1 <- dref
-    ## Format gene locations and create ChromatinAssay
-    ref_gene1$gene_biotype <- ref_gene1$gene_type
-    ref_gene1$tx_id <- ref_gene1$transcript_id
-    GenomeInfoDb::seqlevelsStyle(ref_gene1) <- "UCSC"
-    ref_gene1 <- GenomeInfoDb::keepStandardChromosomes(
-      ref_gene1,
-      pruning.mode = "coarse"
-    )
-    saveRDS(ref_gene1, "ref/ref.gene.formatted.rds")
+    if(exists("dref1") == TRUE) { # nolint
+      ref_gene1 <- dref1 # nolint
+    }
+    if(exists("dref1") == FALSE) { # nolint
+      if(is.null(dref) == TRUE) { # nolint
+        print("Error: No gene reference or invalid reference path provided!")
+      }
+      if(is.null(dref) == FALSE) { # nolint
+        ref_gene1 <- dref
+        ## Format gene locations and create ChromatinAssay
+        ref_gene1$gene_biotype <- ref_gene1$gene_type
+        ref_gene1$tx_id <- ref_gene1$transcript_id
+        GenomeInfoDb::seqlevelsStyle(ref_gene1) <- "UCSC"
+        ref_gene1 <- GenomeInfoDb::keepStandardChromosomes(
+          ref_gene1,
+          pruning.mode = "coarse"
+        )
+        saveRDS(ref_gene1, "ref/ref.gene.formatted.rds")
+      }
+    }
   }
   if(!file.exists("ref/ref.gene.formatted.rds") == FALSE) { # nolint
-    print(
-      "Using formatted reference gene annotation present in ref/ folder..."
-    )
-    ref_gene1 <- readRDS("ref/ref.gene.formatted.rds")
+    if(exists("dref1") == TRUE) { # nolint
+      ref_gene1 <- dref1 # nolint
+    }
+    if(exists("dref1") == FALSE) { # nolint
+      print(
+        "Using formatted reference gene annotation present in ref/ folder..."
+      )
+      ref_gene1 <- readRDS("ref/ref.gene.formatted.rds")
+    }
   }
   # Reassign gene annotation
   Signac::Annotation(d[[asy1]]) <- ref_gene1
@@ -993,7 +1013,7 @@ sc_coverage_plot2 <- function(
   d <- Signac::LinkPeaks(
     object = d,
     peak.assay = asy1,
-    expression.assay = "RNA",
+    expression.assay = asy2,
     genes.use = c(
       g_name
     )
@@ -1002,171 +1022,352 @@ sc_coverage_plot2 <- function(
   # Add column to split Cell Type and Group
   # Manually assign existing CellType column using consensus IDs
   if(ct_spl == TRUE) { # nolint
-    d_spl <- data.frame(
-      "CellType.split" = gtools::mixedsort(
-        paste(
-          unique(d@meta.data[, c(md_list1, ct_col)])[[ct_col]],
-          unique(d@meta.data[, c(md_list1, ct_col)])[[md_list1]],
-          sep = "."
+    if(p_type == "gn_ct") { # nolint
+      d_spl <- data.frame(
+        "CellType.split" = gtools::mixedsort(
+          paste(
+            unique(d@meta.data[, c(md_list1, ct_col)])[[ct_col]],
+            unique(d@meta.data[, c(md_list1, ct_col)])[[md_list1]],
+            sep = "."
+          )
         )
       )
-    )
-    d_spl[[ct_col]] <- factor(
-      gsub(
-        paste(
-          ".", unique(d@meta.data[[md_list1]])[[1]],
-          "|.", unique(d@meta.data[[md_list1]])[[2]],
-          sep = ""
+      d_spl[[ct_col]] <- factor(
+        gsub(
+          paste(
+            ".", unique(d@meta.data[[md_list1]])[[1]],
+            "|.", unique(d@meta.data[[md_list1]])[[2]],
+            sep = ""
+          ),
+          "",
+          d_spl[["CellType.split"]]
         ),
+        levels = levels(d@meta.data[[ct_col]])
+      )
+      d_spl[[md_list1]] <- gsub(
+        ".*\\.",
         "",
         d_spl[["CellType.split"]]
-      ),
-      levels = levels(d@meta.data[[ct_col]])
-    )
-    d_spl[[md_list1]] <- gsub(
-      ".*\\.",
-      "",
-      d_spl[["CellType.split"]]
-    )
-    d_spl[["CellType.split"]] <- factor(
-      d_spl[["CellType.split"]],
-      levels = gtools::mixedsort(d_spl[["CellType.split"]])
-    )
-    d_ct2 <- dplyr::select(
-      dplyr::left_join(
-        d@meta.data[, c(ct_col, md_list1)],
-        d_spl,
-        by = c(ct_col, md_list1)
-      ),
-      .data[["CellType.split"]] # nolint
-    )
-    d <- SeuratObject::AddMetaData(
-      d,
-      d_ct2[["CellType.split"]],
-      col.name = "CellType.split"
-    )
-    d2 <- d[, grepl(ct_sel, d@meta.data[[ct_col]])]
-    ct_col2 <- "CellType.split"
+      )
+      d_spl[["CellType.split"]] <- factor(
+        d_spl[["CellType.split"]],
+        levels = gtools::mixedsort(d_spl[["CellType.split"]])
+      )
+      d_ct2 <- dplyr::select(
+        dplyr::left_join(
+          d@meta.data[, c(ct_col, md_list1)],
+          d_spl,
+          by = c(ct_col, md_list1)
+        ),
+        .data[["CellType.split"]] # nolint
+      )
+      d <- SeuratObject::AddMetaData(
+        d,
+        d_ct2[["CellType.split"]],
+        col.name = "CellType.split"
+      )
+      if(ct_filt == TRUE) { # nolint
+        d2 <- d[, grepl(ct_sel, d@meta.data[[ct_col]])]
+      }
+      if(ct_filt == FALSE) { # nolint
+        d2 <- d
+      }
+      ct_col2 <- "CellType.split"
+      Seurat::Idents(d2) <- md_list1
+      p_aw <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = FALSE,
+        idents = sort(unique(d2@meta.data[[md_list1]])),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          strip.text = ggplot2::element_text(size = 6),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0, 0.25, 0),
+            "cm"
+          )
+        )
+      Seurat::Idents(d2) <- ct_col2
+      p_ct <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = TRUE,
+        idents = unique(d2@meta.data[[ct_col2]]),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.05, 0.25, 0.25),
+            "cm"
+          )
+        )
+      p_comb <- p_aw +
+        p_ct +
+        plot_layout(ncol = 1, heights = c(0.75, 4)) + # nolint
+        ggplot2::theme(
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.0, 0.25, 0),
+            "cm"
+          )
+        )
+    }
+    if(p_type == "gn_only") { # nolint
+      d2 <- d
+      Seurat::Idents(d2) <- md_list1
+      p_aw <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = FALSE,
+        idents = sort(unique(d2@meta.data[[md_list1]])),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          strip.text = ggplot2::element_text(size = 6),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0, 0.25, 0),
+            "cm"
+          )
+        )
+      p_comb <- p_aw
+    }
+    if(p_type == "ct_only") { # nolint
+      d_spl <- data.frame(
+        "CellType.split" = gtools::mixedsort(
+          paste(
+            unique(d@meta.data[, c(md_list1, ct_col)])[[ct_col]],
+            unique(d@meta.data[, c(md_list1, ct_col)])[[md_list1]],
+            sep = "."
+          )
+        )
+      )
+      d_spl[[ct_col]] <- factor(
+        gsub(
+          paste(
+            ".", unique(d@meta.data[[md_list1]])[[1]],
+            "|.", unique(d@meta.data[[md_list1]])[[2]],
+            sep = ""
+          ),
+          "",
+          d_spl[["CellType.split"]]
+        ),
+        levels = levels(d@meta.data[[ct_col]])
+      )
+      d_spl[[md_list1]] <- gsub(
+        ".*\\.",
+        "",
+        d_spl[["CellType.split"]]
+      )
+      d_spl[["CellType.split"]] <- factor(
+        d_spl[["CellType.split"]],
+        levels = gtools::mixedsort(d_spl[["CellType.split"]])
+      )
+      d_ct2 <- dplyr::select(
+        dplyr::left_join(
+          d@meta.data[, c(ct_col, md_list1)],
+          d_spl,
+          by = c(ct_col, md_list1)
+        ),
+        .data[["CellType.split"]] # nolint
+      )
+      d <- SeuratObject::AddMetaData(
+        d,
+        d_ct2[["CellType.split"]],
+        col.name = "CellType.split"
+      )
+      if(ct_filt == TRUE) { # nolint
+        d2 <- d[, grepl(ct_sel, d@meta.data[[ct_col]])]
+      }
+      if(ct_filt == FALSE) { # nolint
+        d2 <- d
+      }
+      ct_col2 <- "CellType.split"
+      Seurat::Idents(d2) <- ct_col2
+      p_ct <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = TRUE,
+        idents = unique(d2@meta.data[[ct_col2]]),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.05, 0.25, 0.25),
+            "cm"
+          )
+        )
+      p_comb <- p_ct
+    }
   }
   if(ct_spl == FALSE) { # nolint
-    d2 <- d
-    ct_col2 <- ct_col
-  }
-  # Plot
-  if(p_type == "gn_ct") { # nolint
-    Seurat::Idents(d2) <- md_list1
-    p_aw <- Signac::CoveragePlot(
-      object = d2,
-      region = g_name,
-      features = g_name,
-      expression.assay = "RNA",
-      expression.slot = "data",
-      annotation = TRUE,
-      peaks = TRUE,
-      links = FALSE,
-      idents = unique(d2@meta.data[[md_list1]]),
-      extend.upstream = bp_window,
-      extend.downstream = bp_window
-    ) &
-      ggplot2::scale_fill_manual(values = col_univ()) & # nolint
-      ggplot2::theme(
-        axis.title.x = ggplot2::element_text(size = 8),
-        axis.title.y = ggplot2::element_text(size = 8),
-        strip.text = ggplot2::element_text(size = 6),
-        axis.text.x = ggplot2::element_text(size = 6),
-        plot.margin = ggplot2::unit(
-          c(0.25, 0, 0.25, 0),
-          "cm"
+    if(p_type == "gn_ct") { # nolint
+      if(ct_filt == TRUE) { # nolint
+        d2 <- d[, grepl(ct_sel, d@meta.data[[ct_col]])]
+      }
+      if(ct_filt == FALSE) { # nolint
+        d2 <- d
+      }
+      Seurat::Idents(d2) <- md_list1
+      p_aw <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = FALSE,
+        idents = sort(unique(d2@meta.data[[md_list1]])),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          strip.text = ggplot2::element_text(size = 6),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0, 0.25, 0),
+            "cm"
+          )
         )
-      )
-    Seurat::Idents(d2) <- ct_col2
-    p_ct <- Signac::CoveragePlot(
-      object = d2,
-      region = g_name,
-      features = g_name,
-      expression.assay = "RNA",
-      expression.slot = "data",
-      annotation = TRUE,
-      peaks = TRUE,
-      links = TRUE,
-      idents = unique(d2@meta.data[[ct_col2]]),
-      extend.upstream = bp_window,
-      extend.downstream = bp_window
-    ) &
-      ggplot2::scale_fill_manual(values = col_univ()) & # nolint
-      ggplot2::theme(
-        axis.title.x = ggplot2::element_text(size = 8),
-        axis.title.y = ggplot2::element_text(size = 8),
-        axis.text.x = ggplot2::element_text(size = 6),
-        plot.margin = ggplot2::unit(
-          c(0.25, 0.05, 0.25, 0.25),
-          "cm"
+      Seurat::Idents(d2) <- ct_col2
+      p_ct <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = TRUE,
+        idents = levels(d2@meta.data[[ct_col]]),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.05, 0.25, 0.25),
+            "cm"
+          )
         )
-      )
-    p_comb <- p_aw +
-      p_ct +
-      plot_layout(ncol = 1, heights = c(0.75, 4)) + # nolint
-      ggplot2::theme(
-        plot.margin = ggplot2::unit(
-          c(0.25, 0.0, 0.25, 0),
-          "cm"
+      p_comb <- p_aw +
+        p_ct +
+        plot_layout(ncol = 1, heights = c(0.75, 4)) + # nolint
+        ggplot2::theme(
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.0, 0.25, 0),
+            "cm"
+          )
         )
-      )
-  }
-  if(p_type == "gn_only") { # nolint
-    Seurat::Idents(d2) <- md_list1
-    p_aw <- Signac::CoveragePlot(
-      object = d2,
-      region = g_name,
-      features = g_name,
-      expression.assay = "RNA",
-      expression.slot = "data",
-      annotation = TRUE,
-      peaks = TRUE,
-      links = FALSE,
-      idents = unique(d2@meta.data[[md_list1]]),
-      extend.upstream = bp_window,
-      extend.downstream = bp_window
-    ) &
-      ggplot2::scale_fill_manual(values = col_univ()) & # nolint
-      ggplot2::theme(
-        axis.title.x = ggplot2::element_text(size = 8),
-        axis.title.y = ggplot2::element_text(size = 8),
-        strip.text = ggplot2::element_text(size = 6),
-        axis.text.x = ggplot2::element_text(size = 6),
-        plot.margin = ggplot2::unit(
-          c(0.25, 0, 0.25, 0),
-          "cm"
+    }
+    if(p_type == "gn_only") { # nolint
+      d2 <- d
+      Seurat::Idents(d2) <- md_list1
+      p_aw <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = FALSE,
+        idents = sort(unique(d2@meta.data[[md_list1]])),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          strip.text = ggplot2::element_text(size = 6),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0, 0.25, 0),
+            "cm"
+          )
         )
-      )
-    p_comb <- p_aw
-  }
-  if(p_type == "ct_only") { # nolint
-    Seurat::Idents(d2) <- ct_col2
-    p_ct <- Signac::CoveragePlot(
-      object = d2,
-      region = g_name,
-      features = g_name,
-      expression.assay = "RNA",
-      expression.slot = "data",
-      annotation = TRUE,
-      peaks = TRUE,
-      links = TRUE,
-      idents = unique(d2@meta.data[[ct_col2]]),
-      extend.upstream = bp_window,
-      extend.downstream = bp_window
-    ) &
-      ggplot2::scale_fill_manual(values = col_univ()) & # nolint
-      ggplot2::theme(
-        axis.title.x = ggplot2::element_text(size = 8),
-        axis.title.y = ggplot2::element_text(size = 8),
-        axis.text.x = ggplot2::element_text(size = 6),
-        plot.margin = ggplot2::unit(
-          c(0.25, 0.05, 0.25, 0.25),
-          "cm"
+      p_comb <- p_aw
+    }
+    if(p_type == "ct_only") { # nolint
+      if(ct_filt == TRUE) { # nolint
+        d2 <- d[, grepl(ct_sel, d@meta.data[[ct_col]])]
+      }
+      if(ct_filt == FALSE) { # nolint
+        d2 <- d
+      }
+      Seurat::Idents(d2) <- ct_col
+      p_ct <- Signac::CoveragePlot(
+        object = d2,
+        region = g_name,
+        features = g_name,
+        expression.assay = asy2,
+        expression.slot = asy_dat,
+        annotation = TRUE,
+        peaks = TRUE,
+        links = TRUE,
+        idents = levels(d2@meta.data[[ct_col]]),
+        extend.upstream = bp_window,
+        extend.downstream = bp_window
+      ) &
+        ggplot2::scale_fill_manual(values = col_univ()) & # nolint
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(size = 8),
+          axis.title.y = ggplot2::element_text(size = 8),
+          axis.text.x = ggplot2::element_text(size = 6),
+          plot.margin = ggplot2::unit(
+            c(0.25, 0.05, 0.25, 0.25),
+            "cm"
+          )
         )
-      )
-    p_comb <- p_ct
+      p_comb <- p_ct
+    }
   }
   return(p_comb)
 }

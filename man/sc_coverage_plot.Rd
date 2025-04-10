@@ -4,7 +4,21 @@
 \alias{sc_coverage_plot}
 \title{scATAC-Seq Coverage Plot}
 \usage{
-sc_coverage_plot(so, dref, asy1, g_name, bp_window, md_list1)
+sc_coverage_plot(
+  so,
+  dref = NULL,
+  asy1 = "ufy.peaks",
+  asy2 = "sct",
+  asy_dat = "scale.data",
+  g_name,
+  bp_window = 5000,
+  ct_col = NULL,
+  ct_spl = TRUE,
+  ct_filt = FALSE,
+  ct_sel = NULL,
+  md_list1 = NULL,
+  p_type = "ct_only"
+)
 }
 \arguments{
 \item{so}{An object of class Seurat. Must contain an ATAC assay.}
@@ -13,14 +27,30 @@ sc_coverage_plot(so, dref, asy1, g_name, bp_window, md_list1)
 
 \item{asy1}{ATAC peaks assay to use.}
 
+\item{asy2}{GEX assay to use.}
+
 \item{g_name}{Gene to plot, provided as a character string.}
 
 \item{bp_window}{Numeric value indicating the number of base pairs to
 extend the plotting window on each end of the selected gene's location.
 Useful for visualizing peaks corresponding to neighboring genes.}
 
-\item{md_list1}{Character vector of up to 2 metadata variables for
+\item{ct_col}{Cell type column name to use in the selected Seurat object.
+Must be a factor variable.}
+
+\item{ct_spl}{Logical indicating whether cell types should be stratified
+by an additional variable.}
+
+\item{ct_sel}{Pattern for selecting individual cell types if ct_spl == TRUE.}
+
+\item{md_list1}{Character vector of 1 metadata variable for
 stratifying peak data.}
+
+\item{p_type}{Final coverage plot type
+(either "ct_only", "gn_only", or "gn_ct");
+Note that "gn_only" and "gn_ct" use the variable
+from md_list1 for plotting. This can be useful for summarizing differences
+in accessbility between treatment groups.}
 }
 \value{
 A coverage plot including the specified gene track and all other
@@ -29,18 +59,24 @@ genes present within the specified window.
 \description{
 Generates a coverage plot from a Signac ChromatinAssay.
 Requires scATAC-Seq peak information and a reference GRanges object
-for plotting gene positions.
+for plotting gene positions. The Signac function CoveragePlot() is
+used to generate the final plot.
 }
 \examples{
 
-# p_cov <- sc_coverage_plot(
-#   readRDS("analysis/data.annotated.withTFs.rds"),
-#   rtracklayer::import(
+# p_cov <- sc_coverage_plot2(
+#   so = d,
+#   dref = rtracklayer::import(
 #    "ref/gencode.v45.primary_assembly.annotation.gtf"
 #   ),
-#   "TMEM45A",
-#   20000,
-#   c("CellType", "Airway")
+#   asy1 = "ufy.peaks",
+#   g_name = "SCGB3A2",
+#   bp_window = 5000,
+#   ct_col = "CellType",
+#   ct_spl = TRUE,
+#   ct_sel = "Secretory",
+#   md_list1 = c("Group"),
+#   p_type = "gn_ct"
 # )
 
 }
