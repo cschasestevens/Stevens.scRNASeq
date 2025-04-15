@@ -16,7 +16,9 @@
 sc_umap_panel <- function(
   so,
   md_list,
-  slot1
+  slot1,
+  leg_x = 0.9,
+  leg_y = 0.25
 ) {
   d <- so
   if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3) { #nolint
@@ -100,8 +102,8 @@ sc_umap_panel <- function(
             "cm"
           ),
           legend.position = c(
-            0.9,
-            0.85
+            leg_x,
+            leg_y
           )
         )
       return(p)

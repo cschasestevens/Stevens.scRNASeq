@@ -34,19 +34,25 @@ sc_predict <- function(
   # Load data
   d1 <- so
   r1 <- ref1
+  fs1 <- f_size
   # Future size and parallel settings
-  options(future.globals.maxSize = f_size * 1024^2)
   if(parl == TRUE && Sys.info()[["sysname"]] != "Windows") { # nolint
     future::plan(
-      "multisession",
+      "multicore",
       workers = parallel::detectCores() * core_perc
     )
   }
+  options(future.globals.maxSize = fs1 * 1024^2)
   # Prediction
   pred1 <- Azimuth::RunAzimuth(
     d1,
     reference = r1
   )
+  # Reset future size and parallel settings
+  if(parl == TRUE && Sys.info()[["sysname"]] != "Windows") { # nolint
+    future::plan("sequential")
+  }
+  options(future.globals.maxSize = 500 * 1024^2)
   # Cell Type Prediction Score Distribution
   fun_dist_score <- function(x) {
     p_score_dist <- ggplot2::ggplot( # nolint

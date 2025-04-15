@@ -4,7 +4,7 @@
 \alias{sc_umap_panel}
 \title{scRNA-Seq UMAP Plot}
 \usage{
-sc_umap_panel(so, md_list, slot1)
+sc_umap_panel(so, md_list, slot1, leg_x = 0.9, leg_y = 0.25)
 }
 \arguments{
 \item{so}{An object of class Seurat.}
