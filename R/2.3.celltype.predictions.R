@@ -1,519 +1,526 @@
-#' Cell Type Prediction
+#' Cell Type Prediction (HLCA/Azimuth)
 #'
-#' Predicts cell type identities of clusters in a Seurat object given a previously annotated data set. The reference data
-#' must have a cell type column named 'CellType' for predictions to be successful.
+#' Cell type predictions of a Seurat Object using the built-in
+#' Azimuth Human Lung Cell Atlas reference annotation.
 #'
-#' @param so An object of class Seurat.
-#' @param d.ref An annotated Seurat object containing cell type identities for cell type prediction.
-#' @param f.size Memory allocated for objects created during cell type prediction (in MB), provided as a numeric value. For larger datasets, set to 5000 or higher.
-#' @param cl.var Character string containing the name of the cluster variable for cell type predictions.
-#' @param md.list A vector of character strings indicating metadata columns to include with the prediction score output table.
-#' @param parl Logical indicating whether processing should be run in parallel (Linux and WSL2 only). Set to FALSE if running sequentially.
-#' @param core.perc Percentage of available cores to use if running in parallel (Linux and WSL2 only). Set to 1 if running sequentially.
-#' @return A list containing a table of marker genes per cluster and an annotated Seurat object with putative cell identities.
+#' @param so A Seurat object.
+#' @param ref1 Azimuth reference annotation ("lungref" by default).
+#' @param f_size Future size (in MB), provided as a numeric value.
+#' For larger datasets, set to 5000 or higher.
+#' @param cl_var Name of the cluster variable used for cell type predictions.
+#' @param md_list A vector selecting metadata columns
+#' stratifying the prediction score output table.
+#' @param parl Should predictions be run in parallel? (TRUE/FALSE)
+#' @param core_perc Percentage of cores to use if parl is TRUE.
+#' @return A list containing a Seurat object with predicted clusters and
+#' QC tables/plots to evaluate prediction performance.
 #' @examples
 #'
-#' # sc.predict.clusters(d.seurat,d.ref,5000,"seurat_clusters",c("col1","col2","col3"),TRUE,0.5)
+#' # pred1 <- sc_predict(
+#' #   so = d,
+#' #   md_list = c("Code")
+#' # )
 #'
 #' @export
-sc.predict.clusters <- function(
-    so,
-    d.ref,
-    f.size,
-    cl.var,
-    md.list,
-    parl,
-    core.perc
-    ) {
-  dr <- d.ref
-  d <- so
-  # Change assay and active identity
-  SeuratObject::DefaultAssay(dr) <- "RNA"
-  SeuratObject::DefaultAssay(d) <- "RNA"
-  d <- SeuratObject::SetIdent(d,value = d@meta.data[[cl.var]])
-
-
-
-
-
-
-  if(Sys.info()[["sysname"]] != "Windows" & parl == TRUE) {
-    ## Change to multisession (runs in parallel)
-    future::plan("multisession",workers = parallel::detectCores()*core.perc)
-    options(future.globals.maxSize = f.size * 1024^2)
-    ## Find marker genes for all clusters (for manual annotation of clusters)
-    if(file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- read.table(
-        "analysis/table.marker.genes.txt",
-        sep = "\t",
-        header = T
-        )}
-    if(!file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- Seurat::FindAllMarkers(
-        d,
-        verbose = T)
-      write.table(
-        cl.mark,
-        "analysis/table.marker.genes.txt",
-        col.names = T,
-        row.names = F,
-        sep = "\t"
-        )
-      }
-    ## Cell Type Prediction
-    if(
-      file.exists("analysis/data.with.predictions.rds") &
-      file.exists("analysis/table.predicted.types.txt")) {
-      list.d <- readRDS("analysis/data.with.predictions.rds")
-      list.d[["Prediction Scores"]] <- read.table(
-        "analysis/table.predicted.types.txt",
-        sep = "\t",
-        header = T
-      )
-    }
-    if(
-      !file.exists("analysis/data.with.predictions.rds") &
-      !file.exists("analysis/table.predicted.types.txt")) {
-    ### Reference features
-    data.ref <- Seurat::FindVariableFeatures(
-      dr,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ### Query features
-    data.qry <- Seurat::FindVariableFeatures(
-      d,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ## Transfer anchors
-    data.transfer.anchors <- Seurat::FindTransferAnchors(
-      reference = data.ref,
-      query = data.qry,
-      features = Seurat::VariableFeatures(object = data.ref),
-      reference.assay = "RNA",
-      query.assay = "RNA",
-      reduction = "pcaproject")
-    ## Transfer cell type predictions to query set
-    data.predicted <- Seurat::TransferData(
-      anchorset = data.transfer.anchors,
-      refdata = data.ref@meta.data[["CellType"]],
-      weight.reduction = "pcaproject"
-      )
-    # change to sequential
-    future::plan("sequential")
-    options(future.globals.maxSize = 500 * 1024^2)
-
-    ## add metadata and return the query dataset with cell type predictions
-    data.qry <- Seurat::AddMetaData(
-      data.qry,
-      metadata = data.predicted
-    )
-
-    # Combine marker genes and Seurat object as list
-    list.d <- list(
-      "Predicted Clusters" = data.qry,
-      "Marker Genes" = cl.mark
-    )
-    ## Save predictions as table and Seurat object with predictions
-    saveRDS(list.d,"analysis/data.with.predictions.rds")
-    list.d[["Prediction Scores"]] <- dplyr::select(
-      list.d$`Predicted Clusters`@meta.data,
-      c(md.list,cl.var,names(
-        list.d$`Predicted Clusters`@meta.data[grepl(
-          "predicted|prediction",
-          names(list.d$`Predicted Clusters`@meta.data))])))
-    write.table(
-      list.d$`Prediction Scores`,
-      "analysis/table.predicted.types.txt",
-      col.names = T,
-      row.names = F,
-      sep = "\t"
-      )
-    }
-  }
-
-  if(Sys.info()[["sysname"]] == "Windows") {
-    ## Change to multisession (runs in parallel)
-    ## Find marker genes for all clusters (for manual annotation of clusters)
-    if(file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- read.table(
-        "analysis/table.marker.genes.txt",
-        sep = "\t",
-        header = T
-        )}
-    if(!file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- Seurat::FindAllMarkers(
-        d,
-        verbose = T)
-      write.table(
-        cl.mark,
-        "analysis/table.marker.genes.txt",
-        col.names = T,
-        row.names = F,
-        sep = "\t"
-        )
-      }
-    ## Cell Type Prediction
-    if(
-      file.exists("analysis/data.with.predictions.rds") &
-      file.exists("analysis/table.predicted.types.txt")) {
-      list.d <- readRDS("analysis/data.with.predictions.rds")
-      list.d[["Prediction Scores"]] <- read.table(
-        "analysis/table.predicted.types.txt",
-        sep = "\t",
-        header = T
-      )
-    }
-    if(
-      !file.exists("analysis/data.with.predictions.rds") &
-      !file.exists("analysis/table.predicted.types.txt")) {
-    ### Reference features
-    data.ref <- Seurat::FindVariableFeatures(
-      dr,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ### Query features
-    data.qry <- Seurat::FindVariableFeatures(
-      d,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ## Transfer anchors
-    data.transfer.anchors <- Seurat::FindTransferAnchors(
-      reference = data.ref,
-      query = data.qry,
-      features = Seurat::VariableFeatures(object = data.ref),
-      reference.assay = "RNA",
-      query.assay = "RNA",
-      reduction = "pcaproject")
-    ## Transfer cell type predictions to query set
-    data.predicted <- Seurat::TransferData(
-      anchorset = data.transfer.anchors,
-      refdata = data.ref@meta.data[["CellType"]],
-      weight.reduction = "pcaproject"
-      )
-
-    ## add metadata and return the query dataset with cell type predictions
-    data.qry <- Seurat::AddMetaData(
-      data.qry,
-      metadata = data.predicted
-      )
-
-    # Combine marker genes and Seurat object as list
-    list.d <- list(
-      "Predicted Clusters" = data.qry,
-      "Marker Genes" = cl.mark
-      )
-    ## Save predictions as table and Seurat object with predictions
-    saveRDS(list.d,"analysis/data.with.predictions.rds")
-    list.d[["Prediction Scores"]] <- dplyr::select(
-      list.d$`Predicted Clusters`@meta.data,
-      c(md.list,cl.var,names(
-        list.d$`Predicted Clusters`@meta.data[grepl(
-          "predicted|prediction",
-          names(list.d$`Predicted Clusters`@meta.data))])))
-    write.table(
-      list.d$`Prediction Scores`,
-      "analysis/table.predicted.types.txt",
-      col.names = T,
-      row.names = F,
-      sep = "\t"
-      )
-
-    }
-  }
-
-  if(Sys.info()[["sysname"]] != "Windows" & parl == FALSE) {
-    ## Change to multisession (runs in parallel)
-    ## Find marker genes for all clusters (for manual annotation of clusters)
-    if(file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- read.table(
-        "analysis/table.marker.genes.txt",
-        sep = "\t",
-        header = T
-      )}
-    if(!file.exists("analysis/table.marker.genes.txt")) {
-      cl.mark <- Seurat::FindAllMarkers(
-        d,
-        verbose = T)
-      write.table(
-        cl.mark,
-        "analysis/table.marker.genes.txt",
-        col.names = T,
-        row.names = F,
-        sep = "\t"
-      )
-    }
-
-    ## Cell Type Prediction
-    if(
-      file.exists("analysis/data.with.predictions.rds") &
-      file.exists("analysis/table.predicted.types.txt")) {
-      list.d <- readRDS("analysis/data.with.predictions.rds")
-      list.d[["Prediction Scores"]] <- read.table(
-        "analysis/table.predicted.types.txt",
-        sep = "\t",
-        header = T
-        )
-      }
-    if(
-      !file.exists("analysis/data.with.predictions.rds") &
-      !file.exists("analysis/table.predicted.types.txt")) {
-    ### Reference features
-    data.ref <- Seurat::FindVariableFeatures(
-      dr,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ### Query features
-    data.qry <- Seurat::FindVariableFeatures(
-      d,
-      selection.method = "vst",
-      nfeatures = 4000,
-      assay = "RNA"
-      )
-    ## Transfer anchors
-    data.transfer.anchors <- Seurat::FindTransferAnchors(
-      reference = data.ref,
-      query = data.qry,
-      features = Seurat::VariableFeatures(object = data.ref),
-      reference.assay = "RNA",
-      query.assay = "RNA",
-      reduction = "pcaproject")
-    ## Transfer cell type predictions to query set
-    data.predicted <- Seurat::TransferData(
-      anchorset = data.transfer.anchors,
-      refdata = data.ref@meta.data[["CellType"]],
-      weight.reduction = "pcaproject"
-      )
-
-  ## add metadata and return the query dataset with cell type predictions
-  data.qry <- Seurat::AddMetaData(
-    data.qry,
-    metadata = data.predicted
-    )
-
-  # Combine marker genes and Seurat object as list
-  list.d <- list(
-    "Predicted Clusters" = data.qry,
-    "Marker Genes" = cl.mark
-    )
-  ## Save predictions as table and Seurat object with predictions
-  saveRDS(list.d,"analysis/data.with.predictions.rds")
-  list.d[["Prediction Scores"]] <- dplyr::select(
-    list.d$`Predicted Clusters`@meta.data,
-    c(md.list,cl.var,names(
-      list.d$`Predicted Clusters`@meta.data[grepl(
-        "predicted|prediction",
-        names(list.d$`Predicted Clusters`@meta.data))])))
-  write.table(
-    list.d$`Prediction Scores`,
-    "analysis/table.predicted.types.txt",
-    col.names = T,
-    row.names = F,
-    sep = "\t"
+sc_predict <- function(
+  so,
+  ref1 = "lungref",
+  f_size = 10000,
+  cl_var = "seurat_clusters",
+  md_list,
+  parl = TRUE,
+  core_perc = 0.25
+) {
+  # Load data
+  d1 <- so
+  r1 <- ref1
+  # Future size and parallel settings
+  options(future.globals.maxSize = f_size * 1024^2)
+  if(parl == TRUE && Sys.info()[["sysname"]] != "Windows") { # nolint
+    future::plan(
+      "multisession",
+      workers = parallel::detectCores() * core_perc
     )
   }
-  }
-
-  print(
-    table(
-      list.d$`Predicted Clusters`$prediction.score.max >
-        0.5
-      )
-    )
-  ### Cell Type Prediction Score Distribution
-  fun.dist.score <- function(x)
-    {
-    p.score.dist <- ggplot2::ggplot(
+  # Prediction
+  pred1 <- Azimuth::RunAzimuth(
+    d1,
+    reference = r1
+  )
+  # Cell Type Prediction Score Distribution
+  fun_dist_score <- function(x) {
+    p_score_dist <- ggplot2::ggplot( # nolint
       x,
-      ggplot2::aes(
-        x = .data[["prediction.score.max"]]
-        )
-      ) +
+      ggplot2::aes(x = .data[["predicted.ann_finest_level.score"]]) # nolint
+    ) +
       ggplot2::geom_density(
         color = "black",
-        fill = col_univ()[[2]]
-        ) +
+        fill = col_univ()[[2]] # nolint
+      ) +
       ggplot2::labs(
         x = "Prediction Score",
         y = "Density",
         title = "Prediction Score Distribution"
       ) +
-      sc_theme1()
-    }
-  ggplot2::ggsave(
-    "analysis/plot.predicted.scores.dist.png",
-    fun.dist.score(
-      list.d$`Prediction Scores`
-    ),
-    width = 8,
-    height = 8,
-    dpi = 700
-    )
-
-  ### Predicted Cell Type Proportions for Each Cluster
-  # Counting function
-  fun.predict.prop.alt <- function(
+      sc_theme1() # nolint
+    return(p_score_dist)
+  }
+  p1 <- fun_dist_score(pred1@meta.data)
+  # Predicted Cell Type Proportions for Each Cluster
+  ## Counting function
+  fun_predict_prop <- function(
     x,
     c,
     md
-    ) {
-    data.pred.prop2 <- setNames(
+  ) {
+    data_pred_prop2 <- setNames(
       dplyr::count(
         x,
-        .data[[c]]
-        ),
-      c(c,"Total Cells")
-      )
-    data.pred.prop <- dplyr::count(
+        .data[[c]] # nolint
+      ),
+      c(c, "Total Cells")
+    )
+    data_pred_prop <- dplyr::count(
       x,
-      x[,c(md,c)]
-      )
-    data.pred.prop <- dplyr::left_join(
-      data.pred.prop,
-      data.pred.prop2,
+      x[, c(md, c)]
+    )
+    data_pred_prop <- dplyr::left_join(
+      data_pred_prop,
+      data_pred_prop2,
       by = c
-      )
-    data.pred.prop[["Proportion"]] <- round(
-      data.pred.prop$n/
-        data.pred.prop$`Total Cells`,
+    )
+    data_pred_prop[["Proportion"]] <- round(
+      data_pred_prop$n /
+        data_pred_prop$`Total Cells`,
       digits = 3
-      )
-    return(data.pred.prop)
-    }
-
+    )
+    return(data_pred_prop)
+  }
   ## Cell Type Proportion Summary and Consensus Type
-  list.d[["Predicted Proportions"]] <- dplyr::filter(
-    fun.predict.prop.alt(
-      list.d[["Predicted Clusters"]]@meta.data,
-      "predicted.id",
-      c(md.list,cl.var)
-      ),
-      .data[["Proportion"]] >
-        0.001
-      )
-  write.table(
-    list.d[["Predicted Proportions"]],
-    "analysis/table.predicted.prop.txt",
-    col.names = T,
-    row.names = F,
-    sep = "\t"
-    )
-  list.d[["pred.prop.summary"]] <- setNames(
+  t1 <- dplyr::filter(
+    fun_predict_prop(
+      pred1@meta.data,
+      "predicted.ann_finest_level",
+      c(md_list, cl_var)
+    ),
+    .data[["Proportion"]] > # nolint
+      0.001
+  )
+  t2 <- setNames(
     aggregate(
-      list.d[["Predicted Proportions"]][["Proportion"]],
+      t1[["Proportion"]],
       list(
-        list.d[["Predicted Proportions"]][[cl.var]],
-        list.d[["Predicted Proportions"]][["predicted.id"]]
-        ),
-      FUN = sum
+        t1[[cl_var]],
+        t1[["predicted.ann_finest_level"]]
       ),
-    c(cl.var,"predicted.id","Proportion")
-    )
-  write.table(
-    list.d[["pred.prop.summary"]],
-    "analysis/table.predicted.prop.summary.txt",
-    col.names = T,
-    row.names = F,
-    sep = "\t"
-    )
-
+      FUN = sum
+    ),
+    c(cl_var, "predicted.id", "Proportion")
+  )
   ## Return cell type predictions and assign highest ranked type to each cell
-  list.d[["cluster.proportions"]] <- dplyr::select(
+  t3 <- dplyr::select(
     unique(
       dplyr::left_join(
         setNames(
           aggregate(
-            list.d$pred.prop.summary[["Proportion"]],
+            t2[["Proportion"]],
             list(
-              list.d$pred.prop.summary[[cl.var]]),
-            FUN = max
+              t2[[cl_var]]
             ),
-          c(cl.var,
-            "Proportion"
-            )
+            FUN = max
           ),
-        list.d$pred.prop.summary[,c("predicted.id","Proportion")],
+          c(cl_var,
+            "Proportion"
+          )
+        ),
+        t2[, c("predicted.id", "Proportion")],
         by = c("Proportion")
+      )
+    ),
+    c(cl_var, "predicted.id", "Proportion")
+  )
+  t3 <- t3[!duplicated(t3[[cl_var]]), ]
+  t_asn <- dplyr::mutate(
+    t3,
+    "predicted.id" = paste(
+      t3[[cl_var]],
+      t3[["predicted.id"]],
+      sep = "."
+    )
+  )
+  ### Change grouping columns to factors
+  t_asn[["predicted.id"]] <- factor(
+    t_asn[["predicted.id"]],
+    levels = c(gtools::mixedsort(t_asn[["predicted.id"]]))
+  )
+  list_d <- list(
+    "data" = pred1,
+    "predicted_dist" = p1,
+    "predicted_all" = t1,
+    "predicted_sum" = t2,
+    "assigned_types" = t_asn
+  )
+  return(
+    list_d
+  )
+}
+
+#' Cell Type Prediction (Custom)
+#'
+#' Predicts cell type identities of clusters in a Seurat object
+#' from a previously annotated Seurat object.
+#'
+#' @param so A Seurat object.
+#' @param ref1 Reference Seurat object containing annotated cell types.
+#' @param f_size Future size (in MB), provided as a numeric value.
+#' @param cl_var Cluster variable for cell type predictions.
+#' @param ct_col Column to use from the reference dataset for annotating
+#' the query dataset.
+#' @param asy1 Assay to use for comparing the reference and query dataset.
+#' @param md_list Vector of metadata variables for stratifying proportion table.
+#' @param parl Should predictions be run in parallel? (TRUE/FALSE)
+#' @param core_perc Percentage of cores to use if parl is TRUE.
+#' @return A list containing a Seurat object with predicted clusters and
+#' QC tables/plots to evaluate prediction performance.
+#' @examples
+#'
+#' # pred1 <- sc_predict2(
+#' #   so = d,
+#' #   ref1 = d_ref,
+#' #   md_list = c("Code"),
+#' # )
+#'
+#' @export
+sc_predict2 <- function(
+  so,
+  ref1,
+  f_size = 10000,
+  cl_var = "seurat_clusters",
+  ct_col = "CellType",
+  asy1 = "RNA",
+  md_list,
+  parl = TRUE,
+  core_perc = 0.25
+) {
+  # Load data
+  dr <- ref1
+  d1 <- so
+  # Change assay and active identity
+  SeuratObject::DefaultAssay(dr) <- asy1
+  SeuratObject::DefaultAssay(d1) <- asy1
+  d1 <- SeuratObject::SetIdent(
+    d1,
+    value = d1@meta.data[[cl_var]]
+  )
+  # Future size and parallel settings
+  options(future.globals.maxSize = f_size * 1024^2)
+  if(Sys.info()[["sysname"]] != "Windows" && parl == TRUE) { # nolint
+    future::plan(
+      "multisession",
+      workers = parallel::detectCores() * core_perc
+    )
+  }
+  ### Reference features
+  data_ref <- Seurat::FindVariableFeatures(
+    dr,
+    selection.method = "vst",
+    nfeatures = 4000,
+    assay = asy1
+  )
+  ### Query features
+  data_qry <- Seurat::FindVariableFeatures(
+    d1,
+    selection.method = "vst",
+    nfeatures = 4000,
+    assay = asy1
+  )
+  ## Transfer anchors
+  data_transfer_anchors <- Seurat::FindTransferAnchors(
+    reference = data_ref,
+    query = data_qry,
+    features = Seurat::VariableFeatures(object = data_ref),
+    reference.assay = asy1,
+    query.assay = asy1,
+    reduction = "pcaproject"
+  )
+  ## Transfer cell type predictions to query set
+  data_predicted <- Seurat::TransferData(
+    anchorset = data_transfer_anchors,
+    refdata = data_ref@meta.data[[ct_col]],
+    weight.reduction = "pcaproject"
+  )
+  # reset future size and parallel settings
+  if(Sys.info()[["sysname"]] != "Windows" && parl == TRUE) { # nolint
+    future::plan("sequential")
+  }
+  options(future.globals.maxSize = 500 * 1024^2)
+  ## add metadata and return the query dataset with cell type predictions
+  data_qry <- Seurat::AddMetaData(
+    data_qry,
+    metadata = data_predicted
+  )
+  # Combine marker genes and Seurat object as list
+  list_d <- list(
+    "Predicted Clusters" = data_qry
+  )
+  ## Save predictions as table and Seurat object with predictions
+  list_d[["Prediction Scores"]] <- dplyr::select(
+    list_d$`Predicted Clusters`@meta.data,
+    c(
+      md_list, cl_var,
+      names(
+        list_d$`Predicted Clusters`@meta.data[
+          grepl(
+            "predicted|prediction",
+            names(list_d$`Predicted Clusters`@meta.data)
+          )
+        ]
+      )
+    )
+  )
+  print(
+    table(
+      list_d$`Predicted Clusters`$prediction.score.max >
+        0.5
+    )
+  )
+  ### Cell Type Prediction Score Distribution
+  fun_dist_score <- function(x) {
+    p_score_dist <- ggplot2::ggplot(
+      x,
+      ggplot2::aes(
+        x = .data[["prediction.score.max"]] # nolint
+      )
+    ) +
+      ggplot2::geom_density(
+        color = "black",
+        fill = col_univ()[[2]] # nolint
+      ) +
+      ggplot2::labs(
+        x = "Prediction Score",
+        y = "Density",
+        title = "Prediction Score Distribution"
+      ) +
+      sc_theme1() # nolint
+    return(p_score_dist)
+  }
+  list_d[["predicted_dist"]] <- fun_dist_score(
+    list_d$`Prediction Scores`
+  )
+  ### Predicted Cell Type Proportions for Each Cluster
+  # Counting function
+  fun_predict_prop_alt <- function(
+    x,
+    c,
+    md
+  ) {
+    data_pred_prop2 <- setNames(
+      dplyr::count(
+        x,
+        .data[[c]] # nolint
+      ),
+      c(c, "Total Cells")
+    )
+    data_pred_prop <- dplyr::count(
+      x,
+      x[, c(md, c)]
+    )
+    data_pred_prop <- dplyr::left_join(
+      data_pred_prop,
+      data_pred_prop2,
+      by = c
+    )
+    data_pred_prop[["Proportion"]] <- round(
+      data_pred_prop$n /
+        data_pred_prop$`Total Cells`,
+      digits = 3
+    )
+    return(data_pred_prop)
+  }
+  ## Cell Type Proportion Summary and Consensus Type
+  list_d[["Predicted Proportions"]] <- dplyr::filter(
+    fun_predict_prop_alt(
+      list_d[["Predicted Clusters"]]@meta.data,
+      "predicted.id",
+      c(md_list, cl_var)
+    ),
+      .data[["Proportion"]] > # nolint
+        0.001
+  )
+  list_d[["pred.prop.summary"]] <- setNames(
+    aggregate(
+      list_d[["Predicted Proportions"]][["Proportion"]],
+      list(
+        list_d[["Predicted Proportions"]][[cl_var]],
+        list_d[["Predicted Proportions"]][["predicted.id"]]
+      ),
+      FUN = sum
+    ),
+    c(cl_var, "predicted.id", "Proportion")
+  )
+  ## Return cell type predictions and assign highest ranked type to each cell
+  list_d[["cluster.proportions"]] <- dplyr::select(
+    unique(
+      dplyr::left_join(
+        setNames(
+          aggregate(
+            list_d$pred.prop.summary[["Proportion"]],
+            list(
+              list_d$pred.prop.summary[[cl_var]]
+            ),
+            FUN = max
+          ),
+          c(cl_var,
+            "Proportion"
+          )
+        ),
+        list_d$pred.prop.summary[, c("predicted.id", "Proportion")],
+        by = c("Proportion")
+      )
+    ),
+    c(cl_var, "predicted.id", "Proportion")
+  )
+  list_d[["cluster.proportions"]] <- list_d[["cluster.proportions"]][
+    !duplicated(list_d[["cluster.proportions"]][[cl_var]]),
+  ]
+  list_d[["cluster.assignments"]] <- dplyr::mutate(
+    list_d$cluster.proportions,
+    "predicted.id" = paste(
+      seq(1:nrow(list_d$cluster.proportions)), # nolint
+      gsub(
+        "FOXN4", "",
+        gsub(
+          "\\.", "",
+          gsub(
+            "^*..", "",
+            list_d$cluster.proportions$predicted.id
+          )
         )
       ),
-    c(cl.var,"predicted.id","Proportion")
-    )
-  list.d[["cluster.proportions"]] <- list.d[["cluster.proportions"]][!duplicated(list.d[["cluster.proportions"]][[cl.var]]),]
-  list.d[["cluster.assignments"]] <- dplyr::mutate(
-    list.d$cluster.proportions,
-    "predicted.id" = paste(
-      seq(1:nrow(list.d$cluster.proportions)),
-      gsub("FOXN4","",
-           gsub("\\.","",
-                gsub("^*..","",
-                     list.d$cluster.proportions$predicted.id
-                     )
-                )
-           ),
-      sep = "."),
+      sep = "."
+    ),
     "CellGroup" = as.factor(
-      gsub("FOXN4","",
-           gsub("\\.","",
-                gsub("^*..","",
-                     list.d$cluster.proportions$predicted.id
-                     )
-                )
-           )
+      gsub(
+        "FOXN4", "",
+        gsub(
+          "\\.", "",
+          gsub(
+            "^*..", "",
+            list_d$cluster.proportions$predicted.id
+          )
+        )
       )
     )
+  )
   ### Change grouping columns to factors
-  list.d[["cluster.assignments"]][["predicted.id"]] <- factor(
-    list.d[["cluster.assignments"]][["predicted.id"]],
-    levels = c(gtools::mixedsort(list.d[["cluster.assignments"]][["predicted.id"]]))
+  list_d[["cluster.assignments"]][["predicted.id"]] <- factor(
+    list_d[["cluster.assignments"]][["predicted.id"]],
+    levels = c(
+      gtools::mixedsort(list_d[["cluster.assignments"]][["predicted.id"]])
     )
-  list.d[["cluster.assignments"]][["CellGroup"]] <- factor(
-    list.d[["cluster.assignments"]][["CellGroup"]],levels = c(list_ct))
-  if("CellGroup" %in% names(list.d[["Predicted Clusters"]]@meta.data) == TRUE){
-  list.d[["cluster.assignments"]] <- dplyr::select(
-    dplyr::left_join(
-      list.d$`Predicted Clusters`@meta.data,
-      list.d$cluster.assignments,
-      by = cl.var
+  )
+  list_d[["cluster.assignments"]][["CellGroup"]] <- factor(
+    list_d[["cluster.assignments"]][["CellGroup"]],
+    levels = sort(unique(list_d[["cluster.assignments"]][["CellGroup"]]))
+  )
+  if("CellGroup" %in% names(list_d[["Predicted Clusters"]]@meta.data) == TRUE) { # nolint
+    list_d[["cluster.assignments"]] <- dplyr::select(
+      dplyr::left_join(
+        list_d$`Predicted Clusters`@meta.data,
+        list_d$cluster.assignments,
+        by = cl_var
       ),
-    c("predicted.id.y","CellGroup.y"))
-
-    list.d$`Predicted Clusters` <- Seurat::AddMetaData(
-      list.d$`Predicted Clusters`,
-      list.d$cluster.assignments[["CellGroup.y"]],
+      c("predicted.id.y", "CellGroup.y")
+    )
+    list_d$`Predicted Clusters` <- Seurat::AddMetaData(
+      list_d$`Predicted Clusters`,
+      list_d$cluster.assignments[["CellGroup.y"]],
       col.name = "CellGroup"
     )
-
   }
-  if("CellGroup" %in% names(list.d[["Predicted Clusters"]]@meta.data) == FALSE){
-    list.d[["cluster.assignments"]] <- dplyr::select(
+  if("CellGroup" %in% names(list_d[["Predicted Clusters"]]@meta.data) == FALSE) { # nolint
+    list_d[["cluster.assignments"]] <- dplyr::select(
       dplyr::left_join(
-        list.d$`Predicted Clusters`@meta.data,
-        list.d$cluster.assignments,
-        by = cl.var
+        list_d$`Predicted Clusters`@meta.data,
+        list_d$cluster.assignments,
+        by = cl_var
       ),
-      c("predicted.id.y","CellGroup"))
-
-      list.d$`Predicted Clusters` <- Seurat::AddMetaData(
-        list.d$`Predicted Clusters`,
-        list.d$cluster.assignments[["CellGroup"]],
-        col.name = "CellGroup"
-      )
-    }
-  ### Add Cell Type and Cell Group columns to seurat object
-  list.d$`Predicted Clusters` <- Seurat::AddMetaData(
-    list.d$`Predicted Clusters`,
-    list.d$cluster.assignments[["predicted.id.y"]],
-    col.name = "CellType"
+      c("predicted.id.y", "CellGroup")
     )
+    list_d$`Predicted Clusters` <- Seurat::AddMetaData(
+      list_d$`Predicted Clusters`,
+      list_d$cluster.assignments[["CellGroup"]],
+      col.name = "CellGroup"
+    )
+  }
+  ### Add Cell Type and Cell Group columns to seurat object
+  list_d$`Predicted Clusters` <- Seurat::AddMetaData(
+    list_d$`Predicted Clusters`,
+    list_d$cluster.assignments[["predicted.id.y"]],
+    col.name = "CellType"
+  )
+  list_d <- list(
+    "data" = list_d[["Predicted Clusters"]],
+    "predicted_dist" = list_d[["predicted_dist"]],
+    "predicted_all" = list_d[["Predicted Proportions"]],
+    "predicted_sum" = list_d[["pred.prop.summary"]],
+    "assigned_types" = list_d[["cluster.assignments"]]
+  )
+  return(list_d)
+}
 
-  return(list.d)
+#' Save Predicted Data
+#'
+#' Saves a predicted list object in the chosen directory.
+#'
+#' @param so_pred A list generated by either sc_predict() or sc_predict2().
+#' @param file1 File name for saving predicted results list
+#' @param dir1 Directory for saving files
+#' (relative to the current working directory).
+#' @return Individual RDS and prediction QC files.
+#' @examples
+#'
+#' # sc_save_pred(
+#' #   so_pred = pred1,
+#' #   file1 = "test",
+#' #   dir1 = "analysis/"
+#' # )
+#'
+#' @export
+sc_save_pred <- function(so_pred, file1, dir1) {
+  d1 <- so_pred
+  # Predicted Seurat object
+  saveRDS(d1, paste(dir1, file1, sep = "_"))
+  # Score distribution
+  ggplot2::ggsave(
+    paste(dir1, file1, "distribution.png", sep = "_"),
+    d1[["predicted_dist"]],
+    width = 8,
+    height = 8,
+    dpi = 300
+  )
+  # Predicted types (all cells)
+  write.table(
+    d1[["predicted_all"]],
+    paste(dir1, file1, "predicted_all.txt", sep = "_"),
+    row.names = FALSE,
+    col.names = TRUE,
+    sep = "\t"
+  )
+  # Predicted types (summary)
+  write.table(
+    d1[["predicted_sum"]],
+    paste(dir1, file1, "predicted_sum.txt", sep = "_"),
+    row.names = FALSE,
+    col.names = TRUE,
+    sep = "\t"
+  )
+  # Predicted types (assigned)
+  write.table(
+    d1[["assigned_types"]],
+    paste(dir1, file1, "assigned_types.txt", sep = "_"),
+    row.names = FALSE,
+    col.names = TRUE,
+    sep = "\t"
+  )
 }

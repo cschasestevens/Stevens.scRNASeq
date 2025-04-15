@@ -102,6 +102,8 @@ browseVignettes("Stevens.scRNASeq")
 * 2.4
     * Bug fixes for subsetting and reclustering multiome data.
     * Simplified parameters for UMAP and visualization.
+    * Added function for Azimuth based cell type predictions.
+    * Updated custom cell type prediction function.
 * 2.3
     * Simplified plotting functions with default parameters.
     * Added batch plotting functions for analyses spanning multiple Seurat objects.
