@@ -173,17 +173,12 @@ sc_umap_panel <- function(
 #' @examples
 #'
 #' # p_umap <- sc_umap_panel_gene(
-#' #  d_integrated,
-#' #  c("col1","col2","col3"),
-#' #  "CFTR",
-#' #  col_univ(),
-#' #  c("group1","group2"),
-#' #  0.95,
-#' #  0.95,
-#' #  "wnn.umap",
-#' #  col_grad(),
-#' #  FALSE,
-#' #  "umap_gex"
+#' #  so = d,
+#' #  md_var = "CellType",
+#' #  g_name = "CFTR",
+#' #  col_scheme = col_univ(),
+#' #  col_names = c("group1","group2"),
+#' #  slot1 = "umap"
 #' # )
 #'
 #' @export
