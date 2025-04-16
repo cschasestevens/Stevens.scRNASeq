@@ -14,7 +14,9 @@ col_univ <- function() {
     ggsci::pal_npg("nrc")(10),
     ggsci::pal_aaas("default")(10),
     ggsci::pal_lancet("lanonc")(9),
-    ggsci::pal_frontiers("default")(7)
+    ggsci::pal_frontiers("default")(7),
+    ggsci::pal_nejm("default")(8),
+    ggsci::pal_jco("default")(10)
   )
 }
 
