@@ -4,7 +4,7 @@
 \alias{sc_cc_run}
 \title{CellChat Based Cell-cell Communication}
 \usage{
-sc_cc_run(so, asy1, g_name, s_name, ct_col)
+sc_cc_run(so, asy1 = "SCT", g_name, s_name, ct_col = "CellType")
 }
 \arguments{
 \item{so}{A Seurat object. Must contain a gene expression assay.}

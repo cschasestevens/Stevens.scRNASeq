@@ -26,10 +26,10 @@
 #' @export
 sc_cc_run <- function(
   so,
-  asy1,
+  asy1 = "SCT",
   g_name,
   s_name,
-  ct_col
+  ct_col = "CellType"
 ) {
   # Load and extract data (subset before creating CellChat if desired)
   dcc <- so
@@ -40,7 +40,10 @@ sc_cc_run <- function(
       mc.cores = 2,
       seq.int(1, length(unique(dcc@meta.data[[g_name]])), 1),
       function(x) {
-        dcc <- dcc[, dcc[[g_name]] == unique(dcc@meta.data[[g_name]])[[x]]]
+        dcc <- dcc[
+          ,
+          dcc[[g_name]] == as.character(unique(dcc@meta.data[[g_name]]))[[x]]
+        ]
         dcc@meta.data[["CellType"]] <- factor(
           as.character(dcc@meta.data[["CellType"]]),
           levels = gtools::mixedsort(
@@ -197,12 +200,12 @@ sc_cc_chrd <- function( # nolint
       x = chrd1,
       grid.col = col1, # nolint
       transparency = 0.25,
-        order = gtools::mixedsort(
-          unique(c(
-            as.character(chrd1[["target"]]),
-            as.character(chrd1[["source"]])
-          ))
-        ),
+      order = gtools::mixedsort(
+        unique(c(
+          as.character(chrd1[["target"]]),
+          as.character(chrd1[["source"]])
+        ))
+      ),
       directional = 1,
       direction.type = c("arrows", "diffHeight"),
       diffHeight  = -0.04,
@@ -263,8 +266,9 @@ sc_cc_chrd <- function( # nolint
       )
       cc_comp3 <- reshape2::dcast(
         cc_comp2,
-        source + target + pathway_name ~ cc_comp2[[col_g]], value.var = "n"
+        source + target + pathway_name ~ cc_comp2[["Group"]], value.var = "n"
       )
+      head(chrd1)
       cc_comp3[is.na(cc_comp3)] <- 0
       cc_comp3[["ratio"]] <- cc_comp3[[4]] / (cc_comp3[[4]] + cc_comp3[[5]])
       chrd1 <- cc_comp3[, c("source", "target", "ratio", "pathway_name")]
