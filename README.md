@@ -104,6 +104,7 @@ browseVignettes("Stevens.scRNASeq")
     * Simplified parameters for UMAP and visualization.
     * Added function for Azimuth based cell type predictions.
     * Updated custom cell type prediction function.
+    * Updated dot plot function to accept both gene expression and ATAC data.
 * 2.3
     * Simplified plotting functions with default parameters.
     * Added batch plotting functions for analyses spanning multiple Seurat objects.

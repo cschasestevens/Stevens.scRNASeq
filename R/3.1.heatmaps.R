@@ -792,106 +792,148 @@ sc_top10_de_da_heatmap <- function(
   return(h_out)
 }
 
-#' Top-10 DEG Dot Plot
+#' Dot Plot
 #'
-#' Generates a dot plot from a Seurat Object and DEG list based on
-#' the top-10 DEGs for a specific cell type and comparison.
+#' Generates a dot plot from a Seurat Object based on a DGEA/DA list based on
+#' a threshold or custom gene list for a specific cell type and comparison.
 #'
 #' @param p_type Should a custom gene list or DGEA results object
 #' be used for plotting?
-#' Type "cstm.list" for custom gene lists and "deg.list"
-#' for using dgea.results objects.
-#' @param l_deg A list of DGEA results returned by sc.DGEA()
+#' Type "cstm" for custom gene lists and "threshold"
+#' for using DGEA/DA results.
+#' @param topn If p_type is "threshold," select the number of
+#' top DEGs/TFs to plot.
+#' @param l_gene A list of DGEA/DA results
 #' or a vector of selected genes for plotting.
+#' @param filt_var If plotting based on a threshold,
+#' which variable should be used for filtering?
 #' @param so An object of class Seurat.
+#' @param asy1 Assay to use for the selected Seurat object. Note
+#' that the assay must match the names in the seleceted
+#' list type (ex. DGEA/DA).
+#' @param ct_filt Filter based on cell type?
 #' @param ct A pattern provided as a character string for
-#' matching a specific cell type or types.
-#' @param cl_var Character string indicating the name of the
+#' matching a specific cell type or types if ct_filt is TRUE.
+#' @param ct_var Character string indicating the name of the
 #' cluster/cell type variable.
 #' @param split_var Logical indicating whether the cluster variable
 #' should be stratified by additional group variables.
-#' @param list_var (Optional) A vector of character strings
-#' indicating the name(s) of up to two group variables
-#' for stratifying plot points.
+#' @param list_var If split_var is TRUE, provide a vector of character strings
+#' containing two group variables for stratifying plot points.
 #' @param col1 Gradient color scheme to use.
 #' @param vline1 Add a vertical line to plot?
-#' @return An input data frame and corresponding dot plot displaying
-#' the expression of the top-10 DEGs for a specific cell type.
+#' @param xint If vline1 is TRUE, specify the x-intercept of the vertical line
+#' to place on the dot plot.
+#' @return A dotplot and formatted data frame for the selected assay.
 #' @examples
 #'
-#' # p_dotplot <- sc_top10_deg_dotplot(
-#' #   # Type "deg.list" or "cstm.list" to toggle between inputs
-#' #   "deg.list",
-#' #   # Name of a custom gene list or dgea.results object
-#' #   dgea_output,
-#' #   # Seurat object
-#' #   d_annotated,
-#' #   # Unique character strings corresponding to cell types
-#' #   "3.Se|6.Se",
-#' #   # Name of clustering variable
-#' #   "CellType",
-#' #   TRUE,
-#' #   # Vector of up to 2 variables for stratifying clustering variables
-#' #   c("Knockout","Airway")
+#' # dot1 <- sc_dotplot( # nolint
+#' #   p_type = "cstm",
+#' #   l_gene = c("IRF1", "IRF2", "STAT1"),
+#' #   so = d,
+#' #   asy1 = "SCT",
+#' #   ct_var = "CellType",
+#' #   split_var = TRUE,
+#' #   list_var = "Group",
+#' #   vline1 = FALSE
 #' # )
 #'
 #' @export
-sc_top10_deg_dotplot <- function( # nolint
-  p_type,
-  l_deg,
+sc_dotplot <- function( # nolint
+  p_type = "threshold",
+  topn = 10,
+  l_gene,
+  filt_var = NULL,
   so,
-  ct,
-  cl_var,
-  split_var,
-  list_var,
-  col1,
-  vline1
+  asy1 = "SCT",
+  ct_filt = FALSE,
+  ct = NULL,
+  ct_var,
+  split_var = FALSE,
+  list_var = NULL,
+  col1 = col_grad(), # nolint
+  vline1 = FALSE,
+  xint = NULL
 ) {
-  # Load Seurat and change default assay to RNA
+  # Load data and define plot variables
   d <- so
-  SeuratObject::DefaultAssay(d) <- "RNA"
+  SeuratObject::DefaultAssay(d) <- asy1
   c <- ct
-
-  if(p_type == "deg.list") { # nolint
-    ## Return specified number of DEGs for selected comparison and cell types
-    ld <- l_deg[["DGEA.results"]]
+  l1 <- l_gene
+  if(grepl("RNA|sct|SCT", asy1)) { # nolint
+    gvar <- "GENE"
+    exvar <- "avg.exp"
+    exvar2 <- "Average Expression"
+  }
+  if(grepl("ufy.peaks|chromvar", asy1)) { # nolint
+    gvar <- "ID"
+    exvar <- "avg.activity"
+    exvar2 <- "Average Activity"
+    if(p_type == "cstm") { # nolint
+      list_tf <- unlist(
+        lapply(
+          row.names(d),
+          function(x) {
+            name(TFBSTools::getMatrixByID(JASPAR2020, ID = x)) # nolint
+          }
+        )
+      )
+      list_tf <- data.frame(
+        "ID" = rownames(d),
+        "Name" = list_tf
+      )
+      list_tf <- list_tf[order(list_tf[["Name"]]), ]
+      l1 <- list_tf[list_tf[["Name"]] %in% l1, "ID"]
+      l2 <- unlist(
+        lapply(
+          l1,
+          function(x) {
+            name(TFBSTools::getMatrixByID(JASPAR2020, ID = x)) # nolint
+          }
+        )
+      )
+    }
+  }
+  # Select data based on threshold
+  if(p_type == "threshold") { # nolint
+    ## Return specified genes/motifs for selected comparison and cell types
     top10 <- dplyr::select(
       dplyr::slice_max(
         dplyr::group_by(
-          ld,
+          l1,
           dplyr::across(
             dplyr::all_of(
               c(
                 "Comparison",
-                "CellType"
+                ct_var
               )
             )
           )
         ),
-        order_by = -.data[["H.pval"]], # nolint
-        n = 10
+        order_by = -.data[[filt_var]], # nolint
+        n = topn
       ),
       c(
-        "CellType",
+        ct_var,
         "Comparison",
-        "GENE",
-        "H.pval"
+        gvar,
+        filt_var
       )
     )
     ## filter list for chosen cell types
-    top10 <- top10[grepl(c, top10[["CellType"]]), ]
+    top10 <- top10[grepl(c, top10[[ct_var]]), ]
     ## return list of unique genes
     top10_pres <- unique(
-      top10[["GENE"]][top10[["GENE"]] %in% SeuratObject::Features(d)]
+      top10[[gvar]][top10[[gvar]] %in% SeuratObject::Features(d)]
     )
     top10_abs <- subset(
-      top10[["GENE"]],
-      !(top10[["GENE"]] %in% SeuratObject::Features(d))
+      top10[[gvar]],
+      !(top10[[gvar]] %in% SeuratObject::Features(d))
     )
   }
-
-  if(p_type == "cstm.list") { # nolint
-    top10 <- as.vector(l_deg[[1]])
+  # Plot data based on a custom list
+  if(p_type == "cstm") { # nolint
+    top10 <- as.vector(l1)
     top10_pres <- unique(top10[top10 %in% SeuratObject::Features(d)])
     top10_abs <- subset(top10, !(top10 %in% SeuratObject::Features(d)))
   }
@@ -901,27 +943,61 @@ sc_top10_deg_dotplot <- function( # nolint
       SeuratObject::FetchData(
         d,
         vars = c(
-          cl_var,
+          ct_var,
           list_var,
           top10_pres
         )
       )
     )
+    ## Set column names if plotting activity scores
+    if(grepl("ufy.peaks|chromvar", asy1)) { # nolint
+      if(p_type == "cstm") { # nolint
+        d1 <- setNames(
+          d1,
+          c(ct_var, list_var, l2)
+        )
+        top10_pres <- l2
+      }
+      if(p_type == "threshold") { # nolint
+        l2 <- unlist(
+          lapply(
+            top10_pres,
+            function(x) {
+              name(TFBSTools::getMatrixByID(JASPAR2020, ID = x)) # nolint
+            }
+          )
+        )
+        d1 <- setNames(
+          d1,
+          c(ct_var, list_var, l2)
+        )
+        top10_pres <- l2
+      }
+    }
   }
   if(split_var == FALSE) { # nolint
     d1 <- cbind(
       SeuratObject::FetchData(
         d,
         vars = c(
-          cl_var,
+          ct_var,
           top10_pres
         )
       )
     )
+    ## Set column names if plotting activity scores
+    if(grepl("ufy.peaks|chromvar", asy1)) { # nolint
+      d1 <- setNames(
+        d1,
+        c(ct_var, l2)
+      )
+      top10_pres <- l2
+    }
   }
-  ## Subset based on cell type
-  d1 <- d1[grepl(c, d1[[cl_var]]), ]
-  d1[["CellType"]] <- d1[[cl_var]]
+  ## Subset based on cell type if ct_filt is TRUE
+  if(ct_filt == TRUE) { # nolint
+    d1 <- d1[grepl(c, d1[[ct_var]]), ]
+  }
   ## Count/ratio table for creating dot plots
   d1_prc <- dplyr::bind_rows(
     setNames(
@@ -936,24 +1012,24 @@ sc_top10_deg_dotplot <- function( # nolint
               aggregate(
                 d1[[x]],
                 by = list(
-                  d1[,  c("CellType")],
+                  d1[,  c(ct_var)],
                   d1[,  c(list_var[[1]])],
                   d1[,  c(list_var[[2]])]
                 ),
                 function(y) mean(y)
               ),
               c(
-                "CellType", c(list_var),
-                "avg.exp"
+                ct_var, c(list_var),
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
             d_prc <- dplyr::count(
-              d1, .data[["CellType"]], # nolint
+              d1, .data[[ct_var]], # nolint
               .data[[list_var[[1]]]],
               .data[[list_var[[2]]]],
               .data[[x]] > 0
@@ -963,18 +1039,18 @@ sc_top10_deg_dotplot <- function( # nolint
                 d_prc, d_prc[4] == TRUE
               ),
               c(
-                "CellType", c(list_var),
+                ct_var, c(list_var),
                 "pres", "n"
               )
             )
             d_cnt <- setNames(
               dplyr::count(
-                d1, .data[["CellType"]], # nolint
+                d1, .data[[ct_var]], # nolint
                 .data[[list_var[[1]]]],
                 .data[[list_var[[2]]]]
               ),
               c(
-                "CellType", c(list_var),
+                ct_var, c(list_var),
                 "n"
               )
             )
@@ -982,7 +1058,7 @@ sc_top10_deg_dotplot <- function( # nolint
               d_cnt,
               d_prc,
               by = c(
-                "CellType", c(list_var)
+                ct_var, c(list_var)
               )
             )
             d_comb[is.na(d_comb)] <- 0
@@ -999,11 +1075,11 @@ sc_top10_deg_dotplot <- function( # nolint
               d_avg,
               d_comb[,
                      c(
-                       "CellType", c(list_var),
+                       ct_var, c(list_var),
                        "perc.exp"
                      )],
               by = c(
-                "CellType",
+                ct_var,
                 c(list_var)
               )
             )
@@ -1014,23 +1090,23 @@ sc_top10_deg_dotplot <- function( # nolint
               aggregate(
                 d1[[x]],
                 by = list(
-                  d1[, c("CellType")],
+                  d1[, c(ct_var)],
                   d1[, c(list_var[[1]])]
                 ),
                 function(y) mean(y)
               ),
               c(
-                "CellType", c(list_var),
-                "avg.exp"
+                ct_var, c(list_var),
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
             d_prc <- dplyr::count(
-              d1,.data[["CellType"]], # nolint
+              d1,.data[[ct_var]], # nolint
               .data[[list_var[[1]]]],
               .data[[x]] > 0
             )
@@ -1039,17 +1115,17 @@ sc_top10_deg_dotplot <- function( # nolint
                 d_prc, d_prc[3] == TRUE
               ),
               c(
-                "CellType", c(list_var),
+                ct_var, c(list_var),
                 "pres", "n"
               )
             )
             d_cnt <- setNames(
               dplyr::count(
-                d1, .data[["CellType"]], # nolint
+                d1, .data[[ct_var]], # nolint
                 .data[[list_var[[1]]]]
               ),
               c(
-                "CellType", c(list_var),
+                ct_var, c(list_var),
                 "n"
               )
             )
@@ -1057,7 +1133,7 @@ sc_top10_deg_dotplot <- function( # nolint
               d_cnt,
               d_prc,
               by = c(
-                "CellType", c(list_var)
+                ct_var, c(list_var)
               )
             )
             d_comb[is.na(d_comb)] <- 0
@@ -1074,37 +1150,37 @@ sc_top10_deg_dotplot <- function( # nolint
               d_avg,
               d_comb[,
                      c(
-                       "CellType", c(list_var),
+                       ct_var, c(list_var),
                        "perc.exp"
                      )],
               by = c(
-                "CellType",
+                ct_var,
                 c(list_var)
               )
             )
           }
           if(split_var == FALSE) { # nolint
-            ### average expression
+            ### average expression/activity
             d_avg <- setNames(
               aggregate(
                 d1[[x]],
                 by = list(
-                  d1[, c("CellType")]
+                  d1[, c(ct_var)]
                 ),
                 function(y) mean(y)
               ),
               c(
-                "CellType",
-                "avg.exp"
+                ct_var,
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
             d_prc <- dplyr::count(
-              d1,.data[["CellType"]], # nolint
+              d1,.data[[ct_var]], # nolint
               .data[[x]] > 0
             )
             d_prc <- setNames(
@@ -1112,16 +1188,16 @@ sc_top10_deg_dotplot <- function( # nolint
                 d_prc, d_prc[2] == TRUE
               ),
               c(
-                "CellType",
+                ct_var,
                 "pres", "n"
               )
             )
             d_cnt <- setNames(
               dplyr::count(
-                d1, .data[["CellType"]] # nolint
+                d1, .data[[ct_var]] # nolint
               ),
               c(
-                "CellType",
+                ct_var,
                 "n"
               )
             )
@@ -1129,7 +1205,7 @@ sc_top10_deg_dotplot <- function( # nolint
               d_cnt,
               d_prc,
               by = c(
-                "CellType"
+                ct_var
               )
             )
             d_comb[is.na(d_comb)] <- 0
@@ -1146,11 +1222,11 @@ sc_top10_deg_dotplot <- function( # nolint
               d_avg,
               d_comb[,
                      c(
-                       "CellType",
+                       ct_var,
                        "perc.exp"
                      )],
               by = c(
-                "CellType"
+                ct_var
               )
             )
           }
@@ -1159,16 +1235,15 @@ sc_top10_deg_dotplot <- function( # nolint
       ),
       c(top10_pres)
     ),
-    .id = "GENE"
+    .id = gvar
   )
-  ## Add row name labels and convert GENE column to factor
+  ## Add row name labels and convert GENE/Motif column to factor
   if(split_var == TRUE && length(list_var) == 2) { # nolint
-
     d1_prc <- data.frame(
       d1_prc,
       "labs" = factor(
         paste(
-          d1_prc[["CellType"]],
+          d1_prc[[ct_var]],
           d1_prc[[list_var[[1]]]],
           d1_prc[[list_var[[2]]]],
           sep = " "
@@ -1176,7 +1251,7 @@ sc_top10_deg_dotplot <- function( # nolint
         levels = gtools::mixedsort(
           unique(
             paste(
-              d1_prc[["CellType"]],
+              d1_prc[[ct_var]],
               d1_prc[[list_var[[1]]]],
               d1_prc[[list_var[[2]]]],
               sep = " "
@@ -1185,10 +1260,10 @@ sc_top10_deg_dotplot <- function( # nolint
         )
       )
     )
-    d1_prc[["GENE"]] <- factor(
-      d1_prc[["GENE"]],
+    d1_prc[[gvar]] <- factor(
+      d1_prc[[gvar]],
       levels = unique(
-        d1_prc[["GENE"]]
+        d1_prc[[gvar]]
       )
     )
   }
@@ -1198,14 +1273,14 @@ sc_top10_deg_dotplot <- function( # nolint
       d1_prc,
       "labs" = factor(
         paste(
-          d1_prc[["CellType"]],
+          d1_prc[[ct_var]],
           d1_prc[[list_var[[1]]]],
           sep = " "
         ),
         levels = gtools::mixedsort(
           unique(
             paste(
-              d1_prc[["CellType"]],
+              d1_prc[[ct_var]],
               d1_prc[[list_var[[1]]]],
               sep = " "
             )
@@ -1213,79 +1288,109 @@ sc_top10_deg_dotplot <- function( # nolint
         )
       )
     )
-    d1_prc[["GENE"]] <- factor(
-      d1_prc[["GENE"]],
+    d1_prc[[gvar]] <- factor(
+      d1_prc[[gvar]],
       levels = unique(
-        d1_prc[["GENE"]]
+        d1_prc[[gvar]]
       )
     )
   }
   if(split_var == FALSE) { # nolint
     d1_prc <- data.frame(
       d1_prc,
-      "labs" = d1_prc[["CellType"]]
+      "labs" = d1_prc[[ct_var]]
     )
-    d1_prc[["GENE"]] <- factor(
-      d1_prc[["GENE"]],
+    d1_prc[[gvar]] <- factor(
+      d1_prc[[gvar]],
       levels = unique(
-        d1_prc[["GENE"]]
+        d1_prc[[gvar]]
       )
     )
   }
   ## Plot
-  p_dot <- ggplot2::ggplot(
-    d1_prc,
-    ggplot2::aes(
-      x = .data[["GENE"]], # nolint
-      y = .data[["labs"]],
-      fill = .data[["avg.exp"]],
-      size = .data[["perc.exp"]]
-    )
-  ) +
-    ggplot2::geom_point(
-      shape = 21
-    ) +
-    ggplot2::geom_vline(xintercept = 6.5, linetype = "dashed") +
-    ggplot2::scale_fill_gradientn(
-      colors = col1 # nolint
-    ) +
-    ggplot2::scale_size_area(max_size = 12) +
-    sc_theme1() + # nolint
-    ggplot2::labs(
-      fill = "Average Expression",
-      size = "Percent Expressed",
-      y = ""
-    ) +
-    ggplot2::theme(
-      plot.margin = ggplot2::unit(
-        c(.2, .2,
-          .2, .2),
-        "cm"
+  if(vline1 == FALSE) { # nolint
+    p_dot <- ggplot2::ggplot(
+      d1_prc,
+      ggplot2::aes(
+        x = .data[[gvar]], # nolint
+        y = .data[["labs"]],
+        fill = .data[[exvar]],
+        size = .data[["perc.exp"]]
       )
-    )
-
+    ) +
+      ggplot2::geom_point(
+        shape = 21
+      ) +
+      ggplot2::scale_fill_gradientn(
+        colors = col1 # nolint
+      ) +
+      ggplot2::scale_size_area(max_size = 12) +
+      sc_theme1() + # nolint
+      ggplot2::labs(
+        fill = exvar2,
+        size = "Percent Expressed",
+        y = ""
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(
+          c(.2, .2,
+            .2, .2),
+          "cm"
+        )
+      )
+  }
+  if(vline1 == TRUE) { # nolint
+    p_dot <- ggplot2::ggplot(
+      d1_prc,
+      ggplot2::aes(
+        x = .data[[gvar]], # nolint
+        y = .data[["labs"]],
+        fill = .data[[exvar]],
+        size = .data[["perc.exp"]]
+      )
+    ) +
+      ggplot2::geom_point(
+        shape = 21
+      ) +
+      ggplot2::geom_vline(xintercept = xint, linetype = "dashed") +
+      ggplot2::scale_fill_gradientn(
+        colors = col1 # nolint
+      ) +
+      ggplot2::scale_size_area(max_size = 12) +
+      sc_theme1() + # nolint
+      ggplot2::labs(
+        fill = exvar2,
+        size = "Percent Expressed",
+        y = ""
+      ) +
+      ggplot2::theme(
+        plot.margin = ggplot2::unit(
+          c(.2, .2,
+            .2, .2),
+          "cm"
+        )
+      )
+  }
   if(exists("top10.abs") && length(top10_abs) == 1) { # nolint
     print(
       paste(
         top10_abs,
         "was not found in the provided Seurat object;
-        plots for this gene was excluded from the dot plot...",
+        points for this gene/motif were excluded from the dot plot...",
         sep = " "
       )
     )
   }
-
   if(exists("top10.abs") && length(top10_abs) > 1) { # nolint
     print(
       paste(
         top10_abs,
         "were not found in the provided Seurat object;
-        these genes were excluded from the dot plot...",
+        these genes/motifs were excluded from the dot plot...",
         sep = " "
       )
     )
   }
-
   return(
     list(
       "Input" = d1_prc,
@@ -2484,11 +2589,11 @@ if(split_var == FALSE) { # nolint
               ),
               c(
                 "CellType", c(list_var),
-                "avg.exp"
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
@@ -2561,11 +2666,11 @@ if(split_var == FALSE) { # nolint
               ),
               c(
                 "CellType", c(list_var),
-                "avg.exp"
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
@@ -2635,11 +2740,11 @@ if(split_var == FALSE) { # nolint
               ),
               c(
                 "CellType",
-                "avg.exp"
+                exvar
               )
             )
-            d_avg[["avg.exp"]] <- round(
-              d_avg[["avg.exp"]],
+            d_avg[[exvar]] <- round(
+              d_avg[[exvar]],
               digits = 2
             )
             ### percent expressed
@@ -2778,7 +2883,7 @@ if(split_var == FALSE) { # nolint
     ggplot2::aes(
       x = .data[["GENE"]], # nolint
       y = .data[["labs"]],
-      fill = .data[["avg.exp"]],
+      fill = .data[[exvar]],
       size = .data[["perc.exp"]]
     )
   ) +
