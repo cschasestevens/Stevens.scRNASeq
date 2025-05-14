@@ -1,18 +1,18 @@
-# Stevens.scRNASeq v2.4 (20250415)
+# Stevens.scRNASeq v3.00 (20250514)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
 ## Description
 
-Utilizes Seurat and Signac in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) and single-cell ATAC-Sequencing (scATAC-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat and Signac functions, statistical methods, and visualization.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.
+Utilizes Seurat and Signac in tandem with various R packages to perform processing and analysis of single-cell RNA-Sequencing (scRNA-Seq) and single-cell ATAC-Sequencing (scATAC-Seq) datasets.    The methods included in this package provide a seamless workflow for commonly used Seurat and Signac functions, statistical methods, and visualization.    Most analyses can be run in parallel using intuitive functions to expedite time-consuming steps such as dataset integration and differential expression analysis.    The package is compatible with Windows, Linux, or WSL2. However, analyses conducted in Windows default to sequential processing due to inherent stability issues of parallel processing in Windows.    Version 3.00 adds functions for QC and analysis of Phenocycler segmentation results exported from QuPath.
 
-* Important: Integration using layer-based methods from Seurat v5.0 and higher are now default for processing both scRNA-Seq and multiome data. Additionally, updated methods run in Linux or WSL2 may require installation of additional dependencies within a conda environment.
+* Important: Functions run in Linux or WSL2 require installation of additional dependencies and setup of a conda environment. Also, Phenocycler analysis is primarily conducted using QuPath and Python.
 
 ## Getting Started
 
 ### Dependencies
 * Windows 10-11, WSL Ubuntu 22.04 or higher, Linux Ubuntu 22.04 or higher, or macOS 12.7.1 or higher
-* R version 4.4.1 or higher (https://cran.r-project.org/)
+* R version 4.4.3 or higher (https://cran.r-project.org/)
 * (Optional) RStudio version 2023.06.2 or higher (https://posit.co/download/rstudio-desktop/)
 * R-packages (downloaded from CRAN unless otherwise specified):
     * Suggests: 
@@ -99,6 +99,8 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.00
+    * Added functions for QC and analysis of Phenocycler segmentation results.
 * 2.4
     * Bug fixes for subsetting and reclustering multiome data.
     * Simplified parameters for UMAP and visualization.
