@@ -13,6 +13,8 @@
 #' results. Only used if qc_type is "all".
 #' @param samp_id Sample ID column name.
 #' @param g_col (optional) Add a column providing grouping information.
+#' @param g_col2 (optional) Same as g_col, but adds grouping information
+#' for individual segmentation results.
 #' @param ch_list List of channels exported with segmentation results. Note
 #' that the channel list must match the order of channels included within
 #' the results.
@@ -22,14 +24,16 @@
 #' for formatting the segmentation results table.
 #' @param loess_norm Normalize signal intensities by performing LOESS
 #' prior to z-score scaling.
-#' @return 
+#' @return List containing QC summary statistics and plots.
 #' @examples
 #'
 #' # pheno_data <- pc_qc(
 #' #   ld = ld1,
 #' #   col_nums1 = c(4, 10, 12, 13),
-#' #   col_names1 = c("Code", "Area.um2", "Cells.raw", "Description"),
+#' #   md_var = c("Area.um2", "Cells.raw", "Description"),
+#' #   samp_id = "Code",
 #' #   g_col = ifelse(grepl("KK", qc1[["Code"]]), "CF", "Norm"),
+#' #   g_col2 = ifelse(grepl("KK", qc2[["Code"]]), "CF", "Norm"),
 #' #   ch_list = s3,
 #' #   col_nums2 = c(6, 8, 9)
 #' # )
@@ -43,6 +47,7 @@ pc_qc <- function(
   md_num = 9,
   samp_id = "Code",
   g_col = NULL,
+  g_col2 = NULL,
   ch_list = NULL,
   col_nums2 = NULL,
   ch_nuc = "DAPI",
@@ -57,6 +62,7 @@ pc_qc <- function(
   if(qc_type == "all") { # nolint
     # Summary statistics
     ## Count section dimensions and detected cells per section
+    d1[[1]][[1]]
     qc1 <- setNames(dplyr::bind_rows(lapply(
       seq.int(1, length(d1), 1),
       function(x) {
@@ -68,14 +74,14 @@ pc_qc <- function(
           )
         )
       }
-    )), c("Slide", sid, cn2))
+    )), c("Slide", "Code", cn2))
     if(is.null(g_col) == FALSE) { # nolint
       qc1 <- dplyr::select(
         dplyr::mutate(
           qc1,
           "Group" = g_col
         ),
-        c("Slide", sid, "Group"), everything() # nolint
+        c("Slide", "Code", "Group"), everything() # nolint
       )
     }
     # Intensity-based filtering (by nuclei and total signal)
@@ -142,25 +148,25 @@ pc_qc <- function(
         (md_num + 3),
         (md_num + 4)
       )],
-      c("ID", "Slide", sid, "X", "Y", "column", "value")
+      c("ID", "Slide", "Code", "X", "Y", "column", "value")
     )
-    if(is.null(g_col) == FALSE) { # nolint
+    if(is.null(g_col2) == FALSE) { # nolint
       qc2 <- dplyr::select(
         dplyr::mutate(
           qc2,
-          "Group" = g_col,
+          "Group" = g_col2,
           "Channel" = gsub("\\_.*", "", qc2[["column"]])
         ),
-        c("ID", "Slide", sid, "Group", "X", "Y", "Channel", "value")
+        c("ID", "Slide", "Code", "Group", "X", "Y", "Channel", "value")
       )
     }
-    if(is.null(g_col) == TRUE) { # nolint
+    if(is.null(g_col2) == TRUE) { # nolint
       qc2 <- dplyr::select(
         dplyr::mutate(
           qc2,
           "Channel" = gsub("\\_.*", "", qc2[["column"]])
         ),
-        c("ID", "Slide", sid, "X", "Y", "Channel", "value")
+        c("ID", "Slide", "Code", "X", "Y", "Channel", "value")
       )
     }
     # Calculate sum intensity per cell
@@ -168,10 +174,10 @@ pc_qc <- function(
       qc_sum <- dplyr::bind_rows(
         parallel::mclapply(
           mc.cores = 2,
-          seq.int(1, length(unique(qc2[[sid]])), 1),
+          seq.int(1, length(unique(qc2[["Code"]])), 1),
           function(x) {
-            md1 <- unique(qc2[[sid]])
-            d1 <- qc2[qc2[[sid]] == md1[[x]], ]
+            md1 <- unique(qc2[["Code"]])
+            d1 <- qc2[qc2[["Code"]] == md1[[x]], ]
             d1 <- setNames(
               aggregate(
                 d1[["value"]],
@@ -196,10 +202,10 @@ pc_qc <- function(
     if(Sys.info()[["sysname"]] == "Windows") { # nolint
       qc_sum <- dplyr::bind_rows(
         lapply(
-          seq.int(1, length(unique(qc2[[sid]])), 1),
+          seq.int(1, length(unique(qc2[["Code"]])), 1),
           function(x) {
-            md1 <- unique(qc2[[sid]])
-            d1 <- qc2[qc2[[sid]] == md1[[x]], ]
+            md1 <- unique(qc2[["Code"]])
+            d1 <- qc2[qc2[["Code"]] == md1[[x]], ]
             d1 <- setNames(
               aggregate(
                 d1[["value"]],
@@ -244,15 +250,15 @@ pc_qc <- function(
         qc_sum[["ID"]] %in% filt2 == FALSE,
     ]
     fprp <- round((1 - (nrow(qc2_filt) / nrow(qc2))), digits = 2) * 100
-    print(paste(fprp, "% ", "of cells removed...", sep = ""))
+    print(paste(fprp, "% ", "of cells removed after filtering...", sep = ""))
     qc_sum_cnt <- setNames(dplyr::count(
       qc_sum_filt,
       .data[["Code"]] # nolint
-    ), c(sid, "Cells.filt"))
+    ), c("Code", "Cells.filt"))
     qc1 <- dplyr::left_join(
       qc1,
       qc_sum_cnt,
-      by = sid
+      by = "Code"
     )
     ### Merge coordinates with sum intensity data frame
     qc_sum_filt <- dplyr::left_join(
@@ -267,14 +273,303 @@ pc_qc <- function(
       sd(qc2_filt[["value"]])
     ## LOESS + Z-score (Experimental) # nolint
     if(loess_norm == TRUE) { # nolint
-      
     }
-    #### START HERE 5/15/25 LOESS norm, plot all slides, antibodies, and format output for Python scVI dim reduction and UMAP
+    # Append z-normalized intensities to data frame
+    if(Sys.info()[["sysname"]] != "Windows") { # nolint
+      qc_sum_filt2 <- dplyr::bind_rows(
+        parallel::mclapply(
+          mc.cores = 2,
+          seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
+          function(x) {
+            md1 <- unique(qc2_filt[["Code"]])
+            d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
+            d1 <- setNames(
+              aggregate(
+                d1[["value.z"]],
+                list(d1[["ID"]]),
+                function(y) sum(y)
+              ),
+              c("ID", "sum.int.znorm")
+            )
+            d1 <- dplyr::select(
+              dplyr::mutate(
+                d1,
+                "Code" = rep(md1[[x]], nrow(d1))
+              ),
+              "Code",
+              everything() # nolint
+            )
+            return(d1)
+          }
+        )
+      )
+    }
+    if(Sys.info()[["sysname"]] == "Windows") { # nolint
+      qc_sum_filt2 <- dplyr::bind_rows(
+        lapply(
+          seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
+          function(x) {
+            md1 <- unique(qc2_filt[["Code"]])
+            d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
+            d1 <- setNames(
+              aggregate(
+                d1[["value.z"]],
+                list(d1[["ID"]]),
+                function(y) sum(y)
+              ),
+              c("ID", "sum.int.znorm")
+            )
+            d1 <- dplyr::select(
+              dplyr::mutate(
+                d1,
+                "Code" = rep(md1[[x]], nrow(d1))
+              ),
+              "Code",
+              everything() # nolint
+            )
+            return(d1)
+          }
+        )
+      )
+    }
+    qc_sum_filt <- dplyr::select(dplyr::left_join(
+      qc_sum_filt,
+      qc_sum_filt2[, c("ID", "sum.int.znorm")],
+      by = "ID"
+    ), c("Code", "ID", "sum.int.raw", "sum.int.znorm"), everything()) # nolint
+    # remove redundant objects
+    remove(qc_sum_filt2, qc2, qc_sum, qc_sum_cnt, d1, ld)
+    gc(reset = TRUE)
+    # Return summary stats
+    qc_norm <- data.frame(
+      "mean" = c(
+        round(mean(qc2_filt[["value"]]), digits = 2),
+        round(mean(qc2_filt[["value.z"]]), digits = 2)
+      ),
+      "std.dev" = c(
+        round(sd(qc2_filt[["value"]]), digits = 2),
+        round(sd(qc2_filt[["value.z"]]), digits = 2)
+      )
+    )
+    print(paste(
+      "Dataset mean and standard deviation changed from ",
+      qc_norm[1, 1], "_", qc_norm[1, 2], " to ",
+      qc_norm[2, 1], "_", qc_norm[2, 2], " following normalization.",
+      sep = ""
+    ))
+    # Save data frames
+    ## QC Summary
+    write.table(
+      qc1,
+      "analysis/qc_summary.txt",
+      sep = "\t",
+      row.names = FALSE
+    )
+    ## Individual channel data frame
+    write.table(
+      qc2_filt,
+      "analysis/qc_int_splitbychannel.txt",
+      sep = "\t",
+      row.names = FALSE
+    )
+    ## Total intensity data frame
+    write.table(
+      qc_sum_filt,
+      "analysis/qc_int_total.txt",
+      sep = "\t",
+      row.names = FALSE
+    )
+    # Cast data frame and convert to Seurat object
+    ## Cast
+    head(d2)
+    d2 <- reshape2::dcast(
+      qc2_filt[, -8],
+      ID + Slide + Code + Group + X + Y ~ Channel,
+      value.var = "value.z"
+    )
+    ## Create Seurat
+    d2 <- Seurat::CreateSeuratObject(
+      counts = d2[, ],
+      meta.data = d2[, ],
+      assay = "PC"
+    )
+    ## Save as RDS and as AnnData
 
   }
+  return(
+    list(
+      "summary" = qc1,
+      "data" = d2
+    )
+  )
+}
 
+#' Phenocycler QC Boxplot
+#'
+#' Generates boxplot of signal intensity
+#'
+#' @param df Input data frame containing signal intensities.
+#' @param ch_list Channel list for specifying plot order.
+#' @param ch_col Channel column for spliting individual boxplots. Used to
+#' specify the x-axis and can alternatively plot a different variable if
+#' individual channel intensities are not available
+#' @param int_col Intensity column to use.
+#' @return Boxplot of individual channel or summary of signal intensities.
+#' @examples
+#'
+#' # pheno_qc_box <- pc_qc_box(
+#' #   df = ld1,
+#' #   ch_list = s3[[1]]
+#' #   int_col = "value.z"
+#' # )
+#'
+#' @export
+pc_qc_box <- function(
+  df,
+  ch_list = NULL,
+  ch_col = "Channel",
+  int_col = NULL
+) {
+  d1 <- df
+  if(is.null(ch_list) == FALSE) { # nolint
+    p1 <- ggplot2::ggplot(
+      d1,
+      ggplot2::aes(
+        x = factor(.data[[ch_col]], levels = ch_list), # nolint
+        y = .data[[int_col]]
+      )
+    ) +
+      ggplot2::geom_boxplot() +
+      ggplot2::coord_flip() +
+      # ggplot2::geom_hline(
+      #   color = "black", # nolint
+      #   linetype = "dashed", # nolint
+      #   yintercept = quantile(qc2_filt[["value"]], 0.01) # nolint
+      # ) +
+      ggplot2::labs(
+        y = "Intensity",
+        x = "Channel"
+      ) +
+      sc_theme1() # nolint
+  }
+  if(is.null(ch_list) == TRUE) { # nolint
+    p1 <- ggplot2::ggplot(
+      d1,
+      ggplot2::aes(
+        x = as.factor(.data[[ch_col]]), # nolint
+        y = .data[[int_col]]
+      )
+    ) +
+      ggplot2::geom_boxplot() +
+      ggplot2::coord_flip() +
+      # ggplot2::geom_hline(
+      #   color = "black", # nolint
+      #   linetype = "dashed", # nolint
+      #   yintercept = quantile(qc2_filt[["value"]], 0.01) # nolint
+      # ) +
+      ggplot2::labs(
+        y = "Intensity",
+        x = ch_col
+      ) +
+      sc_theme1() # nolint
+  }
+  return(p1)
+}
 
-
-  
-  return(d)
+#' Phenocycler QC Scatterplot
+#'
+#' Generates scatterplot of signal intensity; Must have
+#' X and Y coordinates available in the input dataframe.
+#'
+#' @param df Input data frame containing signal intensities.
+#' @param ch_col Channel column; Used to
+#' specify the x-axis and can alternatively plot a different variable if
+#' individual channel intensities are not available.
+#' @param ch_id If plotting an individual channel, which channel should
+#' be plotted?
+#' @param int_col Intensity column to use.
+#' @param id_col ID column containing sample information.
+#' @param id_samp Specific sample ID to plot.
+#' @return Boxplot of individual channel or summary of signal intensities.
+#' @examples
+#'
+#' # pheno_qc_scatter <- pc_qc_scatter(
+#' #   df = qc2_filt,
+#' #   ch_id = "DAPI",
+#' #   int_col = "value.z",
+#' #   id_samp = "H10687"
+#' # )
+#'
+#' @export
+pc_qc_scatter <- function(
+  df,
+  ch_col = "Channel",
+  ch_id = NULL,
+  int_col,
+  id_col = "Code",
+  id_samp
+) {
+  d1 <- df
+  if(is.null(ch_id) == TRUE) { # nolint
+    p1 <- ggplot2::ggplot(
+      d1[d1[[id_col]] == id_samp, ],
+      ggplot2::aes(
+        x = X, # nolint
+        y = Y # nolint
+      )
+    ) +
+      ggplot2::geom_point(
+        ggplot2::aes(
+          color = .data[[int_col]] # nolint
+        ),
+        shape = 16,
+        size = 0.5
+      ) +
+      pc_theme_img() + # nolint
+      ggplot2::labs(fill = "Intensity") +
+      ggplot2::scale_y_reverse() +
+      ggplot2::scale_color_gradientn(
+        colors = col_grad(scm = 4), # nolint
+        limits = c(
+          0,
+          quantile(
+            d2[[int_col]],
+            0.99
+          )
+        ),
+        na.value = col_grad(scm = 4)[[1]]
+      )
+  }
+  if(is.null(ch_id) == FALSE) { # nolint
+    d2 <- d1[d1[[ch_col]] == ch_id, ]
+    p1 <- ggplot2::ggplot(
+      d2[d2[[id_col]] == id_samp, ],
+      ggplot2::aes(
+        x = X, # nolint
+        y = Y # nolint
+      )
+    ) +
+      ggplot2::geom_point(
+        ggplot2::aes(
+          color = .data[[int_col]] # nolint
+        ),
+        shape = 16,
+        size = 0.5
+      ) +
+      pc_theme_img() + # nolint
+      ggplot2::labs(fill = paste("Intensity: ", ch_id, sep = "")) +
+      ggplot2::scale_y_reverse() +
+      ggplot2::scale_color_gradientn(
+        colors = col_grad(scm = 4), # nolint
+        limits = c(
+          0,
+          quantile(
+            d2[[int_col]],
+            0.99
+          )
+        ),
+        na.value = col_grad(scm = 4)[[1]]
+      )
+  }
+  return(p1)
 }
