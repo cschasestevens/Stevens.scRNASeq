@@ -13,8 +13,7 @@
 #' results. Only used if qc_type is "all".
 #' @param samp_id Sample ID column name.
 #' @param g_col (optional) Add a column providing grouping information.
-#' @param g_col2 (optional) Same as g_col, but adds grouping information
-#' for individual segmentation results.
+#' @param g_col2 (optional) Add a column providing grouping information.
 #' @param ch_list List of channels exported with segmentation results. Note
 #' that the channel list must match the order of channels included within
 #' the results.
@@ -31,9 +30,9 @@
 #' #   ld = ld1,
 #' #   col_nums1 = c(4, 10, 12, 13),
 #' #   md_var = c("Area.um2", "Cells.raw", "Description"),
-#' #   samp_id = "Code",
-#' #   g_col = ifelse(grepl("KK", qc1[["Code"]]), "CF", "Norm"),
-#' #   g_col2 = ifelse(grepl("KK", qc2[["Code"]]), "CF", "Norm"),
+#' #   samp_id = "Name",
+#' #   g_col = "Name",
+#' #   g_col2 = "Parent",
 #' #   ch_list = s3,
 #' #   col_nums2 = c(6, 8, 9)
 #' # )
@@ -48,7 +47,7 @@ pc_qc <- function(
   samp_id = "Code",
   g_col = NULL,
   g_col2 = NULL,
-  ch_list = NULL,
+  ch_list,
   col_nums2 = NULL,
   ch_nuc = "DAPI",
   loess_norm = FALSE
@@ -79,7 +78,7 @@ pc_qc <- function(
       qc1 <- dplyr::select(
         dplyr::mutate(
           qc1,
-          "Group" = g_col
+          "Group" = ifelse(grepl("KK", qc1[["Code"]]), "CF", "Norm")
         ),
         c("Slide", "Code", "Group"), everything() # nolint
       )
@@ -154,7 +153,7 @@ pc_qc <- function(
       qc2 <- dplyr::select(
         dplyr::mutate(
           qc2,
-          "Group" = g_col2,
+          "Group" = ifelse(grepl("KK", qc2[["Code"]]), "CF", "Norm"),
           "Channel" = gsub("\\_.*", "", qc2[["column"]])
         ),
         c("ID", "Slide", "Code", "Group", "X", "Y", "Channel", "value")
@@ -338,6 +337,8 @@ pc_qc <- function(
       by = "ID"
     ), c("Code", "ID", "sum.int.raw", "sum.int.znorm"), everything()) # nolint
     # remove redundant objects
+    head(qc_sum_filt)
+    head(qc2_filt)
     remove(qc_sum_filt2, qc2, qc_sum, qc_sum_cnt, d1, ld)
     gc(reset = TRUE)
     # Return summary stats
@@ -357,49 +358,12 @@ pc_qc <- function(
       qc_norm[2, 1], "_", qc_norm[2, 2], " following normalization.",
       sep = ""
     ))
-    # Save data frames
-    ## QC Summary
-    write.table(
-      qc1,
-      "analysis/qc_summary.txt",
-      sep = "\t",
-      row.names = FALSE
-    )
-    ## Individual channel data frame
-    write.table(
-      qc2_filt,
-      "analysis/qc_int_splitbychannel.txt",
-      sep = "\t",
-      row.names = FALSE
-    )
-    ## Total intensity data frame
-    write.table(
-      qc_sum_filt,
-      "analysis/qc_int_total.txt",
-      sep = "\t",
-      row.names = FALSE
-    )
-    # Cast data frame and convert to Seurat object
-    ## Cast
-    head(d2)
-    d2 <- reshape2::dcast(
-      qc2_filt[, -8],
-      ID + Slide + Code + Group + X + Y ~ Channel,
-      value.var = "value.z"
-    )
-    ## Create Seurat
-    d2 <- Seurat::CreateSeuratObject(
-      counts = d2[, ],
-      meta.data = d2[, ],
-      assay = "PC"
-    )
-    ## Save as RDS and as AnnData
-
   }
   return(
     list(
       "summary" = qc1,
-      "data" = d2
+      "data_ind" = qc2_filt,
+      "data_total" = qc_sum_filt
     )
   )
 }

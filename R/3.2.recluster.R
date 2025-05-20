@@ -89,8 +89,9 @@ sc_recluster <- function(
     # Run PCA
     d <- Seurat::RunPCA(d)
     d_pca <- sc_pca_plot( # nolint
-      d,
-      c(md_list, ct_col)
+      so = d,
+      md_list = c(md_list, ct_col),
+      red1 = "pca"
     )
     ggplot2::ggsave(
       paste("analysis/recluster/recluster", title1, "pca.panel.png", sep = "."),

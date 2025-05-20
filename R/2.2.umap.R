@@ -193,7 +193,7 @@ sc_umap_panel_gene <- function(
   col_names,
   leg_x = 0.9,
   leg_y = 0.8,
-  slot1,
+  slot1 = "umap",
   col1 = col_grad(), # nolint
   plot_comb = FALSE,
   out1 = "umap_gex"
@@ -376,7 +376,7 @@ sc_umap_panel_gene <- function(
         legend.position = "none"
       )
   }
-  if(asy1 == "sct") { # nolint
+  if(asy1 == "sct" | asy1 == "PC") { # nolint
     # Generate plots
     d2_plot <- ggplot2::ggplot(
       d2,

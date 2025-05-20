@@ -306,113 +306,106 @@ sc_top10_marker_heatmap_rc <- function(
 #' @return A ComplexHeatmap object containing a top-10 marker gene heatmap.
 #' @examples
 #'
-#' # p_umap <- sc_top10_marker_heatmap(
-#' #   d_annotated,
-#' #   "RNA",
-#' #   "seurat_clusters",
-#' #   18,
-#' #   24,
-#' #   6,
-#' #   8,
-#' #   TRUE,
-#' #   TRUE,
-#' #   col_grad()[c(3, 6, 9, 12)]
+#' # p_hmap <- sc_top10_marker_heatmap(
+#' #   so = d_recluster[["data"]],
+#' #   cl_var = "recluster"
 #' # )
 #'
 #' @export
 sc_top10_marker_heatmap <- function(
   so,
-  asy,
-  cl_var,
-  h_w,
-  h_h,
-  fs_c,
-  fs_r,
-  cl_c,
-  cl_r,
-  rot_c,
-  col1
+  title1,
+  asy = "sct",
+  cl_var = "CellType",
+  h_w = 32,
+  h_h = 20,
+  fs_c = 6,
+  fs_r = 8,
+  cl_c = FALSE,
+  cl_r = FALSE,
+  rot_c = 45,
+  col1 = col_grad(scm = 3) # nolint
 ) {
   d <- so
-  if(!file.exists("analysis/table.marker.genes.txt") && asy == "RNA") { # nolint
-    print(
-      "No marker gene file has been created;
-      calculating marker genes for each cluster..."
-    )
-    Seurat::DefaultAssay(d) <- "RNA"
-    cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
-    write.table(
-      cl_mark,
-      "analysis/table.marker.genes.txt",
-      col.names = TRUE,
-      row.names = FALSE,
-      sep = "\t"
-    )
-  }
-
-  if(!file.exists("analysis/table.marker.motifs.txt") && asy == "ATAC") { # nolint
-    print(
-      "No marker motif file has been created;
-      calculating marker motifs for each cluster..."
-    )
-    Seurat::DefaultAssay(d) <- "ATAC"
-    cl_mark <- Seurat::FindAllMarkers(
-      d,
-      min.pct = 0.05,
-      verbose = TRUE
-    )
-    names_motif <- data.frame(
-      "gene" = seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
-      "near.gene" = paste(
-        d@assays$ATAC@meta.features[["nearestGene"]],
-        seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
-        sep = "."
-      ),
-      "motif" = paste(
-        d@assays$ATAC@meta.features[["seqnames"]],
-        paste(
-          d@assays$ATAC@meta.features[["start"]],
-          d@assays$ATAC@meta.features[["end"]],
-          sep = "-"
-        ),
-        sep = ":"
+  if(!file.exists(paste("analysis/table_marker_genes_", title1, ".txt", sep = ""))) { # nolint
+    if(asy == "RNA" | asy == "sct") { # nolint
+      print("Calculating marker genes for each cluster...")
+      Seurat::DefaultAssay(d) <- asy
+      cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
+      write.table(
+        cl_mark,
+        paste("analysis/table_marker_genes_", title1, ".txt", sep = ""),
+        col.names = TRUE,
+        row.names = FALSE,
+        sep = "\t"
       )
-    )
-    cl_mark <- dplyr::left_join(
-      cl_mark,
-      names_motif,
-      by = "gene"
-    )
-    write.table(
-      cl_mark,
-      "analysis/table.marker.motifs.txt",
-      col.names = TRUE,
-      row.names = FALSE,
+    }
+  }
+  if(file.exists(paste("analysis/table_marker_genes_", title1, ".txt", sep = ""))) { # nolint
+    print(paste("Loading existing marker gene set: ", "analysis/table_marker_genes_", title1, ".txt", sep = "")) # nolint
+    cl_mark <- read.table(
+      paste("analysis/table_marker_genes_", title1, ".txt", sep = ""),
+      header = TRUE,
       sep = "\t"
     )
+    Seurat::DefaultAssay(d) <- asy
   }
-
-  if(asy == "RNA") { # nolint
-    cl_mark <- read.table(
-      "analysis/table.marker.genes.txt",
-      sep = "\t",
-      header = TRUE
-    )
+  if(!file.exists(paste("analysis/table_marker_motifs_", title1, ".txt", sep = ""))) { # nolint
+    if(asy == "ATAC") { # nolint
+      print(
+        "Calculating marker motifs for each cluster..."
+      )
+      Seurat::DefaultAssay(d) <- asy
+      cl_mark <- Seurat::FindAllMarkers(
+        d,
+        min.pct = 0.05,
+        verbose = TRUE
+      )
+      names_motif <- data.frame(
+        "gene" = seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+        "near.gene" = paste(
+          d@assays$ATAC@meta.features[["nearestGene"]],
+          seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
+          sep = "."
+        ),
+        "motif" = paste(
+          d@assays$ATAC@meta.features[["seqnames"]],
+          paste(
+            d@assays$ATAC@meta.features[["start"]],
+            d@assays$ATAC@meta.features[["end"]],
+            sep = "-"
+          ),
+          sep = ":"
+        )
+      )
+      cl_mark <- dplyr::left_join(
+        cl_mark,
+        names_motif,
+        by = "gene"
+      )
+      write.table(
+        cl_mark,
+        paste("analysis/table_marker_motifs_", title1, ".txt", sep = ""),
+        col.names = TRUE,
+        row.names = FALSE,
+        sep = "\t"
+      )
+    }
   }
-
-  if(asy == "ATAC") { # nolint
+  if(file.exists(paste("analysis/table_marker_motifs_", title1, ".txt", sep = ""))) { # nolint
+    print(paste("Loading existing marker motif set: ", "analysis/table_marker_motifs_", title1, ".txt", sep = "")) # nolint
     cl_mark <- read.table(
-      "analysis/table.marker.motifs.txt",
-      sep = "\t",
-      header = TRUE
+      paste("analysis/table_marker_motifs_", title1, ".txt", sep = ""),
+      header = TRUE,
+      sep = "\t"
     )
+    Seurat::DefaultAssay(d) <- asy
   }
   ## Marker gene input matrix (top10 per cell type)
   if(class(cl_mark[["cluster"]]) == "character") { # nolint
     cl_mark <- cl_mark[gtools::mixedorder(cl_mark[["cluster"]]), ]
   }
   cl_mark[["CellType.no"]] <- cl_mark[["cluster"]]
-
   cl_mark <- dplyr::group_by(
     cl_mark,
     .data[["CellType.no"]] # nolint
@@ -428,12 +421,10 @@ sc_top10_marker_heatmap <- function(
     "avg_log2FC",
     "p_val_adj"
   )]
-
   cl_mark <- dplyr::group_by(
     cl_mark,
     .data[["cluster"]] # nolint
   )
-
   cl_mark <- dplyr::slice_max(
     cl_mark,
     order_by = .data[["avg_log2FC"]], # nolint
@@ -442,28 +433,26 @@ sc_top10_marker_heatmap <- function(
     "gene",
     "cluster"
   )]
-
   #### Save table
-  if(asy == "RNA") { # nolint
+  if(asy == "RNA" | asy == "sct") { # nolint
     write.table(
       cl_mark,
-      "analysis/table.marker.genes.top10.txt",
+      paste("analysis/table_marker_genes_", title1, "_top10.txt", sep = ""),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
     )
-    SeuratObject::DefaultAssay(d) <- "RNA"
   }
   if(asy == "ATAC") { # nolint
     write.table(
       cl_mark,
-      "analysis/table.marker.motifs.top10.txt",
+      paste("analysis/table_marker_motifs_", title1, "_top10.txt", sep = ""),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
     )
-    SeuratObject::DefaultAssay(d) <- "ATAC"
   }
+  Seurat::DefaultAssay(d) <- asy
   ### Subset seurat and scale
   h <- SeuratObject::FetchData(
     d,
@@ -483,7 +472,6 @@ sc_top10_marker_heatmap <- function(
       }
     )
   )
-
   h_anno <- h_anno[, h_anno[1, ] > 0]
   ### Scale and plot average expression/accessibility per cell type
   h_in <- scale(
@@ -524,7 +512,6 @@ sc_top10_marker_heatmap <- function(
     ),
     na.rm = TRUE
   )
-
   h_in <- as.matrix(
     as.data.frame(h_in)[, unlist(
       lapply(
@@ -536,7 +523,6 @@ sc_top10_marker_heatmap <- function(
     )
     ]
   )
-
   fun_hm_col <- circlize::colorRamp2(
     c(
       qs[[1]],

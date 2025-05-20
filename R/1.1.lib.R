@@ -42,7 +42,7 @@ col_grad <- function(
     c1 <- RColorBrewer::brewer.pal(name = "YlOrBr", n = 9)
   }
   if(scm == 3) { # nolint
-    c1 <- c("#2e86c1", "white", "darkred")
+    c1 <- c("#2e86c1", "white", "#f5b7b1", "#e74c3c")
   }
   if(scm == 4) { # nolint
     c1 <- c("lightblue", "red", "darkred")
