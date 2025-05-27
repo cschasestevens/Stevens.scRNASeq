@@ -13,7 +13,7 @@ sc_umap_panel_gene(
   col_names,
   leg_x = 0.9,
   leg_y = 0.8,
-  slot1,
+  slot1 = "umap",
   col1 = col_grad(),
   plot_comb = FALSE,
   out1 = "umap_gex"

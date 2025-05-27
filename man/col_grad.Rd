@@ -4,7 +4,11 @@
 \alias{col_grad}
 \title{Gradient Color Palette}
 \usage{
-col_grad()
+col_grad(scm = 1)
+}
+\arguments{
+\item{scm}{Gradient scheme to use
+(1 = viridis, 2 = yellow/brown, 3 = blue/red-a, 4 = blue/red-b)}
 }
 \value{
 Vector of colors to replace default gradient color scale.

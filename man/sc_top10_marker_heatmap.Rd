@@ -6,16 +6,17 @@
 \usage{
 sc_top10_marker_heatmap(
   so,
-  asy,
-  cl_var,
-  h_w,
-  h_h,
-  fs_c,
-  fs_r,
-  cl_c,
-  cl_r,
-  rot_c,
-  col1
+  title1,
+  asy = "sct",
+  cl_var = "CellType",
+  h_w = 32,
+  h_h = 20,
+  fs_c = 6,
+  fs_r = 8,
+  cl_c = FALSE,
+  cl_r = FALSE,
+  rot_c = 45,
+  col1 = col_grad(scm = 3)
 )
 }
 \arguments{
@@ -52,17 +53,9 @@ marker gene list based on the top-10 marker genes for each cluster.
 }
 \examples{
 
-# p_umap <- sc_top10_marker_heatmap(
-#   d_annotated,
-#   "RNA",
-#   "seurat_clusters",
-#   18,
-#   24,
-#   6,
-#   8,
-#   TRUE,
-#   TRUE,
-#   col_grad()[c(3, 6, 9, 12)]
+# p_hmap <- sc_top10_marker_heatmap(
+#   so = d_recluster[["data"]],
+#   cl_var = "recluster"
 # )
 
 }

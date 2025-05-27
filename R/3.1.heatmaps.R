@@ -401,6 +401,30 @@ sc_top10_marker_heatmap <- function(
     )
     Seurat::DefaultAssay(d) <- asy
   }
+  if(!file.exists(paste("analysis/table_marker_antibodies_", title1, ".txt", sep = ""))) { # nolint
+    if(asy == "PC") { # nolint
+      print("Calculating marker antibodies for each cluster...")
+      Seurat::Idents(d) <- cl_var
+      Seurat::DefaultAssay(d) <- asy
+      cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
+      write.table(
+        cl_mark,
+        paste("analysis/table_marker_antibodies_", title1, ".txt", sep = ""),
+        col.names = TRUE,
+        row.names = FALSE,
+        sep = "\t"
+      )
+    }
+  }
+  if(file.exists(paste("analysis/table_marker_antibodies_", title1, ".txt", sep = ""))) { # nolint
+    print(paste("Loading existing marker antibody set: ", "analysis/table_marker_antibodies_", title1, ".txt", sep = "")) # nolint
+    cl_mark <- read.table(
+      paste("analysis/table_marker_antibodies_", title1, ".txt", sep = ""),
+      header = TRUE,
+      sep = "\t"
+    )
+    Seurat::DefaultAssay(d) <- asy
+  }
   ## Marker gene input matrix (top10 per cell type)
   if(class(cl_mark[["cluster"]]) == "character") { # nolint
     cl_mark <- cl_mark[gtools::mixedorder(cl_mark[["cluster"]]), ]
@@ -447,6 +471,15 @@ sc_top10_marker_heatmap <- function(
     write.table(
       cl_mark,
       paste("analysis/table_marker_motifs_", title1, "_top10.txt", sep = ""),
+      row.names = FALSE,
+      col.names = TRUE,
+      sep = "\t"
+    )
+  }
+  if(asy == "PC") { # nolint
+    write.table(
+      cl_mark,
+      paste("analysis/table_marker_antibodies_", title1, "_top10.txt", sep = ""),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
