@@ -282,7 +282,7 @@ sc_top10_marker_heatmap_rc <- function(
     cluster_columns = cl_c,
     cluster_rows = cl_r
   )
-  return(h_out)
+  return(h_out) # nolint
 }
 
 #' Top-10 Marker Gene Heatmap
@@ -330,6 +330,7 @@ sc_top10_marker_heatmap <- function(
   if(!file.exists(paste("analysis/table_marker_genes_", title1, ".txt", sep = ""))) { # nolint
     if(asy == "RNA" | asy == "sct") { # nolint
       print("Calculating marker genes for each cluster...")
+      Seurat::Idents(d) <- cl_var
       Seurat::DefaultAssay(d) <- asy
       cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
       write.table(
@@ -355,6 +356,7 @@ sc_top10_marker_heatmap <- function(
       print(
         "Calculating marker motifs for each cluster..."
       )
+      Seurat::Idents(d) <- cl_var
       Seurat::DefaultAssay(d) <- asy
       cl_mark <- Seurat::FindAllMarkers(
         d,
@@ -479,7 +481,12 @@ sc_top10_marker_heatmap <- function(
   if(asy == "PC") { # nolint
     write.table(
       cl_mark,
-      paste("analysis/table_marker_antibodies_", title1, "_top10.txt", sep = ""),
+      paste(
+        "analysis/table_marker_antibodies_",
+        title1,
+        "_top10.txt",
+        sep = ""
+      ),
       row.names = FALSE,
       col.names = TRUE,
       sep = "\t"
@@ -808,7 +815,7 @@ sc_top10_de_da_heatmap <- function(
     cluster_columns = TRUE,
     cluster_rows = TRUE
   )
-  return(h_out)
+  return(h_out) # nolint
 }
 
 #' Dot Plot
@@ -1249,7 +1256,7 @@ sc_dotplot <- function( # nolint
               )
             )
           }
-          return(d_comb_out)
+          return(d_comb_out) # nolint
         }
       ),
       c(top10_pres)
@@ -1525,7 +1532,7 @@ sc_top_motif_heatmap <- function( # nolint
             ]
             d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
             d1 <- d1[1, ]
-            return(d1)
+            return(d1) # nolint
           }
         ),
         c(unique(d_mark[["gene"]]))
@@ -1930,7 +1937,7 @@ sc_top_motif_heatmap <- function( # nolint
             ]
             d1 <- d1[order(d1[["avg_diff"]], decreasing = TRUE), ]
             d1 <- d1[1, ]
-            return(d1)
+            return(d1) # nolint
           }
         ),
         c(unique(d_mark[["gene"]]))

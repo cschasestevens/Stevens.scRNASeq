@@ -38,7 +38,9 @@ metadata overlay for a Seurat object.
 \examples{
 
 # p_umap <- sc_umap_standard(
-#   d_integrated,"col1","wnn.umap", "2D", col_univ(), "none"
+#   so = d_integrated,
+#   md_var = "CellType",
+#   slot1 = "wnn.umap"
 # )
 
 }

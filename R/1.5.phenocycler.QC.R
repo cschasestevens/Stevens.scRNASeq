@@ -21,6 +21,7 @@
 #' @param col_nums2 If qc_type is "all", indicate the column number to
 #' use as the sample ID as well as the X and Y coordinates
 #' for formatting the segmentation results table.
+#' @param norm_data Perform data normalization if TRUE.
 #' @param loess_norm Normalize signal intensities by performing LOESS
 #' prior to z-score scaling.
 #' @return List containing QC summary statistics and plots.
@@ -50,27 +51,29 @@ pc_qc <- function(
   ch_list,
   col_nums2 = NULL,
   ch_nuc = "DAPI",
+  norm_data = FALSE,
   loess_norm = FALSE
 ) {
-  # Load data
+  # Define parameters
   d1 <- ld
   cn1 <- col_nums1
   cn2 <- md_var
+  cn1b <- col_nums2
   sid <- samp_id
+  chl <- ch_list
+  mdn <- md_num
+  chn <- ch_nuc
   # Perform QC
   if(qc_type == "all") { # nolint
     # Summary statistics
     ## Count section dimensions and detected cells per section
-    d1[[1]][[1]]
     qc1 <- setNames(dplyr::bind_rows(lapply(
       seq.int(1, length(d1), 1),
       function(x) {
         data.frame(
           "Slide" = x,
-          dplyr::select(
-            d1[[x]][[1]],
-            sid, cn1
-          )
+          d1[[x]][[1]][, sid],
+          d1[[x]][[1]][, cn1]
         )
       }
     )), c("Slide", "Code", cn2))
@@ -96,10 +99,10 @@ pc_qc <- function(
           ),
           c(
             "Slide",
-            names(d1[[x]][[2]][1:md_num]),
+            names(d1[[x]][[2]][1:mdn]),
             unlist(
               lapply(
-                seq.int(1, nrow(ch_list), 1),
+                seq.int(1, nrow(chl), 1),
                 function(x) {
                   st1 <- c("mean", "median", "min", "max", "sd")
                   st2 <- unlist(
@@ -107,14 +110,14 @@ pc_qc <- function(
                       seq.int(1, length(st1), 1),
                       function(y) {
                         paste(
-                          ch_list[x, 1],
+                          chl[x, 1],
                           st1[[y]],
                           sep = "_"
                         )
                       }
                     )
                   )
-                  return(st2)
+                  return(st2) # nolint
                 }
               )
             )
@@ -122,30 +125,31 @@ pc_qc <- function(
         )
       }
     ))
-    qc2 <- dplyr::select(
-      dplyr::mutate(
-        qc2, "ID" = seq.int(1, nrow(qc2), 1)
-      ), "ID", everything() # nolint
-    )
+    qc2 <- setNames(data.frame(
+      "ID" = seq.int(1, nrow(qc2), 1),
+      qc2
+    ), c("ID", names(qc2)))
     ## remove all columns except mean intensity per cell
-    qc2 <- dplyr::select(
-      qc2,
-      names(qc2[, 1:(md_num + 2)]),
-      names(qc2[, grepl("mean", names(qc2))])
-    )
+    qc2 <- qc2[
+      ,
+      c(
+        names(qc2[, 1:(mdn + 2)]),
+        names(qc2[, grepl("mean", names(qc2))])
+      )
+    ]
     qc2 <- setNames(
       reshape2::melt(
         qc2,
-        id.vars = 1:(md_num + 2),
+        id.vars = 1:(mdn + 2),
         variable.name = "column",
         value.name = "value"
       )[, c(
         1, 2,
-        (col_nums2[[1]] + 2),
-        (col_nums2[[2]] + 2),
-        (col_nums2[[3]] + 2),
-        (md_num + 3),
-        (md_num + 4)
+        (cn1b[[1]] + 2),
+        (cn1b[[2]] + 2),
+        (cn1b[[3]] + 2),
+        (mdn + 3),
+        (mdn + 4)
       )],
       c("ID", "Slide", "Code", "X", "Y", "column", "value")
     )
@@ -193,7 +197,7 @@ pc_qc <- function(
               "Code",
               everything() # nolint
             )
-            return(d1)
+            return(d1) # nolint
           }
         )
       )
@@ -221,7 +225,7 @@ pc_qc <- function(
               "Code",
               everything() # nolint
             )
-            return(d1)
+            return(d1) # nolint
           }
         )
       )
@@ -233,7 +237,7 @@ pc_qc <- function(
       "ID"
     ]
     ### Flag cells based on DAPI intensity
-    filt2 <- qc2[qc2[["Channel"]] == ch_nuc, ]
+    filt2 <- qc2[qc2[["Channel"]] == chn, ]
     filt2 <- filt2[
       filt2[["value"]] < quantile(filt2[["value"]], 0.01) |
         filt2[["value"]] > quantile(filt2[["value"]], 0.99),
@@ -266,98 +270,100 @@ pc_qc <- function(
       by = "ID"
     )
     # Normalizations
-    ## Z-score only
-    #### formula (x - mean)/sd # nolint
-    qc2_filt[["value.z"]] <- (qc2_filt[["value"]] - mean(qc2_filt[["value"]])) /
-      sd(qc2_filt[["value"]])
-    ## LOESS + Z-score (Experimental) # nolint
-    if(loess_norm == TRUE) { # nolint
+    if(norm_data == TRUE) { # nolint
+      print("Normalizing data...")
+      ## Z-score only
+      #### formula (x - mean)/sd # nolint
+      qc2_filt[["value.z"]] <- (
+        qc2_filt[["value"]] - mean(qc2_filt[["value"]])
+      ) /
+        sd(qc2_filt[["value"]])
+      ## LOESS + Z-score (Experimental) # nolint
+      if(loess_norm == TRUE) { # nolint
+      }
+      # Append z-normalized intensities to data frame
+      if(Sys.info()[["sysname"]] != "Windows") { # nolint
+        qc_sum_filt2 <- dplyr::bind_rows(
+          parallel::mclapply(
+            mc.cores = 2,
+            seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
+            function(x) {
+              md1 <- unique(qc2_filt[["Code"]])
+              d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
+              d1 <- setNames(
+                aggregate(
+                  d1[["value.z"]],
+                  list(d1[["ID"]]),
+                  function(y) sum(y)
+                ),
+                c("ID", "sum.int.znorm")
+              )
+              d1 <- dplyr::select(
+                dplyr::mutate(
+                  d1,
+                  "Code" = rep(md1[[x]], nrow(d1))
+                ),
+                "Code",
+                everything() # nolint
+              )
+              return(d1) # nolint
+            }
+          )
+        )
+      }
+      if(Sys.info()[["sysname"]] == "Windows") { # nolint
+        qc_sum_filt2 <- dplyr::bind_rows(
+          lapply(
+            seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
+            function(x) {
+              md1 <- unique(qc2_filt[["Code"]])
+              d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
+              d1 <- setNames(
+                aggregate(
+                  d1[["value.z"]],
+                  list(d1[["ID"]]),
+                  function(y) sum(y)
+                ),
+                c("ID", "sum.int.znorm")
+              )
+              d1 <- dplyr::select(
+                dplyr::mutate(
+                  d1,
+                  "Code" = rep(md1[[x]], nrow(d1))
+                ),
+                "Code",
+                everything() # nolint
+              )
+              return(d1) # nolint
+            }
+          )
+        )
+      }
+      qc_sum_filt <- dplyr::select(dplyr::left_join(
+        qc_sum_filt,
+        qc_sum_filt2[, c("ID", "sum.int.znorm")],
+        by = "ID"
+      ), c("Code", "ID", "sum.int.raw", "sum.int.znorm"), everything()) # nolint
+      # remove redundant objects
+      remove(qc_sum_filt2, qc2, qc_sum, qc_sum_cnt, d1, ld)
+      gc(reset = TRUE)
     }
-    # Append z-normalized intensities to data frame
-    if(Sys.info()[["sysname"]] != "Windows") { # nolint
-      qc_sum_filt2 <- dplyr::bind_rows(
-        parallel::mclapply(
-          mc.cores = 2,
-          seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
-          function(x) {
-            md1 <- unique(qc2_filt[["Code"]])
-            d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
-            d1 <- setNames(
-              aggregate(
-                d1[["value.z"]],
-                list(d1[["ID"]]),
-                function(y) sum(y)
-              ),
-              c("ID", "sum.int.znorm")
-            )
-            d1 <- dplyr::select(
-              dplyr::mutate(
-                d1,
-                "Code" = rep(md1[[x]], nrow(d1))
-              ),
-              "Code",
-              everything() # nolint
-            )
-            return(d1)
-          }
+    if(norm_data == FALSE) { # nolint
+      # Return summary stats
+      qc_norm <- data.frame(
+        "mean" = c(
+          round(mean(qc2_filt[["value"]]), digits = 2)
+        ),
+        "std.dev" = c(
+          round(sd(qc2_filt[["value"]]), digits = 2)
         )
       )
+      print("Returning raw values...")
+      qc_norm
+      # Remove objects
+      remove(qc_sum_filt2, qc2, qc_sum, qc_sum_cnt, d1, ld)
+      gc(reset = TRUE)
     }
-    if(Sys.info()[["sysname"]] == "Windows") { # nolint
-      qc_sum_filt2 <- dplyr::bind_rows(
-        lapply(
-          seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
-          function(x) {
-            md1 <- unique(qc2_filt[["Code"]])
-            d1 <- qc2_filt[qc2_filt[["Code"]] == md1[[x]], ]
-            d1 <- setNames(
-              aggregate(
-                d1[["value.z"]],
-                list(d1[["ID"]]),
-                function(y) sum(y)
-              ),
-              c("ID", "sum.int.znorm")
-            )
-            d1 <- dplyr::select(
-              dplyr::mutate(
-                d1,
-                "Code" = rep(md1[[x]], nrow(d1))
-              ),
-              "Code",
-              everything() # nolint
-            )
-            return(d1)
-          }
-        )
-      )
-    }
-    qc_sum_filt <- dplyr::select(dplyr::left_join(
-      qc_sum_filt,
-      qc_sum_filt2[, c("ID", "sum.int.znorm")],
-      by = "ID"
-    ), c("Code", "ID", "sum.int.raw", "sum.int.znorm"), everything()) # nolint
-    # remove redundant objects
-    head(qc_sum_filt)
-    head(qc2_filt)
-    remove(qc_sum_filt2, qc2, qc_sum, qc_sum_cnt, d1, ld)
-    gc(reset = TRUE)
-    # Return summary stats
-    qc_norm <- data.frame(
-      "mean" = c(
-        round(mean(qc2_filt[["value"]]), digits = 2),
-        round(mean(qc2_filt[["value.z"]]), digits = 2)
-      ),
-      "std.dev" = c(
-        round(sd(qc2_filt[["value"]]), digits = 2),
-        round(sd(qc2_filt[["value.z"]]), digits = 2)
-      )
-    )
-    print(paste(
-      "Dataset mean and standard deviation changed from ",
-      qc_norm[1, 1], "_", qc_norm[1, 2], " to ",
-      qc_norm[2, 1], "_", qc_norm[2, 2], " following normalization.",
-      sep = ""
-    ))
   }
   return(
     list(

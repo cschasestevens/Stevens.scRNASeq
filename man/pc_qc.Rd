@@ -16,6 +16,7 @@ pc_qc(
   ch_list,
   col_nums2 = NULL,
   ch_nuc = "DAPI",
+  norm_data = FALSE,
   loess_norm = FALSE
 )
 }
@@ -49,6 +50,8 @@ use as the sample ID as well as the X and Y coordinates
 for formatting the segmentation results table.}
 
 \item{ch_nuc}{Nuclei channel name.}
+
+\item{norm_data}{Perform data normalization if TRUE.}
 
 \item{loess_norm}{Normalize signal intensities by performing LOESS
 prior to z-score scaling.}

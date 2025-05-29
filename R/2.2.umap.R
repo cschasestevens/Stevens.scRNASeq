@@ -1064,7 +1064,9 @@ sc_umap_panel_gene_list <- function(
 #' @examples
 #'
 #' # p_umap <- sc_umap_standard(
-#' #   d_integrated,"col1","wnn.umap", "2D", col_univ(), "none"
+#' #   so = d_integrated,
+#' #   md_var = "CellType",
+#' #   slot1 = "wnn.umap"
 #' # )
 #'
 #' @export
@@ -1086,6 +1088,9 @@ sc_umap_standard <- function(
       `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[, 3],
       md.var = d@meta.data[[md_var]]
     )
+    if(class(d2[[md_var]]) == "character") { # nolint
+      d2[[md_var]] <- factor(d2[[md_var]], levels = sort(unique(d2[[md_var]])))
+    }
   }
   if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2) { # nolint
     d2 <- data.frame(
@@ -1094,6 +1099,9 @@ sc_umap_standard <- function(
       `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2],
       md.var = d@meta.data[[md_var]]
     )
+    if(class(d2[[md_var]]) == "character") { # nolint
+      d2[[md_var]] <- factor(d2[[md_var]], levels = sort(unique(d2[[md_var]])))
+    }
   }
 
   if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "3D") { # nolint

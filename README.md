@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.00 (20250514)
+# Stevens.scRNASeq v3.02 (20250529)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -99,6 +99,10 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.02
+    * Added functions for file conversion from Seurat to .h5ad.
+    * Added function for visualizing phenocycler cell maps.
+    * Integrated phenocycler data format into existing functions for scRNA-Seq and multiome data analysis.
 * 3.00
     * Added functions for QC and analysis of Phenocycler segmentation results.
 * 2.4
