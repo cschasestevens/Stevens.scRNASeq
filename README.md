@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.02 (20250529)
+# Stevens.scRNASeq v3.03 (20250530)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -65,6 +65,7 @@ Utilizes Seurat and Signac in tandem with various R packages to perform processi
         * stringr,
         * org.Hs.eg.db,
         * CellChat
+        * anndata
 
 ### Installation
 * Run the following in a new R session on the command line or within R-Studio:
@@ -99,6 +100,10 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.03
+    * Added function for normalizing PC image signal intensities
+    * Added function for generating a QC summary of a PC dataset
+    * Added function for converting Seurat objects to AnnData files
 * 3.02
     * Added functions for file conversion from Seurat to .h5ad.
     * Added function for visualizing phenocycler cell maps.

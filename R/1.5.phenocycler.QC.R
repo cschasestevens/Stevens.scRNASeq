@@ -543,3 +543,476 @@ pc_qc_scatter <- function(
   }
   return(p1)
 }
+
+#' Phenocycler Channel QC
+#'
+#' Generates scatterplots of segmented cell signal intensity; Must have
+#' X and Y coordinates available in the input dataframe.
+#'
+#' @param type Either "img" or "sum."
+#' @param so Input Seurat object.
+#' @param ch_id Channel name.
+#' @param samp_id Sample ID column.
+#' @param col1 Color scheme to use.
+#' @return Panel containing cell map and axis intensity scatter plots
+#' for a specified channel.
+#' @examples
+#'
+#' # d <- pc_qc_ch(
+#' #   ld_ser[[1]],
+#' #   ch_id = "DAPI"
+#' # )
+#'
+#' @export
+pc_qc_ch <- function(
+  type1 = "img",
+  so,
+  samp_id = "Code",
+  ch_id,
+  col1 = col_grad(scm = 4),
+  loess_smooth = FALSE
+) {
+  # Extract data
+  d <- so
+  sid <- samp_id
+  chid <- ch_id
+  cols <- col1
+  d2 <- SeuratObject::FetchData(
+    d,
+    vars = c(
+      "X",
+      "Y",
+      sid,
+      chid
+    )
+  )
+  ## LOESS overlays (uses 5% of pixel number for smoothing)
+  if(type1 == "img") { # nolint
+    if(loess_smooth == TRUE) { # nolint
+      d2x_fit <- as.data.frame(
+        lowess(
+          x = d2[["X"]],
+          y = d2[[chid]],
+          # use 10% of the average pixel number per sample for span
+          f = 0.05,
+          iter = 1,
+          delta = 0
+        )
+      )
+      d2y_fit <- as.data.frame(
+        lowess(
+          x = d2[["Y"]],
+          y = d2[[chid]],
+          # use 10% of the average pixel number per sample for span
+          f = 0.05,
+          iter = 1,
+          delta = 0
+        )
+      )
+      # Plot
+      ## Cell map
+      p1 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = X, # nolint
+          y = Y # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        pc_theme_img() + # nolint
+        ggplot2::labs(fill = chid) +
+        ggplot2::scale_y_reverse() +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            quantile(
+              d2[[chid]],
+              0.99
+            )
+          ),
+          na.value = cols[[1]]
+        )
+      p2 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = X, # nolint
+          y = .data[[chid]] # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        ggplot2::geom_line(
+          data = d2x_fit,
+          ggplot2::aes(
+            x = x, # nolint
+            y = y  # nolint
+          )
+        ) +
+        sc_theme1() + # nolint
+        ggplot2::labs(fill = chid, x = "X", y = paste(chid, "Intensity")) +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            max(d2[[chid]])
+          ),
+          na.value = cols[[1]]
+        )
+      p3 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = Y, # nolint
+          y = .data[[chid]] # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        ggplot2::geom_line(
+          data = d2y_fit,
+          ggplot2::aes(
+            x = x, # nolint
+            y = y  # nolint
+          )
+        ) +
+        sc_theme1() + # nolint
+        ggplot2::labs(fill = chid, x = "Y", y = paste(chid, "Intensity")) +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            max(d2[[chid]])
+          ),
+          na.value = cols[[1]]
+        )
+    }
+    if(loess_smooth == FALSE) { # nolint
+      # Plot
+      ## Cell map
+      p1 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = X, # nolint
+          y = Y # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        pc_theme_img() + # nolint
+        ggplot2::labs(fill = chid) +
+        ggplot2::scale_y_reverse() +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            quantile(
+              d2[[chid]],
+              0.99
+            )
+          ),
+          na.value = cols[[1]]
+        )
+      p2 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = X, # nolint
+          y = .data[[chid]] # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        ggplot2::geom_smooth() +
+        sc_theme1() + # nolint
+        ggplot2::labs(fill = chid, x = "X", y = paste(chid, "Intensity")) +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            max(d2[[chid]])
+          ),
+          na.value = cols[[1]]
+        )
+      p3 <- ggplot2::ggplot(
+        d2,
+        ggplot2::aes(
+          x = Y, # nolint
+          y = .data[[chid]] # nolint
+        )
+      ) +
+        ggplot2::geom_point(
+          ggplot2::aes(
+            color = .data[[chid]] # nolint
+          ),
+          shape = 16,
+          size = 0.5
+        ) +
+        ggplot2::geom_smooth() +
+        sc_theme1() + # nolint
+        ggplot2::labs(fill = chid, x = "Y", y = paste(chid, "Intensity")) +
+        ggplot2::scale_color_gradientn(
+          colors = cols, # nolint
+          limits = c(
+            0,
+            max(d2[[chid]])
+          ),
+          na.value = cols[[1]]
+        )
+    }
+    gc(reset = TRUE)
+    d2 <- ggpubr::ggarrange(
+      p1, p2, p3, common.legend = TRUE, nrow = 1, ncol = 3
+    )
+  }
+  if(type1 == "sum") { # nolint
+    gc(reset = TRUE)
+    ## Channel mean, median, sd, min, and max
+    d2 <- data.frame(
+      "Code" = unique(d2[[sid]]),
+      "Channel" = chid,
+      "mean" = mean(d2[[chid]]),
+      "median" = median(d2[[chid]]),
+      "sd" = sd(d2[[chid]]),
+      "min" = min(d2[[chid]]),
+      "max" = max(d2[[chid]])
+    )
+  }
+  return(d2) # nolint
+}
+
+#' Phenocycler sLOESS Normalization
+#'
+#' Sparse implementation of LOESS normalization for correcting
+#' gradient artifacts in phenocycler data. Uses method described
+#' by Stevens et. al. 2025 (doi: 10.1038/s41467-025-58135-4).
+#'
+#' @param so Input Seurat object.
+#' @param mdn Number of metadata columns in the input Seurat object.
+#' @param list_ch Vector names of channels to normalize.
+#' @param span1 LOESS span to use (expressed as a proportion of the total cells
+#' present in the dataset). Use a proportion of 0.1 or lower for highly
+#' heterogenous tissues such as lung.
+#' @param mcc Number of cores to use for sLOESS calculation.
+#' @param its Number of iterations for fine tuning sLOESS model.
+#' @return A normalized Seurat Object for subsequent clustering
+#' and dimension reduction.
+#' @examples
+#'
+#' # d <- pc_norm(
+#' #   so = ld_ser[[1]],
+#' #   mdn = 9,
+#' #   list_ch = ch_filt
+#' # )
+#'
+#' @export
+pc_norm <- function(
+  so,
+  mdn,
+  list_ch,
+  span1 = 0.05,
+  mcc = 2,
+  its = 3
+) {
+  # Input data
+  d <- so
+  d <- Seurat::AddMetaData(
+    d,
+    metadata = seq.int(1, nrow(d@meta.data), 1),
+    col.name = "ID"
+  )
+  d2 <- SeuratObject::FetchData(
+    d,
+    vars = c(
+      "X",
+      "Y",
+      "ID",
+      list_ch
+    )
+  )
+  sp1 <- span1
+  it1 <- its
+  mc1 <- mcc
+  # sLOESS Normalization
+  d2 <- setNames(data.frame(
+    d2[, c(1:3)],
+    dplyr::bind_cols(
+      parallel::mclapply(
+        mc.cores = mc1,
+        seq.int(4, ncol(d2), 1),
+        function(x) {
+          dl <- d2[, c(1:3, x)]
+          # Filter 0 values to ignore in LOESS calculation
+          dl2 <- dl[dl[[4]] > 0, ]
+          # Split data along both axes
+          dl2x <- dl2[, c(1, 3:4)]
+          dl2x <- dl2x[order(dl2x[[1]]), ]
+          dl2y <- dl2[, c(2, 3:4)]
+          dl2y <- dl2y[order(dl2y[[1]]), ]
+          # Fit LOESS to X and Y axes
+          fitx <- as.data.frame(
+            lowess(
+              x = dl2x[[1]],
+              y = dl2x[[3]],
+              # span
+              f = sp1,
+              iter = it1,
+              delta = 0
+            )
+          )
+          fitx <- setNames(cbind(
+            dl2x[, 2],
+            fitx
+          ), c(names(dl2x)[c(2, 1)], "int"))
+          fity <- as.data.frame(
+            lowess(
+              x = dl2y[[1]],
+              y = dl2y[[3]],
+              # span
+              f = sp1,
+              iter = it1,
+              delta = 0
+            )
+          )
+          fity <- setNames(cbind(
+            dl2y[, 2],
+            fity
+          ), c(names(dl2y)[c(2, 1)], "int"))
+          # Calculate fitted average between axes
+          fitc <- dplyr::left_join(
+            fitx,
+            fity,
+            by = "ID"
+          )
+          fitc[["int.avg"]] <- (
+            fitc[["int.x"]] +
+              fitc[["int.y"]]
+          ) / 2
+          fitc <- fitc[order(fitc[["ID"]]), ][, -c(2:5)]
+          # Normalize to fitted model
+          dl2[["norm"]] <- (dl2[[4]] / fitc[["int.avg"]]) *
+            mean(dl2[[4]])
+          dl2 <- dplyr::left_join(
+            dl,
+            dl2,
+            by = "ID"
+          )[, "norm"]
+          dl2[is.na(dl2)] <- 0
+          dl2 <- setNames(as.data.frame(dl2), paste("X", 1, sep = "."))
+          return(dl2) # nolint
+        }
+      )
+    )
+  ), names(d2))
+  # Create Seurat object
+  ## Merge meta.data
+  d3 <- dplyr::left_join(
+    d@meta.data,
+    d2,
+    by = "ID"
+  )
+  d3 <- setNames(dplyr::select(
+    d3,
+    c("Slide", "Code", "Group", "X.x", "Y.x", "ID"),
+    (mdn + 3):ncol(d3)
+  ), c("Slide", "Code", "Group", "X", "Y", "ID", names(d3)[(mdn + 3):ncol(d3)]))
+  d2 <- Seurat::CreateSeuratObject(
+    counts = t(as.matrix(d3[, 7:ncol(d3)])),
+    meta.data = d3[, c(1:6)],
+    assay = "PC.norm"
+  )
+  return(d2) # nolint
+}
+
+#' Phenocycler Normalization Summary
+#'
+#' Helper function for generating a short summary and images for
+#' a normalized Phenocycler dataset.
+#'
+#' @param type1 Data type; provide a character string indicating
+#' if the data have been normalized.
+#' @param so Input Seurat object.
+#' @param samp_name Sample name.
+#' @param mcc Number of cores to use.
+#' @return A summary of normalization performance for the
+#' selected Seurat Object.
+#' @examples
+#'
+#' # d <- pc_qc_sum(
+#' #   type1 = "raw",
+#' #   so = dser,
+#' #   samp_name = "sample1"
+#' # )
+#'
+#' @export
+pc_qc_sum <- function(
+  type1 = "norm",
+  so,
+  samp_name,
+  mcc = 2
+) {
+  parallel::mclapply(
+    mc.cores = mcc,
+    seq.int(1, length(rownames(so)), 1),
+    function(x) {
+      ggplot2::ggsave(
+        paste(
+          "analysis/qc/", samp_name, "/cellmap_intensity_",
+          gsub("/| |-", "_", rownames(so)[[x]]), "_", type1, ".png", sep = ""
+        ),
+        pc_qc_ch(
+          so = so,
+          ch_id = rownames(so)[[x]]
+        ),
+        height = 6,
+        width = 18,
+        dpi = 300
+      )
+    }
+  )
+  ld_sum <- dplyr::bind_rows(
+    parallel::mclapply(
+      mc.cores = mcc,
+      seq.int(1, length(rownames(so)), 1),
+      function(x) {
+        pc_qc_ch(
+          type = "sum",
+          so = so,
+          ch_id = rownames(so)[[x]]
+        )
+      }
+    )
+  )
+  write.table(
+    ld_sum,
+    paste("analysis/qc/", samp_name, "/qc_summary_", type1, ".txt", sep = ""),
+    col.names = TRUE,
+    row.names = FALSE,
+    sep = "\t"
+  )
+  return(ld_sum) # nolint
+}

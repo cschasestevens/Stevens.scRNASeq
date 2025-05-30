@@ -85,28 +85,59 @@ pc_create_seurat <- function(
   )
   remove(d2)
   gc(reset = TRUE)
+  return(print(paste(".rds file created for ", names(d3), sep = "")))
+}
+
+#' Create AnnData from Seurat
+#'
+#' Converts a Seurat Object to a h5ad file.
+#'
+#' @param type1 Data type; provide a character string indicating
+#' if the data have been normalized.
+#' @param so_list Input Seurat object list.
+#' @param asy Assay to use for file conversion.
+#' @param mcc Cores to use for file conversion.
+#' @return A h5ad file with the same name as the input object.
+#' @examples
+#'
+#' # ld_seurat <- pc_create_ad(
+#' #   so = readRDS("data/seuratobject.rds")
+#' # )
+#'
+#' @export
+pc_create_ad <- function(
+  type1 = "norm",
+  so_list,
+  asy = "PC",
+  mcc = 8
+) {
+  # Load data
+  d3 <- so_list
   # Convert Seurat objects to individual AnnData files
   parallel::mclapply(
-    mc.cores = 2 + 6,
+    mc.cores = mcc,
     seq.int(1, length(d3), 1),
     function(x) {
       d2 <- d3[[x]]
-      d1 <- Seurat::CreateAssayObject(counts = d2[["PC"]]$counts)
+      d1 <- Seurat::CreateAssayObject(counts = d2[[asy]]$counts)
       d2[["PCv3"]] <- d1
       Seurat::DefaultAssay(d2) <- "PCv3"
-      d2[["PC"]] <- NULL
-      d2 <- SeuratObject::RenameAssays(object = d2, PCv3 = "PC")
+      d2[[asy]] <- NULL
+      d2 <- SeuratObject::RenameAssays(object = d2, PCv3 = asy)
       SeuratDisk::SaveH5Seurat(
         d2,
-        filename = paste("data/pc_", names(d3)[[x]], ".h5Seurat", sep = "")
+        filename = paste(
+          "data/d_", names(d3)[[x]], "_", type1, ".h5Seurat", sep = ""
+        )
       )
       SeuratDisk::Convert(
-        paste("data/pc_", names(d3)[[x]], ".h5Seurat", sep = ""),
+        paste("data/d_", names(d3)[[x]], "_", type1, ".h5Seurat", sep = ""),
         dest = "h5ad"
       )
-      file.remove(paste("data/pc_", names(d3)[[x]], ".h5Seurat", sep = ""))
+      file.remove(paste(
+        "data/d_", names(d3)[[x]], "_", type1, ".h5Seurat", sep = ""
+      ))
       return(d2) # nolint
     }
   )
-  return(print(paste(".h5ad file created for ", names(d3), sep = "")))
 }
