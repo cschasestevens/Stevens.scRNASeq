@@ -1010,13 +1010,20 @@ sc_coverage_plot <- function( # nolint
     d,
     genome = BSgenome.Hsapiens.UCSC.hg38 # nolint
   )
-  d <- Signac::LinkPeaks(
-    object = d,
-    peak.assay = asy1,
-    expression.assay = asy2,
-    genes.use = c(
-      g_name
-    )
+  tryCatch(
+    {
+      d <- Signac::LinkPeaks(
+        object = d,
+        peak.assay = asy1,
+        expression.assay = asy2,
+        genes.use = c(
+          g_name
+        )
+      )
+    },
+    error = function(e) {
+      print("No linked peaks; selected gene is likely below limit of detection...") # nolint
+    }
   )
   # Plot tracks for CellType, Airway, and split condition
   # Add column to split Cell Type and Group

@@ -332,6 +332,9 @@ sc_top10_marker_heatmap <- function(
       print("Calculating marker genes for each cluster...")
       Seurat::Idents(d) <- cl_var
       Seurat::DefaultAssay(d) <- asy
+      if(length(SeuratObject::Layers(d)) < 2) { # nolint
+        d <- Seurat::NormalizeData(d)
+      }
       cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
       write.table(
         cl_mark,
@@ -408,6 +411,9 @@ sc_top10_marker_heatmap <- function(
       print("Calculating marker antibodies for each cluster...")
       Seurat::Idents(d) <- cl_var
       Seurat::DefaultAssay(d) <- asy
+      if(length(SeuratObject::Layers(d)) < 2) { # nolint
+        d <- Seurat::NormalizeData(d)
+      }
       cl_mark <- Seurat::FindAllMarkers(d, verbose = TRUE)
       write.table(
         cl_mark,

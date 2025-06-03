@@ -73,7 +73,7 @@ sc_diff <- function( # nolint
   mast_comp,
   mast_name,
   form1,
-  parl = FALSE,
+  parl = TRUE,
   core_perc = 0.2,
   atac_type = NULL
 ) {
@@ -104,11 +104,16 @@ sc_diff <- function( # nolint
     SeuratObject::GetAssayData(d, slot = slot1, assay = asy)
   )
   if(missing(atac_type) == FALSE) { # nolint
-    rownames(deg_mat) <- paste(
-      d@assays$ATAC@meta.features$nearestGene,
-      seq.int(1, nrow(d@assays$ATAC@meta.features), 1),
-      sep = "."
-    )
+    if(asy == "chromvar") { # nolint
+      rownames(deg_mat) <- rownames(d@assays[[asy]])
+    }
+    if(asy == "ATAC") { # nolint
+      rownames(deg_mat) <- paste(
+        d@assays[["chromvar"]]@meta.features$nearestGene,
+        seq.int(1, nrow(d@assays[[asy]]@meta.features), 1),
+        sep = "."
+      )
+    }
   }
   deg_cols <- data.frame(
     d@meta.data[, lc]
@@ -127,7 +132,9 @@ sc_diff <- function( # nolint
       cData = deg_cols
     )
   }
-  dgea_celltype <- unique(SingleCellExperiment::colData(dgea_sc)[[c]])
+  dgea_celltype <- unique(
+    as.character(SingleCellExperiment::colData(dgea_sc)[[c]])
+  )
   list_dgea <- list("SCE" = dgea_sc, "CellType" = dgea_celltype)
   remove(d)
   if(Sys.info()[["sysname"]] != "Windows" && parl == TRUE) { #nolint
@@ -138,8 +145,9 @@ sc_diff <- function( # nolint
         tryCatch(
           {
             # Subset data
-            s1 <- list_dgea[[1]][ , SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[x]]] #nolint
+            s1 <- list_dgea[[1]][ , SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[1]]] #nolint
             s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0)
+            s1_sum[is.na(s1_sum)] <- 0
             s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
             ### create glm (generalized linear model for each variable)
             s1_fit <- MAST::zlm(
@@ -216,7 +224,7 @@ sc_diff <- function( # nolint
                   )]
                 )
               )
-              return(s1_dt)
+              return(s1_dt) # nolint
             }
             d1 <- d_mast_sum_fun(
               mc,
@@ -232,112 +240,7 @@ sc_diff <- function( # nolint
       }
     ), as.character(list_dgea[[2]]))
   }
-  if(Sys.info()[["sysname"]] != "Windows" && # nolint
-       parl == FALSE) {
-    list_dgea_res <- setNames(lapply(
-      seq.int(1, length(list_dgea[[2]]), 1),
-      function(x) {
-        tryCatch(
-          {
-            # Subset data
-            s1 <- list_dgea[[1]][,
-            SingleCellExperiment::colData( # nolint
-              list_dgea[[1]]
-            )[[c]] == list_dgea[[2]][[x]]]
-            s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0)
-            s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
-            ### create glm (generalized linear model for each variable)
-            s1_fit <- MAST::zlm(
-              formula = form1,
-              s1,
-              method = "glm",
-              ebayes = FALSE,
-              parallel = FALSE
-            )
-            ### Output DFs
-            d_mast_sum_fun <- function(
-              comp1,
-              ct2,
-              comp1_name
-            ) {
-              s1_res <- MAST::summary(
-                s1_fit,
-                doLRT = comp1,
-                logFC = TRUE,
-                parallel = FALSE
-              )
-              ### make dfs to display summary results by comp
-              s1_dt <- reshape2::melt(
-                dplyr::select(
-                  dplyr::filter(
-                    s1_res$datatable,
-                    contrast == comp1 & # nolint
-                      component != "S" # nolint
-                  ),
-                  -c("contrast")
-                ),
-                id.vars = c("primerid", "component")
-              )
-              s1_dt[["vars"]] <- paste(
-                s1_dt$component,
-                s1_dt$variable,
-                sep = "."
-              )
-              s1_dt <- dplyr::select(
-                dplyr::mutate(
-                  reshape2::dcast(
-                    dplyr::select(
-                      dplyr::filter(
-                        s1_dt,
-                        vars != "logFC.Pr(>Chisq)" & # nolint
-                          vars != "H.ci.hi" &
-                          vars != "H.ci.lo" &
-                          vars != "H.coef" &
-                          vars != "H.z"
-                      ),
-                      -c(
-                        "component",
-                        "variable"
-                      )
-                    ),
-                    primerid ~ vars
-                  ),
-                  "CellType" = ct2,
-                  "Comparison" = comp1_name
-                ),
-                c(
-                  "CellType", "Comparison", "primerid",
-                  "logFC.coef", "H.Pr(>Chisq)", "C.Pr(>Chisq)",
-                  "D.Pr(>Chisq)", everything() # nolint
-                )
-              )
-              names(s1_dt) <- c(
-                "CellType", "Comparison", "GENE",
-                "logFC", "H.pval", "C.pval",
-                "D.pval",
-                names(
-                  s1_dt[8:ncol(
-                    s1_dt
-                  )]
-                )
-              )
-              return(s1_dt)
-            }
-            d1 <- d_mast_sum_fun(
-              mc,
-              list_dgea[[2]][[x]],
-              mn
-            )
-            return(d1)
-          },
-          error = function(e) {
-            print("Differential analysis unsuccessful for cell type...")
-          }
-        )
-      }
-    ), as.character(list_dgea[[2]]))
-  }
-  if(Sys.info()[["sysname"]] == "Windows") { # nolint
+  if(Sys.info()[["sysname"]] == "Windows" | parl == FALSE) { # nolint
     list_dgea_res <- setNames(
       lapply( # nolint
         seq.int(1, length(list_dgea[[2]]), 1),
@@ -350,6 +253,7 @@ sc_diff <- function( # nolint
                 list_dgea[[1]]
               )[[c]] == list_dgea[[2]][[x]]]
               s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0) # nolint
+              s1_sum[is.na(s1_sum)] <- 0
               s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
               ### create glm (generalized linear model for each variable)
               s1_fit <- MAST::zlm(
@@ -426,7 +330,7 @@ sc_diff <- function( # nolint
                     )]
                   )
                 )
-                return(s1_dt)
+                return(s1_dt) # nolint
               }
               d1 <- d_mast_sum_fun( # nolint
                 mc,

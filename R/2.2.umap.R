@@ -203,8 +203,8 @@ sc_umap_panel_gene <- function(
                    col_names)
   d <- so
   SeuratObject::DefaultAssay(d) <- asy1
-  d2 <- data.frame(
-    Seurat::FetchData(
+  if(is.null(slot1)) { # nolint
+    d2 <- Seurat::FetchData(
       d,
       vars = c(
         gsub(
@@ -214,10 +214,25 @@ sc_umap_panel_gene <- function(
         ),
         md_var
       )
-    ),
-    `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
-    `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2]
-  )
+    )
+  }
+  if(is.null(slot1) == FALSE) { # nolint
+    d2 <- data.frame(
+      Seurat::FetchData(
+        d,
+        vars = c(
+          gsub(
+            "-",
+            "-",
+            g_name
+          ),
+          md_var
+        )
+      ),
+      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
+      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2]
+    )
+  }
   if(asy1 == "chromvar") { # nolint
     # Add motif names
     colnames(d2) <- c(
@@ -1073,174 +1088,155 @@ sc_umap_panel_gene_list <- function(
 sc_umap_standard <- function(
   so,
   md_var,
-  slot1,
+  slot1 = NULL,
   dims1 = "2D",
   col1 = col_univ(), # nolint
   pos_leg = "none"
 ) {
   # Format input data
   d <- so
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3) { # nolint
-    d2 <- data.frame(
-      d@meta.data,
-      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
-      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2],
-      `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[, 3],
-      md.var = d@meta.data[[md_var]]
-    )
+  # If Seurat Object contains embeddings as metadata
+  if(is.null(slot1)) { # nolint
+    d2 <- d@meta.data
     if(class(d2[[md_var]]) == "character") { # nolint
-      d2[[md_var]] <- factor(d2[[md_var]], levels = sort(unique(d2[[md_var]])))
+      d2[[md_var]] <- factor(
+        d2[[md_var]],
+        levels = sort(unique(d2[[md_var]]))
+      )
     }
   }
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2) { # nolint
-    d2 <- data.frame(
-      d@meta.data,
-      `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
-      `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2],
-      md.var = d@meta.data[[md_var]]
-    )
-    if(class(d2[[md_var]]) == "character") { # nolint
-      d2[[md_var]] <- factor(d2[[md_var]], levels = sort(unique(d2[[md_var]])))
-    }
-  }
-
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "3D") { # nolint
-    # Generate plot
-    d2_plot <- plotly::plot_ly(
-      d2,
-      x = ~`UMAP.1`, # nolint
-      y = ~`UMAP.2`, # nolint
-      z = ~`UMAP.3`, # nolint
-      color = ~.data[[md_var]], # nolint
-      colors = col_univ() # nolint
-    ) %>% # nolint
-      plotly::add_markers(marker = list(size = 3)) %>%
-      plotly::layout(
-        autosize = FALSE,
-        width = 800,
-        height = 600,
-        margin = list(
-          l = 50,
-          r = 50,
-          b = 25,
-          t = 25,
-          pad = 1
+  # If Seurat Object contains dimension reductions (most often)
+  if(is.null(slot1) == FALSE) { # nolint
+    if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3) { # nolint
+      d2 <- data.frame(
+        d@meta.data,
+        `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
+        `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2],
+        `UMAP.3` = d@reductions[[slot1]]@cell.embeddings[, 3],
+        md.var = d@meta.data[[md_var]]
+      )
+      if(class(d2[[md_var]]) == "character") { # nolint
+        d2[[md_var]] <- factor(
+          d2[[md_var]],
+          levels = sort(unique(d2[[md_var]]))
         )
+      }
+    }
+    if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2) { # nolint
+      d2 <- data.frame(
+        d@meta.data,
+        `UMAP.1` = d@reductions[[slot1]]@cell.embeddings[, 1],
+        `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2],
+        md.var = d@meta.data[[md_var]]
       )
-    htmlwidgets::saveWidget(
-      d2_plot,
-      file = paste("analysis/plot.3D.umap.", md_var, ".html", sep = "")
+      if(class(d2[[md_var]]) == "character") { # nolint
+        d2[[md_var]] <- factor(
+          d2[[md_var]],
+          levels = sort(unique(d2[[md_var]]))
+        )
+      }
+    }
+  }
+  if(dims1 == "3D") { # nolint
+    tryCatch(
+      {
+        # Generate plot
+        d2_plot <- plotly::plot_ly(
+          d2,
+          x = ~`UMAP.1`, # nolint
+          y = ~`UMAP.2`, # nolint
+          z = ~`UMAP.3`, # nolint
+          color = ~.data[[md_var]], # nolint
+          colors = col_univ() # nolint
+        ) %>% # nolint
+          plotly::add_markers(marker = list(size = 3)) %>%
+          plotly::layout(
+            autosize = FALSE,
+            width = 800,
+            height = 600,
+            margin = list(
+              l = 50,
+              r = 50,
+              b = 25,
+              t = 25,
+              pad = 1
+            )
+          )
+        htmlwidgets::saveWidget(
+          d2_plot,
+          file = paste(
+            "analysis/p_umap_3d_", md_var, ".html", sep = ""
+          )
+        )
+        d2_plot <- print(
+          paste(
+            "3D UMAP plot created as: ",
+            "analysis/p_umap_3d_", md_var, ".html", sep = ""
+          )
+        )
+      },
+      error = function(e) {
+        print("Error: data should contain the chosen overlay variable and three embedding variables named UMAP.1, UMAP.2, and UMAP.3!") # nolint
+      }
     )
   }
-
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2 && dims1 == "3D") { # nolint
-    print(
-      "Error: Only 2 components are present
-      in the selected dimension reduction!"
+  if(dims1 == "2D") { # nolint
+    tryCatch(
+      {
+        # Generate plot
+        d2_plot <- ggplot2::ggplot(
+          d2,
+          ggplot2::aes(
+            x=`UMAP.1`, # nolint
+            y=`UMAP.2`, # nolint
+            color = .data[[md_var]], # nolint
+            label = .data[[md_var]] # nolint
+          )
+        ) +
+          ggplot2::geom_point(
+            shape = 16,
+            size = 1,
+            alpha = 0.6
+          ) +
+          ggrepel::geom_text_repel(
+            data = setNames(
+              aggregate(
+                d2[, c("UMAP.1", "UMAP.2")],
+                list(d2[[md_var]]),
+                FUN = median
+              ),
+              c(md_var, names(
+                d2[, c("UMAP.1", "UMAP.2")]
+              )
+              )
+            ),
+            size = 5.5,
+            bg.color = "grey0",
+            color = "grey55",
+            bg.r = 0.075
+          ) +
+          ggplot2::scale_color_manual(
+            paste(""),
+            values = col1
+          ) +
+          sc_theme1() + # nolint
+          ggplot2::theme(
+            panel.grid.major.y = ggplot2::element_blank(),
+            axis.text.x = ggplot2::element_blank(),
+            axis.text.y = ggplot2::element_blank(),
+            axis.title.x = ggplot2::element_blank(),
+            axis.title.y = ggplot2::element_blank(),
+            axis.ticks = ggplot2::element_blank(),
+            plot.margin = ggplot2::unit(
+              c(0.1, 0.1, 0.1, 0.1), "cm"
+            ),
+            legend.position = pos_leg
+          )
+      },
+      error = function(e) {
+        print("Error: data should contain the chosen overlay variable and two embedding variables named UMAP.1 and UMAP.2!") # nolint
+      }
     )
-  }
-
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 2 && dims1 == "2D") { # nolint
-    # Generate plot
-    d2_plot <- ggplot2::ggplot(
-      d2,
-      ggplot2::aes(
-        x=`UMAP.1`, # nolint
-        y=`UMAP.2`, # nolint
-        color = .data[[md_var]], # nolint
-        label = .data[[md_var]] # nolint
-      )
-    ) +
-      ggplot2::geom_point(
-        shape = 16,
-        size = 1,
-        alpha = 0.6
-      ) +
-      ggrepel::geom_text_repel(
-        data = setNames(
-          aggregate(
-            d2[, c("UMAP.1", "UMAP.2")],
-            list(d2[[md_var]]),
-            FUN = median
-          ),
-          c(md_var, names(
-            d2[, c("UMAP.1", "UMAP.2")]
-          )
-          )
-        ),
-        size = 5.5,
-        bg.color = "grey0",
-        color = "grey55",
-        bg.r = 0.075
-      ) +
-      ggplot2::scale_color_manual(
-        paste(""),
-        values = col1
-      ) +
-      sc_theme1() + # nolint
-      ggplot2::theme(
-        panel.grid.major.y = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_blank(),
-        axis.text.y = ggplot2::element_blank(),
-        axis.title.x = ggplot2::element_blank(),
-        axis.title.y = ggplot2::element_blank(),
-        axis.ticks = ggplot2::element_blank(),
-        plot.margin = ggplot2::unit(
-          c(0.1, 0.1, 0.1, 0.1), "cm"
-        ),
-        legend.position = pos_leg
-      )
-  }
-  if(ncol(d@reductions[[slot1]]@cell.embeddings) == 3 && dims1 == "2D") { # nolint
-    # Generate plot
-    d2_plot <- ggplot2::ggplot(
-      d2,
-      ggplot2::aes(
-        x=`UMAP.1`, # nolint
-        y=`UMAP.2`, # nolint
-        color = .data[[md_var]], # nolint
-        label = .data[[md_var]] # nolint
-      )
-    ) +
-      ggplot2::geom_point(
-        shape = 16,
-        size = 1,
-        alpha = 0.6
-      ) +
-      ggrepel::geom_text_repel(
-        data = setNames(
-          aggregate(
-            d2[, c("UMAP.1", "UMAP.2")],
-            list(d2[[md_var]]),
-            FUN = median
-          ),
-          c(md_var, names(
-            d2[, c("UMAP.1", "UMAP.2")]
-          )
-          )
-        ),
-        size = 5.5,
-        bg.color = "grey0",
-        color = "grey55",
-        bg.r = 0.075
-      ) +
-      ggplot2::scale_color_manual(
-        paste(""),
-        values = col1
-      ) +
-      sc_theme1() + # nolint
-      ggplot2::theme(
-        panel.grid.major.y = ggplot2::element_blank(),
-        axis.text.x = ggplot2::element_blank(),
-        axis.text.y = ggplot2::element_blank(),
-        axis.title.x = ggplot2::element_blank(),
-        axis.title.y = ggplot2::element_blank(),
-        axis.ticks = ggplot2::element_blank(),
-        plot.margin = ggplot2::unit(
-          c(0.1, 0.1, 0.1, 0.1), "cm"
-        ),
-        legend.position = pos_leg
-      )
   }
   return(d2_plot)
 }

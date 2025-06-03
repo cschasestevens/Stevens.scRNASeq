@@ -16,6 +16,10 @@ sc_pca <- function(
 ) {
   d <- so
   # Change assay, scale, and run PCA
+  if(length(SeuratObject::Layers(d)) < 2) { # nolint
+    d <- Seurat::NormalizeData(d)
+    d <- Seurat::FindVariableFeatures(d)
+  }
   Seurat::DefaultAssay(
     object = d
   ) <- slot1
@@ -37,7 +41,7 @@ sc_pca <- function(
     reduction = "pca",
     ndims = 50
   )
-  return(d)
+  return(d) # nolint
 }
 
 #' scRNA-Seq PCA Loadings Plot
