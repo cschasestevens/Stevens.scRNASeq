@@ -47,6 +47,9 @@ col_grad <- function(
   if(scm == 4) { # nolint
     c1 <- c("lightblue", "red", "darkred")
   }
+  if(scm == 5) { # nolint
+    c1 <- c("dodgerblue4", "white", "darkred")
+  }
   return(c1)
 }
 

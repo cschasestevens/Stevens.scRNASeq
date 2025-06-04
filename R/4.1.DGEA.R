@@ -145,7 +145,7 @@ sc_diff <- function( # nolint
         tryCatch(
           {
             # Subset data
-            s1 <- list_dgea[[1]][ , SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[1]]] #nolint
+            s1 <- list_dgea[[1]][ , SingleCellExperiment::colData(list_dgea[[1]])[[c]] == list_dgea[[2]][[x]]] #nolint
             s1_sum <- rowSums(SummarizedExperiment::assay(s1) > 0)
             s1_sum[is.na(s1_sum)] <- 0
             s1 <- s1[s1_sum / ncol(s1) >= 0.05, ]
@@ -228,7 +228,7 @@ sc_diff <- function( # nolint
             }
             d1 <- d_mast_sum_fun(
               mc,
-              list_dgea[[2]][[x]],
+              list_dgea[[2]][[1]],
               mn
             )
             return(d1)

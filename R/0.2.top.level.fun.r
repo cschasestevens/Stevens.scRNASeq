@@ -67,7 +67,6 @@ sc_visualize <- function(
       ggplot2::ggsave(
         paste(
           "analysis/",
-          "p_vol_",
           par1[["file"]],
           ".png",
           sep = ""
@@ -338,10 +337,10 @@ sc_visualize <- function(
                 )
               )
             }
-            return(chk_gene)
+            return(chk_gene) # nolint
           }
         ))
-        return(gex_umap)
+        return(gex_umap) # nolint
       }
     ))
     write.table(
