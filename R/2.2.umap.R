@@ -233,7 +233,7 @@ sc_umap_panel_gene <- function(
       `UMAP.2` = d@reductions[[slot1]]@cell.embeddings[, 2]
     )
   }
-  if(asy1 == "chromvar") { # nolint
+  if(asy1 == "chromvar" | asy1 == "ufy.peaks") { # nolint
     # Add motif names
     colnames(d2) <- c(
       name(TFBSTools::getMatrixByID(JASPAR2020, ID = g_name)), # nolint

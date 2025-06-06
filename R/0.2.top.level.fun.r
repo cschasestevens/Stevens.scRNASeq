@@ -166,10 +166,12 @@ sc_visualize <- function(
                       levels(par1[["obj_list"]][[y]]@meta.data[[par1[["var"]]]])
                     ),
                     slot1 = par1[["dimr"]],
-                    col1 = par1[["col"]]
+                    col1 = par1[["col"]],
+                    leg_x = par1[["leg_x"]],
+                    leg_y = par1[["leg_y"]]
                   ),
-                  width = 6,
-                  height = 6,
+                  width = 8,
+                  height = 8,
                   dpi = 300
                 )
               },
@@ -276,10 +278,12 @@ sc_visualize <- function(
                       levels(par1[["obj_list"]][[y]]@meta.data[[par1[["var"]]]])
                     ),
                     slot1 = par1[["dimr"]],
-                    col1 = par1[["col"]]
+                    col1 = par1[["col"]],
+                    leg_x = par1[["leg_x"]],
+                    leg_y = par1[["leg_y"]]
                   ),
-                  width = 6,
-                  height = 6,
+                  width = 8,
+                  height = 8,
                   dpi = 300
                 )
               },
