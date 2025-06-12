@@ -192,7 +192,7 @@ sc_umap_panel_gene <- function(
   col_scheme,
   col_names,
   leg_x = 0.9,
-  leg_y = 0.8,
+  leg_y = 0.2,
   slot1 = "umap",
   col1 = col_grad(), # nolint
   plot_comb = FALSE,

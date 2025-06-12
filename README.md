@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.04 (20250604)
+# Stevens.scRNASeq v3.05 (20250612)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -100,6 +100,9 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.05
+    * Revised phenocycler QC function.
+    * Bug fixes for conversion between phenocycler file types.
 * 3.04
     * Fixed errors when using sc_diff() for differential activity analysis.
     * Updated plot themes.

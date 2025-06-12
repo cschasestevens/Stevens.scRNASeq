@@ -4,6 +4,7 @@
 #' to a Seurat object.
 #'
 #' @param df Input data frame.
+#' @param dir1 Directory name for saving Seurat objects.
 #' @param samp_id Column containing sample IDs for selected data.
 #' @param mcc Cores to use for processing input data.
 #' @return List of Seurat objects containing filtered phenocycler data.
@@ -16,6 +17,7 @@
 #' @export
 pc_create_seurat <- function(
   df,
+  dir1 = "data/",
   samp_id = "Code",
   mcc = 2
 ) {
@@ -72,14 +74,13 @@ pc_create_seurat <- function(
     ),
     names(d2)
   )
-  d3
   parallel::mclapply(
     mc.cores = mcc + 2,
     seq.int(1, length(d3), 1),
     function(x) {
       saveRDS(
         d3[[x]],
-        paste("data/d_seurat_", names(d3)[[x]], ".rds", sep = "")
+        paste(dir1, "d_seurat_", names(d3)[[x]], ".rds", sep = "")
       )
     }
   )
@@ -111,6 +112,13 @@ pc_create_ad <- function(
   asy = "PC",
   mcc = 8
 ) {
+  ifelse(
+    dir.exists(paste("data/", sep = "")) == FALSE,
+    dir.create(paste("data/", sep = "")),
+    print(
+      paste("Saving QC cellmap in data/", sep = "")
+    )
+  )
   # Load data
   d3 <- so_list
   # Convert Seurat objects to individual AnnData files
