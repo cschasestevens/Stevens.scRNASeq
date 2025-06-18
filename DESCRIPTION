@@ -1,5 +1,5 @@
 Package: Stevens.scRNASeq
-Date: 2025-06-12
+Date: 2025-06-18
 Type: Package
 Title: Processing and analysis of single-cell and spatial multiomics data
 Version: 3.05
@@ -14,7 +14,22 @@ VignetteBuilder: knitr
 Suggests: 
   knitr,
   rmarkdown,
-  reticulate
+  reticulate,
+  CellChat,
+  topGO,
+  parallel,
+  future,
+  Signac,
+  chromVAR,
+  JASPAR2020,
+  TFBSTools,
+  BSgenome.Hsapiens.UCSC.hg38,
+  org.Hs.eg.db,
+  plotly,
+  htmlwidgets,
+  patchwork,
+  Azimuth,
+  biomaRt
 Imports: 
   ggplot2,
   viridis,
@@ -29,15 +44,10 @@ Imports:
   Seurat,
   SeuratObject,
   BiocGenerics,
-  parallel,
   decontX,
-  Signac,
   BSgenome,
   harmony,
-  future,
   ggpubr,
-  plotly,
-  htmlwidgets,
   ggrepel,
   dplyr,
   reshape2,
@@ -47,18 +57,9 @@ Imports:
   ComplexHeatmap,
   grid,
   gtools,
-  patchwork,
-  Azimuth,
-  BSgenome.Hsapiens.UCSC.hg38,
-  chromVAR,
-  JASPAR2020,
-  TFBSTools,
   MAST,
   EnhancedVolcano,
-  biomaRt,
-  topGO,
   shadowtext,
   stringr,
-  org.Hs.eg.db,
-  CellChat,
-  TACIT
+  BiocManager,
+  RColorBrewer

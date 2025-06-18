@@ -81,12 +81,10 @@ create_proc_params <- function(d_path, study_md) {
         sep = ""
       )
     ),
-
     # Dataset-specific columns
     study_md
   )
-
-  return(list_params)
+  return(list_params) # nolint
 }
 
 #' Define Processing Parameters
@@ -102,6 +100,9 @@ create_proc_params <- function(d_path, study_md) {
 #' to a GENCODE FASTA genome file.
 #' @return A list of parameters to use for processing
 #' 10X multiome files.
+#' @importFrom GenomeInfoDb keepStandardChromosomes seqlevelsStyle
+#' @importFrom rtracklayer import
+#' @importFrom Rsamtools FaFile
 #' @examples
 #'
 #' # # Dataset input parameters
@@ -193,7 +194,7 @@ sc_multiome_params <- function(study_md, gtf_path, fa_path) {
     # Dataset-specific columns
     study_md
   )
-  return(
+  return( # nolint
     list(
       "param" = list_params,
       "ref.gtf" = rformat,

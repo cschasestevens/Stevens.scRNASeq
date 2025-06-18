@@ -4,10 +4,12 @@
 \alias{pc_create_seurat}
 \title{Create Seurat Object from QC Dataframe}
 \usage{
-pc_create_seurat(df, samp_id = "Code", mcc = 2)
+pc_create_seurat(df, dir1 = "data/", samp_id = "Code", mcc = 2)
 }
 \arguments{
 \item{df}{Input data frame.}
+
+\item{dir1}{Directory name for saving Seurat objects.}
 
 \item{samp_id}{Column containing sample IDs for selected data.}
 

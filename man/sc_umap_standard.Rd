@@ -7,7 +7,7 @@
 sc_umap_standard(
   so,
   md_var,
-  slot1,
+  slot1 = NULL,
   dims1 = "2D",
   col1 = col_univ(),
   pos_leg = "none"

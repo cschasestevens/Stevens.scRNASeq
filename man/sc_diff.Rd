@@ -13,7 +13,7 @@ sc_diff(
   mast_comp,
   mast_name,
   form1,
-  parl = FALSE,
+  parl = TRUE,
   core_perc = 0.2,
   atac_type = NULL
 )

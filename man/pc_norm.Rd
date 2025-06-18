@@ -2,14 +2,16 @@
 % Please edit documentation in R/1.5.phenocycler.QC.R
 \name{pc_norm}
 \alias{pc_norm}
-\title{Phenocycler sLOESS Normalization}
+\title{Phenocycler Normalization}
 \usage{
-pc_norm(so, mdn, list_ch, span1 = 0.05, mcc = 2, its = 3)
+pc_norm(so, mdn, mtd = "slo", list_ch, span1 = 0.05, mcc = 2, its = 3)
 }
 \arguments{
 \item{so}{Input Seurat object.}
 
 \item{mdn}{Number of metadata columns in the input Seurat object.}
+
+\item{mtd}{Normalization method to use (either "zsc" or "slo").}
 
 \item{list_ch}{Vector names of channels to normalize.}
 
@@ -26,7 +28,7 @@ A normalized Seurat Object for subsequent clustering
 and dimension reduction.
 }
 \description{
-Sparse implementation of LOESS normalization for correcting
+Z-score or sparse implementation of LOESS normalization for correcting
 gradient artifacts in phenocycler data. Uses method described
 by Stevens et. al. 2025 (doi: 10.1038/s41467-025-58135-4).
 }

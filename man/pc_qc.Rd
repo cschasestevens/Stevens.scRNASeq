@@ -7,17 +7,15 @@
 pc_qc(
   qc_type = "all",
   ld,
-  col_nums1,
-  md_var,
+  col_nums1 = c(10, 12, 13),
+  md_var = c("Area.um2", "Cells.raw", "Description"),
   md_num = 9,
   samp_id = "Code",
   g_col = NULL,
   g_col2 = NULL,
   ch_list,
-  col_nums2 = NULL,
-  ch_nuc = "DAPI",
-  norm_data = FALSE,
-  loess_norm = FALSE
+  col_nums2 = c(6, 8, 9),
+  ch_nuc = "DAPI"
 )
 }
 \arguments{
@@ -50,11 +48,6 @@ use as the sample ID as well as the X and Y coordinates
 for formatting the segmentation results table.}
 
 \item{ch_nuc}{Nuclei channel name.}
-
-\item{norm_data}{Perform data normalization if TRUE.}
-
-\item{loess_norm}{Normalize signal intensities by performing LOESS
-prior to z-score scaling.}
 }
 \value{
 List containing QC summary statistics and plots.
@@ -64,15 +57,12 @@ Runs quality control of segmented phenocycler data for all samples
 }
 \examples{
 
-# pheno_data <- pc_qc(
+# pheno_qc <- pc_qc(
 #   ld = ld1,
-#   col_nums1 = c(4, 10, 12, 13),
-#   md_var = c("Area.um2", "Cells.raw", "Description"),
 #   samp_id = "Name",
 #   g_col = "Name",
 #   g_col2 = "Parent",
-#   ch_list = s3,
-#   col_nums2 = c(6, 8, 9)
+#   ch_list = s3
 # )
 
 }

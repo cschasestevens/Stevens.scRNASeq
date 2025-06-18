@@ -4,6 +4,7 @@
 #' containing up to 36 groups.
 #'
 #' @return Vector of colors to replace default discrete color scale.
+#' @import ggsci
 #' @examples
 #'
 #'  # col_univ()
@@ -27,6 +28,8 @@ col_univ <- function() {
 #' @param scm Gradient scheme to use
 #' (1 = viridis, 2 = yellow/brown, 3 = blue/red-a, 4 = blue/red-b)
 #' @return Vector of colors to replace default gradient color scale.
+#' @importFrom viridis viridis
+#' @importFrom RColorBrewer brewer.pal
 #' @examples
 #'
 #' col_grad()
@@ -59,6 +62,7 @@ col_grad <- function(
 #' General plotting theme.
 #'
 #' @return ggplot2 theme parameters to replace default plot theme.
+#' @import ggplot2
 #' @examples
 #'
 #' # sc_theme1()
@@ -126,7 +130,7 @@ sc_theme1 <- function() {
   )
   thm_mult <- thm_gen +
     thm_leg_main
-  return(thm_mult)
+  return(thm_mult) # nolint
 }
 
 #' PC Image Plot Theme
@@ -134,6 +138,7 @@ sc_theme1 <- function() {
 #' Default Phenocycler image plotting theme.
 #'
 #' @return ggplot2 theme parameters to replace default image plotting theme.
+#' @import ggplot2
 #' @examples
 #'
 #' # pc_theme_img()
@@ -221,5 +226,5 @@ pc_theme_img <- function() {
         linewidth = 1
       )
     )
-  return(thm_image)
+  return(thm_image) # nolint
 }

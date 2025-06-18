@@ -3,6 +3,7 @@
 #' Installs CRAN and Bioconductor packages (if not already installed)
 #'
 #' @return Summary of installed packages
+#' @importFrom BiocManager install
 #' @examples
 #'
 #'  # sc_check_lib()

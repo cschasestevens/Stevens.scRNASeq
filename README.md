@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.05 (20250612)
+# Stevens.scRNASeq v3.05 (20250618)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -64,7 +64,7 @@ Utilizes Seurat and Signac in tandem with various R packages to perform processi
         * shadowtext,
         * stringr,
         * org.Hs.eg.db,
-        * CellChat
+        * CellChat,
         * anndata
 
 ### Installation
@@ -103,6 +103,9 @@ browseVignettes("Stevens.scRNASeq")
 * 3.05
     * Revised phenocycler QC function.
     * Bug fixes for conversion between phenocycler file types.
+    * Updated phenocycler normalization function.
+    * Updated package documentation
+    * Moved scATAC-Seq libraries from "Imports" to "Suggests"
 * 3.04
     * Fixed errors when using sc_diff() for differential activity analysis.
     * Updated plot themes.

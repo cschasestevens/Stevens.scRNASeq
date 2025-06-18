@@ -9,6 +9,11 @@
 #' @param p_params List of plot-specific parameters supplied to the function.
 #' Note that function defaults are used when input parameters are missing.
 #' @return Plot(s) corresponding to the chosen plot type.
+#'
+#' @import ggplot2
+#' @import dplyr
+#' @importFrom parallel mclapply
+#' @import SeuratObject
 #' @examples
 #'
 #' # p1 <- sc_visualize(
@@ -227,10 +232,10 @@ sc_visualize <- function(
                 )
               )
             }
-            return(chk_gene)
+            return(chk_gene) # nolint
           }
         ))
-        return(gex_umap)
+        return(gex_umap) # nolint
       }
     ))
     write.table(
