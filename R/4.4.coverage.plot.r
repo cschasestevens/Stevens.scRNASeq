@@ -912,14 +912,15 @@ sc_atac_motifs <- function(
 #' for plotting gene positions. The Signac function CoveragePlot() is
 #' used to generate the final plot.
 #'
-#' @param so An object of class Seurat. Must contain an ATAC assay.
+#' @param so Input Seurat Object.
 #' @param dref Path to a .gtf file containing reference gene annotations.
 #' @param asy1 ATAC peaks assay to use.
 #' @param asy2 GEX assay to use.
-#' @param g_name Gene to plot, provided as a character string.
-#' @param bp_window Numeric value indicating the number of base pairs to
-#' extend the plotting window on each end of the selected gene's location.
-#' Useful for visualizing peaks corresponding to neighboring genes.
+#' @param g_name Gene or region to plot, provided as a character string.
+#' @param f_name Gene to plot expression alongside gene track.
+#' @param g_region (optional) Region within the coverage plot to highlight.
+#' @param bp_window Vector containing the upstream and downstream limits
+#' for extending the plotting window (in base pairs).
 #' @param ct_col Cell type column name to use in the selected Seurat object.
 #' Must be a factor variable.
 #' @param ct_spl Logical indicating whether cell types should be stratified
@@ -959,7 +960,9 @@ sc_coverage_plot <- function( # nolint
   asy2 = "sct",
   asy_dat = "scale.data",
   g_name,
-  bp_window = 5000,
+  g_region = NULL,
+  f_name,
+  bp_window = c(5000, 5000),
   ct_col = NULL,
   ct_spl = TRUE,
   ct_filt = FALSE,
@@ -968,6 +971,13 @@ sc_coverage_plot <- function( # nolint
   p_type = "ct_only"
 ) {
   d <- so
+  if(!is.null(g_region)) { # nolint
+    g_reg <- Signac::StringToGRanges(g_region)
+    g_reg$color <- "orange"
+  }
+  if(is.null(g_region)) { # nolint
+    g_reg <- NULL
+  }
   # Change assay and format reference annotation file
   Seurat::DefaultAssay(d) <- asy1
   if(!file.exists("ref/ref.gene.formatted.rds") == TRUE) { # nolint
@@ -1010,7 +1020,7 @@ sc_coverage_plot <- function( # nolint
     d,
     genome = BSgenome.Hsapiens.UCSC.hg38 # nolint
   )
-  tryCatch(
+  d1 <- tryCatch(
     {
       d <- Signac::LinkPeaks(
         object = d,
@@ -1025,6 +1035,15 @@ sc_coverage_plot <- function( # nolint
       print("No linked peaks; selected gene is likely below limit of detection...") # nolint
     }
   )
+  if(class(d1) == "SeuratObject") { # nolint
+    d <- d1
+    lnk <- TRUE
+    remove(d1)
+  }
+  if(class(d1) == "character") { # nolint
+    lnk <- FALSE
+    remove(d1)
+  }
   # Plot tracks for CellType, Airway, and split condition
   # Add column to split Cell Type and Group
   # Manually assign existing CellType column using consensus IDs
@@ -1084,15 +1103,16 @@ sc_coverage_plot <- function( # nolint
       p_aw <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = FALSE,
+        links = lnk,
         idents = sort(unique(d2@meta.data[[md_list1]])),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1109,15 +1129,16 @@ sc_coverage_plot <- function( # nolint
       p_ct <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = TRUE,
+        links = lnk,
         idents = unique(d2@meta.data[[ct_col2]]),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1145,15 +1166,16 @@ sc_coverage_plot <- function( # nolint
       p_aw <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = FALSE,
+        links = lnk,
         idents = sort(unique(d2@meta.data[[md_list1]])),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1223,15 +1245,16 @@ sc_coverage_plot <- function( # nolint
       p_ct <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = TRUE,
+        links = lnk,
         idents = unique(d2@meta.data[[ct_col2]]),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1258,15 +1281,16 @@ sc_coverage_plot <- function( # nolint
       p_aw <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = FALSE,
+        links = lnk,
         idents = sort(unique(d2@meta.data[[md_list1]])),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1283,15 +1307,16 @@ sc_coverage_plot <- function( # nolint
       p_ct <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = TRUE,
+        links = lnk,
         idents = levels(d2@meta.data[[ct_col]]),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1319,15 +1344,16 @@ sc_coverage_plot <- function( # nolint
       p_aw <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = FALSE,
+        links = lnk,
         idents = sort(unique(d2@meta.data[[md_list1]])),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
@@ -1353,15 +1379,16 @@ sc_coverage_plot <- function( # nolint
       p_ct <- Signac::CoveragePlot(
         object = d2,
         region = g_name,
-        features = g_name,
+        features = f_name,
         expression.assay = asy2,
         expression.slot = asy_dat,
         annotation = TRUE,
         peaks = TRUE,
-        links = TRUE,
+        links = lnk,
         idents = levels(d2@meta.data[[ct_col]]),
-        extend.upstream = bp_window,
-        extend.downstream = bp_window
+        extend.upstream = bp_window[[1]],
+        extend.downstream = bp_window[[2]],
+        region.highlight = g_reg
       ) &
         ggplot2::scale_fill_manual(values = col_univ()) & # nolint
         ggplot2::theme(
