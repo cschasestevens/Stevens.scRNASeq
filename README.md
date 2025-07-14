@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.06 (20250703)
+# Stevens.scRNASeq v3.07 (20250714)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -100,6 +100,8 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.07
+    * Updated Phenocycler quality control functions.
 * 3.06
     * Added parameters for accepting genomic coordinates as inputs for sc_coverage_plot function.
     * Fixed errors in sc_coverage_plot function.

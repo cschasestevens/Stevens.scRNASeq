@@ -896,7 +896,7 @@ pc_norm <- function(
     if(Sys.info()[["sysname"]] != "Windows") { # nolint
       qc_sum_filt2 <- dplyr::bind_rows(
         parallel::mclapply(
-          mc.cores = 2,
+          mc.cores = mc1,
           seq.int(1, length(unique(qc2_filt[["Code"]])), 1),
           function(x) {
             md1 <- unique(qc2_filt[["Code"]])
@@ -1022,6 +1022,7 @@ pc_norm <- function(
               by = "ID"
             )[, "norm"]
             dl2[is.na(dl2)] <- 0
+            dl2[dl2 < 0] <- 0
             dl2 <- setNames(as.data.frame(dl2), paste("X", 1, sep = "."))
             return(dl2) # nolint
           }
