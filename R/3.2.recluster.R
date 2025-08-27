@@ -544,3 +544,133 @@ sc_recluster <- function(
     )
   )
 }
+
+#' Phenocycler Reclustering
+#'
+#' Performs reclustering of an annotated CODEX multiplexed
+#' Seurat object for the purpose of re-annotating incorrect
+#' cell type assignments based on TACIT.
+#'
+#' @param so Input Seurat object.
+#' @param ct Name of the cell type to recluster.
+#' @param ct_col Cell Type column.
+#' @param asy Assay from Seurat object subset to use.
+#' @param dims1 Number of dimensions to use in PCA.
+#' @param hparam Vector of top marker heatmap parameters; provided in
+#' the following order: heatmap width, height, column fontsize, row fontsize,
+#' number of top markers to include per cluster.
+#' @return A list containing the reclustered, subsetted Seurat object.
+#' @examples
+#'
+#' # d <- pc_recluster(
+#' #   so = d_pc,
+#' #   ct = "AT2"
+#' # )
+#'
+#' @export
+pc_recluster <- function(
+  so,
+  ct,
+  ct_col = "TACIT",
+  asy = "PC.norm",
+  dims1 = 20,
+  hparam = c(16, 8, 8, 8, 5)
+) {
+  # Load data
+  d <- so
+  par1 <- hparam
+  # Generate UMAP for AT2 cells to identify different cell populations
+  SeuratObject::DefaultAssay(d) <- asy
+  # subset data
+  d2 <- d[, grepl(ct, as.character(d@meta.data[[ct_col]]))]
+  # Re-run dimension reduction on object subset
+  options(future.globals.maxSize = 10000 * 1024 ^ 2)
+  d <- Seurat::SCTransform(d2, new.assay.name = "sct", assay = asy)
+  # Run PCA
+  d <- Seurat::RunPCA(d)
+  plot_elbow <- Seurat::ElbowPlot(
+    d,
+    reduction = "pca",
+    ndims = dims1
+  )
+  # Run UMAP
+  Seurat::Idents(d) <- ct_col
+  d <- Seurat::RunUMAP(
+    object = d,
+    reduction = "pca",
+    dims = 1:dims1,
+    n.components = 3
+  )
+  SeuratObject::DefaultAssay(d) <- "sct"
+  d <- Seurat::FindNeighbors(
+    d,
+    reduction = "umap",
+    dims = 1:3,
+    verbose = TRUE
+  )
+  d <- Seurat::FindClusters(
+    d,
+    cluster.name = "recluster",
+    resolution = 0.05
+  )
+  ## Plot image with reclustering
+  p1 <- sc_umap_standard(
+    so = d,
+    md_var = "recluster",
+    slot1 = "umap",
+    pos_leg = c(0.8, 0.2)
+  )
+  p2 <- pc_scatter(
+    so = d,
+    md_var = "recluster",
+    col1 = col_univ()
+  )
+  p3 <- ggpubr::ggarrange(
+    p1, p2, nrow = 1, ncol = 2, labels = c("UMAP", "Cmap")
+  )
+  ## Find markers
+  d_hmap <- sc_top10_marker_heatmap_rc( # nolint
+    title1 = paste("Reclustered", ct),
+    sorc = d,
+    asy = "GEX",
+    slot1 = "sct",
+    cl_var = "recluster",
+    h_w = par1[[1]],
+    h_h = par1[[2]],
+    fs_c = par1[[3]],
+    fs_r = par1[[4]],
+    cl_c = TRUE,
+    cl_r = TRUE,
+    rot_c = 45,
+    col1 = col_grad(scm = 6),
+    sc_d = FALSE,
+    nmark = par1[[5]]
+  )
+  ## Reclustered cell maps
+  lp1 <- setNames(
+    lapply(
+      seq.int(1, length(levels(d@meta.data[["recluster"]])), 1),
+      function(i) {
+        pc_scatter(
+          so = d[
+            ,
+            d@meta.data[["recluster"]] == levels(
+              d@meta.data[["recluster"]]
+            )[[i]]
+          ],
+          md_var = "recluster",
+          col1 = col_univ()
+        )
+      }
+    ),
+    levels(d@meta.data[["recluster"]])
+  )
+  out <- list(
+    "data" = d,
+    "elbow" = plot_elbow,
+    "umap" = p3,
+    "hmap" = d_hmap,
+    "cmap" = lp1
+  )
+  return(out) # nolint
+}

@@ -18,6 +18,8 @@
 #' @param rot_c Rotation of column names.
 #' @param col1 Gradient color scheme to use
 #' (must be exactly 4 colors in length).
+#' @param sc_d Scale input data?
+#' @param nmark Number of top markers to use.
 #' @return A ComplexHeatmap object containing a top-10 marker gene heatmap.
 #' @examples
 #'
@@ -50,7 +52,9 @@ sc_top10_marker_heatmap_rc <- function(
   cl_c,
   cl_r,
   rot_c,
-  col1
+  col1,
+  sc_d = TRUE,
+  nmark = 10
 ) {
   d1 <- sorc
   if(asy == "GEX") { # nolint
@@ -141,7 +145,7 @@ sc_top10_marker_heatmap_rc <- function(
   cl_mark2 <- dplyr::slice_max(
     cl_mark2,
     order_by = .data[["avg_log2FC"]], # nolint
-    n = 10
+    n = nmark
   )[, c(
     "gene",
     "cluster"
@@ -185,6 +189,7 @@ sc_top10_marker_heatmap_rc <- function(
       unique(cl_mark2[["gene"]])
     )
   )
+  h[[cl_var]] <- as.factor(h[[cl_var]])
   ### Heatmap annotation (average expression)
   h_anno <- as.data.frame(
     lapply(
@@ -198,8 +203,40 @@ sc_top10_marker_heatmap_rc <- function(
   )
   h_anno <- h_anno[, h_anno[1, ] > 0]
   ### Scale and plot average expression/accessibility per cell type
-  h_in <- scale(
-    as.matrix(
+  if(sc_d == TRUE) { # nolint
+    h_in <- scale(
+      as.matrix(
+        magrittr::set_rownames(
+          setNames(
+            as.data.frame(
+              lapply(
+                h[, 2:ncol(
+                  h
+                )],
+                function(x) {
+                  dplyr::select(
+                    aggregate(
+                      x,
+                      list(
+                        h[, 1]
+                      ),
+                      FUN = mean
+                    ),
+                    c(2)
+                  )
+                }
+              )
+            ),
+            names(h[, 2:ncol(h)])
+          ),
+          levels(h[, 1])
+        )
+      ),
+      center = TRUE
+    )
+  }
+  if(sc_d == FALSE) { # nolint
+    h_in <- as.matrix(
       magrittr::set_rownames(
         setNames(
           as.data.frame(
@@ -225,9 +262,8 @@ sc_top10_marker_heatmap_rc <- function(
         ),
         levels(h[, 1])
       )
-    ),
-    center = TRUE
-  )
+    )
+  }
   qs <- quantile(
     h_in,
     probs = c(
@@ -274,7 +310,7 @@ sc_top10_marker_heatmap_rc <- function(
     show_row_names = TRUE,
     heatmap_width = ggplot2::unit(h_w, "cm"),
     heatmap_height = ggplot2::unit(h_h, "cm"),
-    column_title = "Top 10 Markers",
+    column_title = "Top Markers",
     column_names_rot = rot_c,
     column_names_gp = grid::gpar(fontsize = fs_c),
     row_names_side = "left",
