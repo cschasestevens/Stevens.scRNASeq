@@ -1,4 +1,4 @@
-# Stevens.scRNASeq v3.07 (20250714)
+# Stevens.scRNASeq v3.08 (20250827)
 
 Processing and Analysis of Single-cell RNA-Sequencing and Single-cell ATAC-Sequencing Datasets
 
@@ -100,6 +100,8 @@ browseVignettes("Stevens.scRNASeq")
 * LinkedIn: https://www.linkedin.com/in/nathanial-chase-stevens-phd-08775180/
 
 ## Version History
+* 3.08
+    * Integrated spatial proteomics visualizations with existing plot functions.
 * 3.07
     * Updated Phenocycler quality control functions.
 * 3.06
